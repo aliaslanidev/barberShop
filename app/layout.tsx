@@ -11,6 +11,17 @@ const vazir = Vazirmatn({
 export const metadata: Metadata = {
   title: "سالن آرایش",
   description: "سالن آرایش مردانه",
+  manifest: "/manifest.json",
+  themeColor: "#010100",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "سالن آرایش",
+  },
+  icons: {
+    icon: "/icons/icon-192.png",
+    apple: "/icons/icon-192.png",
+  },
 };
 
 export default function RootLayout({

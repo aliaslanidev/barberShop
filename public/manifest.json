@@ -1,0 +1,25 @@
+{
+  "name": "سالن آرایش",
+  "short_name": "سالن آرایش",
+  "description": "رزرو نوبت آنلاین سالن آرایش مردانه",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#010100",
+  "theme_color": "#010100",
+  "dir": "rtl",
+  "lang": "fa",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Header } from "@/components/header";
 
 const services = [
   {
@@ -34,19 +35,7 @@ const stats = [
 export default function Home() {
   return (
     <main className="min-h-screen">
-      {/* Nav */}
-      <header className="border-b border-border">
-        <div className="container flex h-16 items-center justify-between">
-          <span className="text-lg font-bold text-primary">سالن آرایش</span>
-          <nav className="hidden gap-8 text-sm text-muted-foreground md:flex">
-            <a href="#services" className="hover:text-foreground">خدمات</a>
-            <a href="#gallery" className="hover:text-foreground">گالری</a>
-            <a href="#about" className="hover:text-foreground">درباره ما</a>
-            <a href="#contact" className="hover:text-foreground">تماس</a>
-          </nav>
-          <Button size="sm">رزرو نوبت</Button>
-        </div>
-      </header>
+      <Header />
 
       {/* Hero */}
       <section className="container flex flex-col items-center gap-6 py-24 text-center">
