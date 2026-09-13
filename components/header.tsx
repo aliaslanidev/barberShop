@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -29,8 +30,8 @@ export function Header() {
         </nav>
 
         <div className="flex items-center gap-2">
-          <Button size="sm" className="hidden sm:inline-flex">
-            رزرو نوبت
+          <Button size="sm" className="hidden sm:inline-flex" asChild>
+            <Link href="/booking">رزرو نوبت</Link>
           </Button>
 
           {/* دکمه همبرگر - فقط موبایل */}
@@ -60,8 +61,10 @@ export function Header() {
                 {link.label}
               </a>
             ))}
-            <Button size="sm" className="mt-2 w-full" onClick={() => setIsMenuOpen(false)}>
-              رزرو نوبت
+            <Button size="sm" className="mt-2 w-full" asChild>
+              <Link href="/booking" onClick={() => setIsMenuOpen(false)}>
+                رزرو نوبت
+              </Link>
             </Button>
           </nav>
         </div>
