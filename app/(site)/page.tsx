@@ -1,6 +1,5 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Header } from "@/components/header";
 
 const services = [
   {
@@ -35,8 +34,6 @@ const stats = [
 export default function Home() {
   return (
     <main className="min-h-screen">
-      <Header />
-
       {/* Hero */}
       <section className="container flex flex-col items-center gap-6 py-24 text-center">
         <span className="text-sm text-primary">تجربه‌ای متفاوت از آرایش مردانه</span>
