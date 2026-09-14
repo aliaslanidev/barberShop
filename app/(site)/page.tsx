@@ -68,28 +68,17 @@ export default function Home() {
               text-muted-foreground
             "
           >
-            از اصلاح مو تا مراقبت پوست، همه‌چیز با دست استادکارانی که
-            به جزئیات اهمیت می‌دهند.
+            از اصلاح مو تا مراقبت پوست، همه‌چیز با دست استادکارانی که به جزئیات
+            اهمیت می‌دهند.
           </p>
 
           <div className="mt-4 flex gap-4">
-            <Button
-              size="lg"
-              asChild
-            >
-              <Link href="/booking">
-                رزرو آنلاین نوبت
-              </Link>
+            <Button size="lg" asChild>
+              <Link href="/booking">رزرو آنلاین نوبت</Link>
             </Button>
 
-            <Button
-              size="lg"
-              variant="outline"
-              asChild
-            >
-              <a href="#services">
-                مشاهده خدمات
-              </a>
+            <Button size="lg" variant="outline" asChild>
+              <a href="#services">مشاهده خدمات</a>
             </Button>
           </div>
         </div>
@@ -98,38 +87,47 @@ export default function Home() {
       {/* =====================================================
           Stats
       ====================================================== */}
-      <section className="border-y border-border bg-card">
+      <section
+        className="
+    border-y
+    border-border
+    bg-gradient-to-l
+    from-[#071a16]
+    via-[#171022]
+    to-[#090909]
+  "
+      >
         <div
           className="
-            container
-            grid
-            grid-cols-3
-            divide-x
-            divide-x-reverse
-            divide-violet/30
-            py-10
-            text-center
-          "
+      container
+      grid
+      grid-cols-3
+      divide-x
+      divide-x-reverse
+      divide-primary/20
+      py-10
+      text-center
+    "
         >
           {stats.map((s) => (
             <div key={s.label}>
               <div
                 className="
-                  text-2xl
-                  font-bold
-                  text-primary
-                  md:text-3xl
-                "
+            text-2xl
+            font-bold
+            text-primary
+            md:text-3xl
+          "
               >
                 {s.value}
               </div>
 
               <div
                 className="
-                  mt-1
-                  text-sm
-                  text-muted-foreground
-                "
+            mt-1
+            text-sm
+            text-muted-foreground
+          "
               >
                 {s.label}
               </div>
@@ -141,10 +139,7 @@ export default function Home() {
       {/* =====================================================
           Services
       ====================================================== */}
-      <section
-        id="services"
-        className="container py-20"
-      >
+      <section id="services" className="container py-20">
         <h2
           className="
             mb-10
@@ -200,9 +195,7 @@ export default function Home() {
                   p-6
                 "
               >
-                <h3 className="text-lg font-medium">
-                  {s.title}
-                </h3>
+                <h3 className="text-lg font-medium">{s.title}</h3>
 
                 <p
                   className="
@@ -232,10 +225,7 @@ export default function Home() {
       {/* =====================================================
           Gallery
       ====================================================== */}
-      <section
-        id="gallery"
-        className="container pb-20"
-      >
+      <section id="gallery" className="container pb-20">
         <h2
           className="
             mb-10
@@ -283,42 +273,45 @@ export default function Home() {
       <section
         id="about"
         className="
-          border-t
-          border-border
-          bg-card
-        "
+    border-t
+    border-border
+    bg-gradient-to-r
+    from-[#071a16]
+    via-[#120d1b]
+    to-[#080909]
+  "
       >
         <div
           className="
-            container
-            flex
-            flex-col
-            gap-4
-            py-20
-            text-center
-          "
+      container
+      flex
+      flex-col
+      gap-4
+      py-20
+      text-center
+    "
         >
           <h2
             className="
-              text-2xl
-              font-bold
-              md:text-3xl
-            "
+        text-2xl
+        font-bold
+        md:text-3xl
+      "
           >
             درباره سالن
           </h2>
 
           <p
             className="
-              mx-auto
-              max-w-xl
-              leading-8
-              text-muted-foreground
-            "
+        mx-auto
+        max-w-xl
+        leading-8
+        text-muted-foreground
+      "
           >
-            سالن ما محلی برای مردانی است که به ظاهر خود اهمیت می‌دهند.
-            تیم ما با سال‌ها تجربه، ترکیبی از تکنیک‌های کلاسیک و مدرن را
-            برای رسیدن به بهترین نتیجه به کار می‌گیرد.
+            سالن ما محلی برای مردانی است که به ظاهر خود اهمیت می‌دهند. تیم ما با
+            سال‌ها تجربه، ترکیبی از تکنیک‌های کلاسیک و مدرن را برای رسیدن به
+            بهترین نتیجه به کار می‌گیرد.
           </p>
         </div>
       </section>
@@ -349,17 +342,11 @@ export default function Home() {
         </h2>
 
         <p className="max-w-md text-muted-foreground">
-          برای رزرو نوبت با ما تماس بگیرید یا از فرم رزرو آنلاین استفاده
-          کنید.
+          برای رزرو نوبت با ما تماس بگیرید یا از فرم رزرو آنلاین استفاده کنید.
         </p>
 
-        <Button
-          size="lg"
-          asChild
-        >
-          <Link href="/booking">
-            رزرو نوبت
-          </Link>
+        <Button size="lg" asChild>
+          <Link href="/booking">رزرو نوبت</Link>
         </Button>
       </section>
 
@@ -381,9 +368,7 @@ export default function Home() {
             md:flex-row
           "
         >
-          <span>
-            © تمامی حقوق محفوظ است.
-          </span>
+          <span>© تمامی حقوق محفوظ است.</span>
 
           <div className="flex gap-6">
             <span>اینستاگرام</span>

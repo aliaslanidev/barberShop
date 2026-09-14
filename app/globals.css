@@ -11,23 +11,24 @@
     --background: 60 20% 1%;
     --foreground: 150 15% 96%;
 
-    --card: 120 5% 9%;
+    /* Dark green-black cards */
+    --card: 150 8% 6%;
     --card-foreground: 150 15% 96%;
 
     --primary: 158 87% 62%;
     --primary-foreground: 158 87% 10%;
 
-    --secondary: 120 5% 14%;
+    --secondary: 150 8% 10%;
     --secondary-foreground: 150 15% 96%;
 
-    --muted: 120 5% 14%;
+    --muted: 150 8% 10%;
     --muted-foreground: 150 8% 60%;
 
     --accent: 283 90% 52%;
     --accent-foreground: 0 0% 100%;
 
-    --border: 120 6% 16%;
-    --input: 120 6% 16%;
+    --border: 150 8% 14%;
+    --input: 150 8% 14%;
     --ring: 158 87% 62%;
 
     --radius: 0.6rem;
@@ -49,18 +50,30 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    color: hsl(var(--foreground));
+
+    /*
+      Global background
+      Very dark black + subtle green
+    */
+    background:
+      linear-gradient(
+        135deg,
+        hsl(60 20% 1%) 0%,
+        hsl(150 25% 2%) 50%,
+        hsl(158 30% 3%) 100%
+      );
+
+    background-attachment: fixed;
 
     font-family: var(--font-yekan-bakh), Tahoma, sans-serif;
   }
 
-  /* رنگ متن انتخاب‌شده (سلکت با موس) */
   ::selection {
     background: hsl(var(--primary) / 0.3);
     color: hsl(var(--foreground));
   }
 
-  /* حلقه‌ی فوکوس یکدست برای دسترسی‌پذیری کیبورد */
   :focus-visible {
     outline: 2px solid hsl(var(--ring));
     outline-offset: 2px;
@@ -68,8 +81,7 @@
 }
 
 /* ========================================
-   Container (چون container سفارشی داریم، اینجا تعریفش می‌کنیم
-   تا هم padding درست بگیره هم به‌صورت پیش‌فرض max-width محدود بشه)
+   Container
 ======================================== */
 
 @layer components {
@@ -88,7 +100,49 @@
 }
 
 /* ========================================
-   اسکرول‌بار سفارشی (هماهنگ با تم تیره)
+   Cards
+======================================== */
+
+@layer components {
+  /*
+    Global card style
+
+    Dark green-black surface with
+    very subtle depth over the page background.
+  */
+
+  .card {
+    background:
+      linear-gradient(
+        135deg,
+        hsl(150 10% 8% / 0.96),
+        hsl(150 8% 5% / 0.96)
+      );
+
+    border: 1px solid hsl(var(--primary) / 0.07);
+
+    backdrop-filter: blur(8px);
+
+    transition:
+      border-color 180ms ease,
+      background 180ms ease,
+      transform 180ms ease;
+  }
+
+  .card:hover {
+    border-color: hsl(var(--primary) / 0.25);
+
+    background:
+      linear-gradient(
+        135deg,
+        hsl(150 12% 9%),
+        hsl(150 8% 6%)
+      );
+  }
+}
+
+/* ========================================
+   Custom Scrollbar
 ======================================== */
 
 @layer base {
@@ -98,7 +152,7 @@
   }
 
   ::-webkit-scrollbar-track {
-    background: hsl(var(--background));
+    background: hsl(60 20% 1%);
   }
 
   ::-webkit-scrollbar-thumb {
@@ -110,15 +164,16 @@
     background: hsl(var(--muted-foreground) / 0.4);
   }
 
-  /* فایرفاکس */
   html {
     scrollbar-width: thin;
-    scrollbar-color: hsl(var(--border)) hsl(var(--background));
+    scrollbar-color:
+      hsl(var(--border))
+      hsl(60 20% 1%);
   }
 }
 
 /* ========================================
-   انیمیشن‌های سبک برای گلوی هیرو / کارت‌ها
+   Animations
 ======================================== */
 
 @layer utilities {
@@ -127,6 +182,7 @@
     100% {
       opacity: 0.9;
     }
+
     50% {
       opacity: 0.55;
     }
@@ -141,6 +197,7 @@
       opacity: 0;
       transform: translateY(12px);
     }
+
     to {
       opacity: 1;
       transform: translateY(0);
@@ -163,13 +220,21 @@
   border-radius: var(--radius);
   border: 1px solid hsl(var(--border));
 
-  background: hsl(var(--card));
+  background:
+    linear-gradient(
+      135deg,
+      hsl(150 10% 8% / 0.96),
+      hsl(150 8% 5% / 0.96)
+    );
+
   color: hsl(var(--foreground));
 
   padding: 0 1rem;
 
   font-family: var(--font-yekan-bakh), Tahoma, sans-serif;
   font-size: 0.875rem;
+
+  backdrop-filter: blur(8px);
 }
 
 .jalali-input:focus {
