@@ -14,6 +14,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+import { findMockAccount } from "@/lib/data/mock-accounts";
+import { setMockSession } from "@/lib/data/mock-session";
+
 const loginSchema = z.object({
   mobile: z
     .string()
@@ -40,13 +43,28 @@ export default function LoginPage() {
   async function onSubmit(values: LoginFormValues) {
     setIsSubmitting(true);
     try {
-      // TODO: وقتی بک‌اند/سیستم احراز هویت واقعی آماده شد،
-      // اینجا باید به API لاگین وصل بشه (مثلاً POST /api/auth/login)
-      // و نتیجه (توکن/سشن) ذخیره بشه.
-      await new Promise((resolve) => setTimeout(resolve, 600));
+      await new Promise((resolve) => setTimeout(resolve, 400));
+
+      const account = findMockAccount(values.mobile, values.password);
+      if (!account) {
+        toast.error("شماره موبایل یا رمز عبور اشتباه است");
+        return;
+      }
+
+      setMockSession({
+        role: account.role,
+        id: account.id,
+        name: account.name,
+      });
 
       toast.success("ورود با موفقیت انجام شد");
-      router.push("/");
+
+      const redirectByRole: Record<typeof account.role, string> = {
+        admin: "/admin/dashboard",
+        barber: "/barber/dashboard",
+        customer: "/customer/dashboard",
+      };
+      router.push(redirectByRole[account.role]);
     } catch {
       toast.error("مشکلی پیش آمد، دوباره تلاش کنید");
     } finally {

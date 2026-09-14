@@ -1,5 +1,8 @@
-import { redirect } from "next/navigation";
-import { getCurrentAdmin } from "@/lib/data/admin-session";
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { getCurrentAdmin, type AdminInfo } from "@/lib/data/admin-session";
 import { AdminNav } from "@/components/admin/admin-nav";
 
 export default function AdminLayout({
@@ -7,13 +10,28 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const admin = getCurrentAdmin();
+  const router = useRouter();
+  const [admin, setAdmin] = useState<AdminInfo | null | undefined>(undefined);
 
-  // اگر کاربر فعلی ادمین نباشد، اجازه‌ی دسترسی به هیچ صفحه‌ی /admin را ندارد.
-  // این چک باید در آینده روی سشن/توکن واقعی انجام شود، نه فقط این مقدار موقت.
-  if (!admin || admin.role !== "admin") {
-    redirect("/login");
+  useEffect(() => {
+    const current = getCurrentAdmin();
+    if (!current) {
+      router.replace("/login");
+      return;
+    }
+    setAdmin(current);
+  }, [router]);
+
+  if (admin === undefined) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <span className="text-sm text-muted-foreground">
+          در حال بررسی دسترسی...
+        </span>
+      </div>
+    );
   }
+  if (!admin) return null;
 
   return (
     <div className="min-h-screen bg-background">
@@ -23,9 +41,7 @@ export default function AdminLayout({
           <span className="text-sm text-muted-foreground">{admin.name}</span>
         </div>
       </header>
-
       <AdminNav />
-
       <div className="container py-6">{children}</div>
     </div>
   );

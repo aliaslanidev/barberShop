@@ -1,4 +1,8 @@
-// TODO: mock — وقتی auth واقعی وصل شد این باید از session بیاد، نه یه ثابت
-// برای تست رفتار پرمیشن‌های مختلف، مقدار این ثابت رو بین آی‌دی آرایشگرهای seed
-// (مثلاً "ali" با پرمیشن‌های گسترده یا "reza" بدون هیچ پرمیشن اختیاری) عوض کن.
-export const CURRENT_BARBER_ID = "ali";
+import { getMockSession } from "./mock-session";
+
+// جایگزین CURRENT_BARBER_ID ثابت قبلی — حالا سشن واقعاً چک می‌شه.
+export function getCurrentBarberId(): string | null {
+  const session = getMockSession();
+  if (!session || session.role !== "barber") return null;
+  return session.id;
+}

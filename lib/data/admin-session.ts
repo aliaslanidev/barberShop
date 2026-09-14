@@ -1,5 +1,4 @@
-// این فایل موقتاً یک ادمین ثابت را شبیه‌سازی می‌کند.
-// وقتی سیستم احراز هویت واقعی پیاده شد، این باید از سشن/توکن واقعی خوانده شود.
+import { getMockSession } from "./mock-session";
 
 export type AdminInfo = {
   id: string;
@@ -7,14 +6,9 @@ export type AdminInfo = {
   role: "admin";
 };
 
-export const CURRENT_ADMIN: AdminInfo = {
-  id: "admin-1",
-  name: "مدیر سیستم",
-  role: "admin",
-};
-
-// طبق مستند اسکوپ پروژه، ادمین به کل پلتفرم دسترسی کامل دارد
-// و برخلاف باربر/منیجر، نیازی به چک permission جداگانه ندارد.
-export function getCurrentAdmin(): AdminInfo {
-  return CURRENT_ADMIN;
+// حالا از localStorage (mock-session) می‌خونه، نه یه مقدار ثابت.
+export function getCurrentAdmin(): AdminInfo | null {
+  const session = getMockSession();
+  if (!session || session.role !== "admin") return null;
+  return { id: session.id, name: session.name, role: "admin" };
 }
