@@ -18,12 +18,15 @@ export function SwooshLines({
 
   return (
     <svg
-      viewBox="0 0 1100 700"
-      preserveAspectRatio="xMidYMid meet"
+      viewBox="0 0 1100 1400"
+      preserveAspectRatio="none"
       className={className}
       aria-hidden="true"
     >
       <defs>
+        {/* =====================================================
+            Gradient
+        ====================================================== */}
         <linearGradient
           id={gradientId}
           x1="0%"
@@ -62,6 +65,9 @@ export function SwooshLines({
           />
         </linearGradient>
 
+        {/* =====================================================
+            Glow
+        ====================================================== */}
         <filter
           id={glowId}
           x="-30%"
@@ -93,19 +99,60 @@ export function SwooshLines({
         filter={`url(#${glowId})`}
       >
         {lines.map((index) => {
-          // فاصله بین خطوط
+          /*
+           * فاصله بین ۹ خط
+           */
           const spacing = 30;
 
-          // فاصله عمودی
+          /*
+           * فاصله عمودی ابتدای خطوط
+           */
           const y = index * spacing;
 
-          // فاصله افقی
+          /*
+           * فاصله افقی خطوط
+           */
           const x = index * spacing;
 
+          /*
+           * نقطه شروع از بالای صفحه
+           */
+          const startX = 760 + x;
+          const startY = 20 + y;
+
+          /*
+           * انتهای بخش عمودی اول
+           */
+          const firstDownY = 280 + y;
+
+          /*
+           * ارتفاع مسیر افقی
+           */
+          const horizontalY = 350 + y;
+
+          /*
+           * محل خط در سمت چپ
+           */
+          const leftX = 40 + x;
+
+          /*
+           * شعاع گوشه‌ها
+           */
           const radius = 70;
 
+          /*
+           * تا پایین صفحه ادامه پیدا می‌کند
+           */
+          const bottomY = 1380;
+
+          /*
+           * شفافیت هر خط
+           */
           const opacity = 0.85 - index * 0.065;
 
+          /*
+           * ضخامت خط اول کمی بیشتر
+           */
           const strokeWidth =
             index === 0 ? 2.2 : 1.35;
 
@@ -113,14 +160,19 @@ export function SwooshLines({
             <path
               key={index}
               d={`
-                M ${760 + x} ${80 + y}
+                M ${startX} ${startY}
 
-                L ${760 + x} ${300 + y}
+                L ${startX} ${firstDownY}
 
-                Q ${760 + x} ${370 + y}
-                  ${690 + x} ${370 + y}
+                Q ${startX} ${horizontalY}
+                  ${startX - radius} ${horizontalY}
 
-                L ${40 + x} ${370 + y}
+                L ${leftX + radius} ${horizontalY}
+
+                Q ${leftX} ${horizontalY}
+                  ${leftX} ${horizontalY + radius}
+
+                L ${leftX} ${bottomY}
               `}
               strokeWidth={strokeWidth}
               strokeOpacity={opacity}

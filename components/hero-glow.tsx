@@ -8,17 +8,20 @@ export function HeroGlow() {
         pointer-events-none
         absolute
         inset-0
+        z-0
         hidden
         overflow-hidden
         md:block
       "
     >
-      {/* Glow مرکزی */}
+      {/* =====================================================
+          Central Glow
+      ====================================================== */}
       <div
         className="
           absolute
           left-1/2
-          top-1/2
+          top-[260px]
           h-[420px]
           w-[420px]
           -translate-x-1/2
@@ -29,12 +32,14 @@ export function HeroGlow() {
         "
       />
 
-      {/* Glow دوم */}
+      {/* =====================================================
+          Second Glow
+      ====================================================== */}
       <div
         className="
           absolute
           left-[42%]
-          top-[55%]
+          top-[380px]
           h-[300px]
           w-[300px]
           -translate-x-1/2
@@ -45,16 +50,17 @@ export function HeroGlow() {
         "
       />
 
-      {/* Pattern */}
+      {/* =====================================================
+          Swoosh Lines
+      ====================================================== */}
       <div
         className="
           absolute
           left-1/2
-          top-1/2
-          h-[700px]
+          top-0
+          h-full
           w-[1100px]
           -translate-x-1/2
-          -translate-y-1/2
         "
       >
         <SwooshLines
