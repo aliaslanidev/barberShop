@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
@@ -5,6 +6,12 @@ import { Card, CardContent } from "@/components/ui/card";
 
 import { services } from "@/lib/data/services";
 import { HeroGlow } from "@/components/hero-glow";
+
+import mullet from "../../public/images/mullet.png";
+import buzzCut from "../../public/images/buzz-cut.png";
+import classic from "../../public/images/classic.png";
+import frenchCrop from "../../public/images/french-crop.jpg.png";
+import sidePart from "../../public/images/side-part.png";
 
 const stats = [
   {
@@ -18,6 +25,29 @@ const stats = [
   {
     value: "۶",
     label: "آرایشگر متخصص",
+  },
+];
+
+const galleryImages = [
+  {
+    src: mullet,
+    name: "مولت",
+  },
+  {
+    src: frenchCrop,
+    name: "فرنچ کراپ",
+  },
+  {
+    src: buzzCut,
+    name: "بازکات",
+  },
+  {
+    src: classic,
+    name: "کلاسیک",
+  },
+  {
+    src: sidePart,
+    name: "ساید پارت",
   },
 ];
 
@@ -77,9 +107,19 @@ export default function Home() {
               <Link href="/booking">رزرو آنلاین نوبت</Link>
             </Button>
 
-            <Button size="lg" variant="outline" asChild>
-              <a href="#services">مشاهده خدمات</a>
-            </Button>
+       <Button
+  size="lg"
+  className="
+    border
+    border-rust
+    bg-rust
+    text-white
+    hover:bg-rust/90
+  "
+  asChild
+>
+  <a href="#services">مشاهده خدمات</a>
+</Button>
           </div>
         </div>
       </section>
@@ -89,45 +129,45 @@ export default function Home() {
       ====================================================== */}
       <section
         className="
-    border-y
-    border-border
-    bg-gradient-to-l
-    from-[#071a16]
-    via-[#171022]
-    to-[#090909]
-  "
+          border-y
+          border-border
+          bg-gradient-to-l
+          from-[#071a16]
+          via-[#171022]
+          to-[#090909]
+        "
       >
         <div
           className="
-      container
-      grid
-      grid-cols-3
-      divide-x
-      divide-x-reverse
-      divide-primary/20
-      py-10
-      text-center
-    "
+            container
+            grid
+            grid-cols-3
+            divide-x
+            divide-x-reverse
+            divide-primary/20
+            py-10
+            text-center
+          "
         >
           {stats.map((s) => (
             <div key={s.label}>
               <div
                 className="
-            text-2xl
-            font-bold
-            text-primary
-            md:text-3xl
-          "
+                  text-2xl
+                  font-bold
+                  text-primary
+                  md:text-3xl
+                "
               >
                 {s.value}
               </div>
 
               <div
                 className="
-            mt-1
-            text-sm
-            text-muted-foreground
-          "
+                  mt-1
+                  text-sm
+                  text-muted-foreground
+                "
               >
                 {s.label}
               </div>
@@ -160,64 +200,100 @@ export default function Home() {
           "
         >
           {services.map((s) => (
-            <Card
-              key={s.title}
-              className="
-                relative
-                transition-colors
-                hover:border-primary/50
-              "
-            >
-              {s.featured && (
-                <span
-                  className="
-                    absolute
-                    -top-2.5
-                    right-6
-                    rounded-full
-                    bg-rust
-                    px-3
-                    py-0.5
-                    text-xs
-                    font-medium
-                    text-white
-                  "
-                >
-                  محبوب‌ترین
-                </span>
-              )}
+      <Card
+  key={s.title}
+  className="
+    relative
+    flex
+    h-full
+    flex-col
+    border
+    border-primary/10
+    bg-[linear-gradient(135deg,hsl(150_12%_9%_/_0.95),hsl(150_8%_5%_/_0.98))]
+    shadow-[0_10px_35px_rgba(0,0,0,0.25)]
+    backdrop-blur-md
+    transition-all
+    duration-300
+    hover:-translate-y-1
+    hover:border-primary/30
+    hover:shadow-[0_15px_45px_rgba(79,240,174,0.08)]
+  "
+>
+  {/* Subtle green glow */}
+  <div
+    className="
+      pointer-events-none
+      absolute
+      -right-16
+      -top-16
+      h-32
+      w-32
+      rounded-full
+      bg-primary/10
+      blur-3xl
+    "
+  />
 
-              <CardContent
-                className="
-                  flex
-                  flex-col
-                  gap-3
-                  p-6
-                "
-              >
-                <h3 className="text-lg font-medium">{s.title}</h3>
+  {s.featured && (
+    <span
+      className="
+        absolute
+        -top-2.5
+        right-6
+        z-20
+        rounded-full
+        bg-rust
+        px-3
+        py-0.5
+        text-xs
+        font-medium
+        text-white
+        shadow-[0_4px_15px_rgba(0,0,0,0.3)]
+      "
+    >
+      محبوب‌ترین
+    </span>
+  )}
 
-                <p
-                  className="
-                    text-sm
-                    leading-7
-                    text-muted-foreground
-                  "
-                >
-                  {s.desc}
-                </p>
+  <CardContent
+    className="
+      relative
+      z-10
+      flex
+      h-full
+      flex-col
+      gap-3
+      p-6
+    "
+  >
+    <h3 className="text-lg font-medium text-foreground">
+      {s.title}
+    </h3>
 
-                <span
-                  className="
-                    mt-2
-                    text-sm
-                    text-mint
-                  "
-                >
-                  {s.price}
-                </span>
-              </CardContent>
-            </Card>
+    <p
+      className="
+        text-sm
+        leading-7
+        text-muted-foreground
+      "
+    >
+      {s.desc}
+    </p>
+
+    {/* Price always at bottom */}
+    <span
+      className="
+        mt-auto
+        pt-3
+        text-sm
+        font-semibold
+        text-primary
+      "
+    >
+      {s.price}
+    </span>
+  </CardContent>
+</Card>
           ))}
         </div>
       </section>
@@ -240,28 +316,51 @@ export default function Home() {
         <div
           className="
             grid
-            grid-cols-2
+            grid-cols-5
             gap-4
-            md:grid-cols-4
           "
         >
-          {Array.from({ length: 8 }).map((_, i) => (
+          {galleryImages.map((image) => (
             <div
-              key={i}
+              key={image.name}
               className="
-                flex
-                aspect-square
-                items-center
-                justify-center
+                overflow-hidden
                 rounded-lg
-                border
-                border-border
-                bg-card
-                text-sm
-                text-muted-foreground
+                bg-black
               "
             >
-              تصویر {i + 1}
+              {/* Image */}
+              <div className="relative aspect-square overflow-hidden">
+                <Image
+                  src={image.src}
+                  alt={image.name}
+                  fill
+                  className="
+                    object-cover
+                    transition-transform
+                    duration-300
+                    ease-out
+                    hover:scale-110
+                  "
+                  sizes="20vw"
+                />
+              </div>
+
+              {/* Title */}
+              <div
+                className="
+                  flex
+                  h-11
+                  items-center
+                  justify-center
+                  bg-black
+                  text-sm
+                  font-medium
+                  text-white
+                "
+              >
+                {image.name}
+              </div>
             </div>
           ))}
         </div>
@@ -273,41 +372,41 @@ export default function Home() {
       <section
         id="about"
         className="
-    border-t
-    border-border
-    bg-gradient-to-r
-    from-[#071a16]
-    via-[#120d1b]
-    to-[#080909]
-  "
+          border-t
+          border-border
+          bg-gradient-to-r
+          from-[#071a16]
+          via-[#120d1b]
+          to-[#080909]
+        "
       >
         <div
           className="
-      container
-      flex
-      flex-col
-      gap-4
-      py-20
-      text-center
-    "
+            container
+            flex
+            flex-col
+            gap-4
+            py-20
+            text-center
+          "
         >
           <h2
             className="
-        text-2xl
-        font-bold
-        md:text-3xl
-      "
+              text-2xl
+              font-bold
+              md:text-3xl
+            "
           >
             درباره سالن
           </h2>
 
           <p
             className="
-        mx-auto
-        max-w-xl
-        leading-8
-        text-muted-foreground
-      "
+              mx-auto
+              max-w-xl
+              leading-8
+              text-muted-foreground
+            "
           >
             سالن ما محلی برای مردانی است که به ظاهر خود اهمیت می‌دهند. تیم ما با
             سال‌ها تجربه، ترکیبی از تکنیک‌های کلاسیک و مدرن را برای رسیدن به
