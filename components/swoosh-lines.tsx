@@ -5,6 +5,7 @@ import { useId } from "react";
 type SwooshLinesProps = {
   className?: string;
   rings?: number;
+  scrollY?: number;
   mouseX?: number; // بازه -1 تا 1
   mouseY?: number; // بازه -1 تا 1
 };
@@ -12,6 +13,7 @@ type SwooshLinesProps = {
 export function SwooshLines({
   className,
   rings = 9,
+  scrollY = 0,
   mouseX = 0,
   mouseY = 0,
 }: SwooshLinesProps) {
@@ -23,15 +25,30 @@ export function SwooshLines({
   const lines = Array.from({ length: rings }, (_, i) => i);
 
   /*
-   * جابه‌جایی افقی گرادیانت بر اساس موقعیت ماوس (بازه ۰٪ تا ~۴۰٪)
+   * بخش اسکرولی: یک رفت‌وبرگشت نرم بین ۰ تا ۱
    */
-  const shift = ((mouseX + 1) / 2) * 40;
+  const cycle = 900; // هر چند پیکسل اسکرول یک چرخه کامل
+  const raw = (scrollY % cycle) / cycle;
+  const scrollProgress = raw < 0.5 ? raw * 2 : (1 - raw) * 2;
 
   /*
-   * جابه‌جایی جزئی خود خط‌ها بر اساس ماوس (پارالاکس ملایم)
+   * بخش ماوس: از -1..1 به 0..1
+   */
+  const mouseProgress = (mouseX + 1) / 2;
+
+  /*
+   * ترکیب هر دو (وزن‌دهی قابل تنظیم) برای جابه‌جایی گرادیانت
+   */
+  const combinedProgress =
+    scrollProgress * 0.5 + mouseProgress * 0.5;
+
+  const shift = combinedProgress * 40; // بازه ۰ تا ۴۰٪
+
+  /*
+   * جابه‌جایی جزئی خود خط‌ها: اسکرول روی Y، ماوس روی X و Y
    */
   const translateX = mouseX * 10;
-  const translateY = mouseY * 14;
+  const translateY = scrollY * 0.08 + mouseY * 14;
 
   return (
     <svg
@@ -118,7 +135,7 @@ export function SwooshLines({
         filter={`url(#${glowId})`}
         style={{
           transform: `translate(${translateX}px, ${translateY}px)`,
-          transition: "transform 0.3s ease-out",
+          transition: "transform 0.2s ease-out",
         }}
       >
         {lines.map((index) => {

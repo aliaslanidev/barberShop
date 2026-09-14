@@ -7,7 +7,9 @@ import { SwooshLines } from "./swoosh-lines";
 export function HeroGlow() {
   const [scrollY, setScrollY] = useState(0);
   const [mouse, setMouse] = useState({ x: 0, y: 0 }); // بازه -1 تا 1
-  const containerRef = useRef<HTMLDivElement>(null);
+
+  const rafRef = useRef<number | null>(null);
+  const latestMouse = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
     const handleScroll = () => setScrollY(window.scrollY);
@@ -23,19 +25,36 @@ export function HeroGlow() {
       /*
        * نرمال‌سازی موقعیت ماوس نسبت به کل صفحه، بازه -1 تا 1
        */
-      const x = (e.clientX / innerWidth) * 2 - 1;
-      const y = (e.clientY / innerHeight) * 2 - 1;
+      latestMouse.current = {
+        x: (e.clientX / innerWidth) * 2 - 1,
+        y: (e.clientY / innerHeight) * 2 - 1,
+      };
 
-      setMouse({ x, y });
+      /*
+       * فقط یک بار در هر فریم، state رو آپدیت می‌کنیم
+       * تا mousemove پشت‌سرهم باعث رندرهای اضافه نشه
+       */
+      if (rafRef.current === null) {
+        rafRef.current = requestAnimationFrame(() => {
+          setMouse(latestMouse.current);
+          rafRef.current = null;
+        });
+      }
     };
 
     window.addEventListener("mousemove", handleMouseMove, { passive: true });
-    return () => window.removeEventListener("mousemove", handleMouseMove);
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+      }
+    };
   }, []);
 
   return (
     <div
-      ref={containerRef}
       aria-hidden="true"
       className="
         pointer-events-none
@@ -125,6 +144,7 @@ export function HeroGlow() {
         <SwooshLines
           className="h-full w-full"
           rings={9}
+          scrollY={scrollY}
           mouseX={mouse.x}
           mouseY={mouse.y}
         />
