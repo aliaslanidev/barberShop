@@ -1,8 +1,8 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import Link from "next/link";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Home, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const navLinks = [
@@ -18,18 +18,48 @@ export function Header() {
   return (
     <header className="border-b border-border">
       <div className="container flex h-16 items-center justify-between">
-        <span className="text-lg font-bold text-primary">سالن آرایش</span>
+        <Link href="/" className="text-lg font-bold text-primary">
+          سالن آرایش
+        </Link>
 
         {/* ناوبری دسکتاپ */}
         <nav className="hidden gap-8 text-sm text-muted-foreground md:flex">
           {navLinks.map((link) => (
-            <a key={link.href} href={link.href} className="hover:text-foreground">
+            <a
+              key={link.href}
+              href={link.href}
+              className="hover:text-foreground"
+            >
               {link.label}
             </a>
           ))}
         </nav>
 
         <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="ghost"
+            className="hidden sm:inline-flex"
+            asChild
+          >
+            <Link href="/">
+              <Home className="h-4 w-4" />
+              <span className="mr-1">صفحه اصلی</span>
+            </Link>
+          </Button>
+
+          <Button
+            size="sm"
+            variant="outline"
+            className="hidden sm:inline-flex"
+            asChild
+          >
+            <Link href="/login">
+              <LogIn className="h-4 w-4" />
+              <span className="mr-1">ورود</span>
+            </Link>
+          </Button>
+
           <Button size="sm" className="hidden sm:inline-flex" asChild>
             <Link href="/booking">رزرو نوبت</Link>
           </Button>
@@ -61,6 +91,22 @@ export function Header() {
                 {link.label}
               </a>
             ))}
+
+            <Link
+              href="/"
+              onClick={() => setIsMenuOpen(false)}
+              className="rounded-md px-2 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
+            >
+              صفحه اصلی
+            </Link>
+            <Link
+              href="/login"
+              onClick={() => setIsMenuOpen(false)}
+              className="rounded-md px-2 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
+            >
+              ورود
+            </Link>
+
             <Button size="sm" className="mt-2 w-full" asChild>
               <Link href="/booking" onClick={() => setIsMenuOpen(false)}>
                 رزرو نوبت

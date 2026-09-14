@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -25,9 +26,11 @@ export default function Home() {
           اهمیت می‌دهند.
         </p>
         <div className="mt-4 flex gap-4">
-          <Button size="lg">رزرو آنلاین نوبت</Button>
-          <Button size="lg" variant="outline">
-            مشاهده خدمات
+          <Button size="lg" asChild>
+            <Link href="/booking">رزرو آنلاین نوبت</Link>
+          </Button>
+          <Button size="lg" variant="outline" asChild>
+            <a href="#services">مشاهده خدمات</a>
           </Button>
         </div>
       </section>
@@ -112,7 +115,9 @@ export default function Home() {
         <p className="max-w-md text-muted-foreground">
           برای رزرو نوبت با ما تماس بگیرید یا از فرم رزرو آنلاین استفاده کنید.
         </p>
-        <Button size="lg">رزرو نوبت</Button>
+        <Button size="lg" asChild>
+          <Link href="/booking">رزرو نوبت</Link>
+        </Button>
       </section>
 
       {/* Footer */}
