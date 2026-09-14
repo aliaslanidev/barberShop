@@ -27,6 +27,7 @@ export function SwooshLines({
         {/* =====================================================
             Gradient
         ====================================================== */}
+
         <linearGradient
           id={gradientId}
           x1="0%"
@@ -37,53 +38,54 @@ export function SwooshLines({
           <stop
             offset="0%"
             stopColor="hsl(var(--primary))"
-            stopOpacity="0.05"
+            stopOpacity="0.04"
           />
 
           <stop
             offset="18%"
             stopColor="hsl(var(--primary))"
-            stopOpacity="0.65"
+            stopOpacity="0.55"
           />
 
           <stop
             offset="48%"
             stopColor="hsl(var(--primary))"
-            stopOpacity="0.95"
+            stopOpacity="0.9"
           />
 
           <stop
             offset="78%"
             stopColor="hsl(var(--accent))"
-            stopOpacity="0.8"
+            stopOpacity="0.7"
           />
 
           <stop
             offset="100%"
             stopColor="hsl(var(--accent))"
-            stopOpacity="0.05"
+            stopOpacity="0.03"
           />
         </linearGradient>
 
         {/* =====================================================
             Glow
         ====================================================== */}
+
         <filter
           id={glowId}
           x="-30%"
-          y="-30%"
+          y="-20%"
           width="160%"
-          height="160%"
+          height="140%"
         >
           <feGaussianBlur
-            stdDeviation="3"
+            stdDeviation="2.5"
             result="blur"
           />
 
           <feMerge>
             <feMergeNode
               in="blur"
-              opacity="0.5"
+              opacity="0.45"
             />
 
             <feMergeNode in="SourceGraphic" />
@@ -100,58 +102,58 @@ export function SwooshLines({
       >
         {lines.map((index) => {
           /*
-           * فاصله بین ۹ خط
+           * فاصله بین خطوط
            */
           const spacing = 30;
 
           /*
-           * فاصله عمودی ابتدای خطوط
+           * فاصله عمودی
            */
           const y = index * spacing;
 
           /*
-           * فاصله افقی خطوط
+           * فاصله افقی
            */
           const x = index * spacing;
 
           /*
-           * نقطه شروع از بالای صفحه
+           * شروع از بالای صفحه
            */
           const startX = 760 + x;
           const startY = 20 + y;
 
           /*
-           * انتهای بخش عمودی اول
+           * پایان بخش عمودی اول
            */
           const firstDownY = 280 + y;
 
           /*
-           * ارتفاع مسیر افقی
+           * محل حرکت افقی
            */
           const horizontalY = 350 + y;
 
           /*
-           * محل خط در سمت چپ
+           * موقعیت خط در سمت چپ
            */
           const leftX = 40 + x;
 
           /*
-           * شعاع گوشه‌ها
+           * شعاع خم
            */
           const radius = 70;
 
           /*
-           * تا پایین صفحه ادامه پیدا می‌کند
+           * ادامه تا پایین صفحه
            */
           const bottomY = 1380;
 
           /*
-           * شفافیت هر خط
+           * شفافیت خطوط
            */
           const opacity = 0.85 - index * 0.065;
 
           /*
-           * ضخامت خط اول کمی بیشتر
+           * ضخامت
            */
           const strokeWidth =
             index === 0 ? 2.2 : 1.35;
