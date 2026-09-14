@@ -11,16 +11,30 @@ const config: Config = {
   theme: {
     container: {
       center: true,
+
       padding: "1.5rem",
+
       screens: {
         "2xl": "1200px",
       },
     },
 
     extend: {
+      /* ========================================
+         Typography
+      ======================================== */
+
       fontFamily: {
-        sans: ["var(--font-rohan)", "Tahoma", "sans-serif"],
+        sans: [
+          "var(--font-yekan-bakh)",
+          "Tahoma",
+          "sans-serif",
+        ],
       },
+
+      /* ========================================
+         Colors
+      ======================================== */
 
       colors: {
         border: "hsl(var(--border))",
@@ -59,6 +73,10 @@ const config: Config = {
         rust: "#d16427",
         violet: "#6e3094",
       },
+
+      /* ========================================
+         Border Radius
+      ======================================== */
 
       borderRadius: {
         lg: "var(--radius)",
