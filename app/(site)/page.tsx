@@ -1,29 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
-const services = [
-  {
-    title: "اصلاح مو",
-    desc: "مدل‌های کلاسیک و روز، متناسب با فرم صورت شما.",
-    price: "از ۲۵۰ هزار تومان",
-    featured: true,
-  },
-  {
-    title: "اصلاح و فرم ریش",
-    desc: "خط‌زنی دقیق و مراقبت کامل از ریش با تیغ گرم.",
-    price: "از ۱۸۰ هزار تومان",
-  },
-  {
-    title: "پاکسازی و ماسک صورت",
-    desc: "پاکسازی عمقی پوست همراه با ماسک اختصاصی.",
-    price: "از ۳۰۰ هزار تومان",
-  },
-  {
-    title: "رنگ و هایلایت",
-    desc: "پوشش کامل موی سفید یا افکت‌های رنگی مدرن.",
-    price: "از ۴۵۰ هزار تومان",
-  },
-];
+import { services } from "@/lib/data/services";
 
 const stats = [
   { value: "+۱۲", label: "سال سابقه" },
@@ -36,16 +14,21 @@ export default function Home() {
     <main className="min-h-screen">
       {/* Hero */}
       <section className="container flex flex-col items-center gap-6 py-24 text-center">
-        <span className="text-sm text-primary">تجربه‌ای متفاوت از آرایش مردانه</span>
+        <span className="text-sm text-primary">
+          تجربه‌ای متفاوت از آرایش مردانه
+        </span>
         <h1 className="max-w-2xl text-4xl font-bold leading-[1.5] md:text-5xl">
           استایلی که مطمئن قدم برمی‌داری
         </h1>
         <p className="max-w-md text-muted-foreground leading-8">
-          از اصلاح مو تا مراقبت پوست، همه‌چیز با دست استادکارانی که به جزئیات اهمیت می‌دهند.
+          از اصلاح مو تا مراقبت پوست، همه‌چیز با دست استادکارانی که به جزئیات
+          اهمیت می‌دهند.
         </p>
         <div className="mt-4 flex gap-4">
           <Button size="lg">رزرو آنلاین نوبت</Button>
-          <Button size="lg" variant="outline">مشاهده خدمات</Button>
+          <Button size="lg" variant="outline">
+            مشاهده خدمات
+          </Button>
         </div>
       </section>
 
@@ -54,8 +37,12 @@ export default function Home() {
         <div className="container grid grid-cols-3 divide-x divide-x-reverse divide-violet/30 py-10 text-center">
           {stats.map((s) => (
             <div key={s.label}>
-              <div className="text-2xl font-bold text-primary md:text-3xl">{s.value}</div>
-              <div className="mt-1 text-sm text-muted-foreground">{s.label}</div>
+              <div className="text-2xl font-bold text-primary md:text-3xl">
+                {s.value}
+              </div>
+              <div className="mt-1 text-sm text-muted-foreground">
+                {s.label}
+              </div>
             </div>
           ))}
         </div>
@@ -66,7 +53,10 @@ export default function Home() {
         <h2 className="mb-10 text-2xl font-bold md:text-3xl">خدمات سالن</h2>
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {services.map((s) => (
-            <Card key={s.title} className="relative transition-colors hover:border-primary/50">
+            <Card
+              key={s.title}
+              className="relative transition-colors hover:border-primary/50"
+            >
               {s.featured && (
                 <span className="absolute -top-2.5 right-6 rounded-full bg-rust px-3 py-0.5 text-xs font-medium text-white">
                   محبوب‌ترین
@@ -74,7 +64,9 @@ export default function Home() {
               )}
               <CardContent className="flex flex-col gap-3 p-6">
                 <h3 className="text-lg font-medium">{s.title}</h3>
-                <p className="text-sm leading-7 text-muted-foreground">{s.desc}</p>
+                <p className="text-sm leading-7 text-muted-foreground">
+                  {s.desc}
+                </p>
                 <span className="mt-2 text-sm text-mint">{s.price}</span>
               </CardContent>
             </Card>
@@ -110,8 +102,13 @@ export default function Home() {
       </section>
 
       {/* CTA */}
-      <section id="contact" className="container flex flex-col items-center gap-5 py-20 text-center">
-        <h2 className="text-2xl font-bold md:text-3xl">همین حالا نوبت بگیرید</h2>
+      <section
+        id="contact"
+        className="container flex flex-col items-center gap-5 py-20 text-center"
+      >
+        <h2 className="text-2xl font-bold md:text-3xl">
+          همین حالا نوبت بگیرید
+        </h2>
         <p className="max-w-md text-muted-foreground">
           برای رزرو نوبت با ما تماس بگیرید یا از فرم رزرو آنلاین استفاده کنید.
         </p>
