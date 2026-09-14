@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ========================================
+   Theme Variables
+======================================== */
+
 @layer base {
   :root {
     --background: 60 20% 1%;
@@ -30,30 +34,43 @@
   }
 }
 
+/* ========================================
+   Base
+======================================== */
+
 @layer base {
   * {
     @apply border-border;
   }
 
   html {
-    font-family: var(--font-rohan), sans-serif;
+    font-family: var(--font-yekan-bakh), Tahoma, sans-serif;
   }
 
   body {
     @apply bg-background text-foreground;
-    font-family: var(--font-rohan), sans-serif;
+
+    font-family: var(--font-yekan-bakh), Tahoma, sans-serif;
   }
 }
+
+/* ========================================
+   Jalali Date Picker Input
+======================================== */
 
 .jalali-input {
   width: 100%;
   height: 2.75rem;
+
   border-radius: var(--radius);
   border: 1px solid hsl(var(--border));
+
   background: hsl(var(--card));
   color: hsl(var(--foreground));
+
   padding: 0 1rem;
-  font-family: var(--font-rohan), sans-serif;
+
+  font-family: var(--font-yekan-bakh), Tahoma, sans-serif;
   font-size: 0.875rem;
 }
 
@@ -61,6 +78,10 @@
   outline: none;
   box-shadow: 0 0 0 2px hsl(var(--ring));
 }
+
+/* ========================================
+   React Multi Date Picker
+======================================== */
 
 .rmdp-container {
   width: 100%;

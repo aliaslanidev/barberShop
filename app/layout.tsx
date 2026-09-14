@@ -2,24 +2,47 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 
-const rohan = localFont({
-  src: "../fonts/WebsimaRohanRound-Regular.woff2",
-  variable: "--font-rohan",
+const yekanBakh = localFont({
+  src: [
+    {
+      path: "../fonts/YekanBakh-Light.woff2",
+      weight: "300",
+      style: "normal",
+    },
+    {
+      path: "../fonts/YekanBakh-Medium.woff",
+      weight: "500",
+      style: "normal",
+    },
+    {
+      path: "../fonts/YekanBakh-Bold.woff2",
+      weight: "700",
+      style: "normal",
+    },
+    {
+      path: "../fonts/YekanBakh-Fat.woff2",
+      weight: "900",
+      style: "normal",
+    },
+  ],
+  variable: "--font-yekan-bakh",
   display: "swap",
-  weight: "400",
-  style: "normal",
 });
 
 export const metadata: Metadata = {
   title: "سالن آرایش",
   description: "سالن آرایش مردانه",
+
   manifest: "/manifest.json",
+
   themeColor: "#010100",
+
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
     title: "سالن آرایش",
   },
+
   icons: {
     icon: "/icons/icon-192.png",
     apple: "/icons/icon-192.png",
@@ -28,12 +51,12 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-}: {
+}: Readonly<{
   children: React.ReactNode;
-}) {
+}>) {
   return (
     <html lang="fa" dir="rtl" className="dark">
-      <body className={`${rohan.variable} font-sans antialiased`}>
+      <body className={`${yekanBakh.variable} font-sans antialiased`}>
         {children}
       </body>
     </html>
