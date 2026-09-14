@@ -5,13 +5,15 @@ import { useId } from "react";
 type SwooshLinesProps = {
   className?: string;
   rings?: number;
-  scrollY?: number;
+  mouseX?: number; // بازه -1 تا 1
+  mouseY?: number; // بازه -1 تا 1
 };
 
 export function SwooshLines({
   className,
   rings = 9,
-  scrollY = 0,
+  mouseX = 0,
+  mouseY = 0,
 }: SwooshLinesProps) {
   const uid = useId();
 
@@ -21,18 +23,15 @@ export function SwooshLines({
   const lines = Array.from({ length: rings }, (_, i) => i);
 
   /*
-   * پیشرفت اسکرول رو به یک بازه محدود (مثلاً 0 تا 1) نگاشت می‌کنیم
-   * تا گرادیانت بی‌نهایت رد نشه و رفت‌وبرگشتی حرکت کنه
+   * جابه‌جایی افقی گرادیانت بر اساس موقعیت ماوس (بازه ۰٪ تا ~۴۰٪)
    */
-  const cycle = 900; // هر چند پیکسل اسکرول یک چرخه کامل
-  const raw = (scrollY % cycle) / cycle; // 0 -> 1
-  const progress =
-    raw < 0.5 ? raw * 2 : (1 - raw) * 2; // رفت و برگشت (0 -> 1 -> 0)
+  const shift = ((mouseX + 1) / 2) * 40;
 
   /*
-   * جابه‌جایی افقی گرادیانت بین ۰٪ تا ۴۰٪
+   * جابه‌جایی جزئی خود خط‌ها بر اساس ماوس (پارالاکس ملایم)
    */
-  const shift = progress * 40;
+  const translateX = mouseX * 10;
+  const translateY = mouseY * 14;
 
   return (
     <svg
@@ -52,7 +51,6 @@ export function SwooshLines({
           y1="0%"
           x2={`${100 + shift}%`}
           y2="0%"
-          style={{ transition: "x1 0.2s linear, x2 0.2s linear" }}
         >
           <stop
             offset="0%"
@@ -119,8 +117,8 @@ export function SwooshLines({
         strokeLinejoin="round"
         filter={`url(#${glowId})`}
         style={{
-          transform: `translateY(${scrollY * 0.08}px)`,
-          transition: "transform 0.1s linear",
+          transform: `translate(${translateX}px, ${translateY}px)`,
+          transition: "transform 0.3s ease-out",
         }}
       >
         {lines.map((index) => {
