@@ -1,5 +1,3 @@
-export type BarberType = "professional" | "regular";
-
 export type BarberPermissions = {
   manage_services: boolean;
   manage_pricing: boolean;
@@ -12,7 +10,6 @@ export type BarberPermissions = {
 export interface Barber {
   id: string;
   name: string;
-  barberType: BarberType;
   bio: string;
   initials: string;
   serviceIds: string[];
@@ -22,7 +19,9 @@ export interface Barber {
   isActive: boolean;
 }
 
-const REGULAR_DEFAULT_PERMISSIONS: BarberPermissions = {
+// پرمیشن‌های پیش‌فرض برای آرایشگر تازه‌ساخته‌شده: همه غیرفعال.
+// ادمین باید صراحتاً هرکدوم رو فعال کنه — هیچ مقداردهی خودکاری بر اساس «نوع» وجود نداره.
+const EMPTY_PERMISSIONS: BarberPermissions = {
   manage_services: false,
   manage_pricing: false,
   manage_schedule: false,
@@ -31,64 +30,65 @@ const REGULAR_DEFAULT_PERMISSIONS: BarberPermissions = {
   cancel_own_bookings: false,
 };
 
-const PROFESSIONAL_DEFAULT_PERMISSIONS: BarberPermissions = {
-  manage_services: true,
-  manage_pricing: true,
-  manage_schedule: true,
-  manage_time_off: true,
-  block_slots: true,
-  cancel_own_bookings: false,
-};
-
-function defaultPermissionsFor(type: BarberType): BarberPermissions {
-  return type === "professional"
-    ? { ...PROFESSIONAL_DEFAULT_PERMISSIONS }
-    : { ...REGULAR_DEFAULT_PERMISSIONS };
-}
-
 export let barbers: Barber[] = [
   {
     id: "ali",
     name: "علی محمدی",
-    barberType: "professional",
     bio: "بیش از ۱۰ سال تجربه در اصلاح مو و فرم ریش.",
     initials: "ع.م",
     serviceIds: ["haircut", "beard", "color"],
     mobile: "09121111111",
-    permissions: defaultPermissionsFor("professional"),
+    // پرمیشن‌های گسترده — انتخاب صریح ادمین برای این آرایشگر، نه نتیجه‌ی یک «نوع».
+    permissions: {
+      manage_services: true,
+      manage_pricing: true,
+      manage_schedule: true,
+      manage_time_off: true,
+      block_slots: true,
+      cancel_own_bookings: false,
+    },
     isActive: true,
   },
   {
     id: "reza",
     name: "رضا کریمی",
-    barberType: "regular",
     bio: "متخصص اصلاح مو و پاکسازی پوست.",
     initials: "ر.ک",
     serviceIds: ["haircut", "facial"],
     mobile: "09122222222",
-    permissions: defaultPermissionsFor("regular"),
+    // بدون هیچ پرمیشن اختیاری — کاملاً تحت کنترل سالن.
+    permissions: { ...EMPTY_PERMISSIONS },
     isActive: true,
   },
   {
     id: "hamed",
     name: "حامد رستمی",
-    barberType: "professional",
     bio: "استایلیست رنگ و مدل‌های مدرن.",
     initials: "ح.ر",
     serviceIds: ["haircut", "color", "beard"],
     mobile: "09123333333",
-    permissions: defaultPermissionsFor("professional"),
+    permissions: {
+      manage_services: true,
+      manage_pricing: true,
+      manage_schedule: true,
+      manage_time_off: true,
+      block_slots: true,
+      cancel_own_bookings: false,
+    },
     isActive: true,
   },
   {
     id: "mehdi",
     name: "مهدی اکبری",
-    barberType: "regular",
     bio: "متخصص اصلاح و فرم ریش.",
     initials: "م.ا",
     serviceIds: ["beard", "facial"],
     mobile: "09124444444",
-    permissions: defaultPermissionsFor("regular"),
+    // نمونه‌ی حالت بینابین: فقط اجازه‌ی تعیین مرخصی خودش رو داره، نه بقیه‌چیزها.
+    permissions: {
+      ...EMPTY_PERMISSIONS,
+      manage_time_off: true,
+    },
     isActive: true,
   },
 ];
@@ -116,20 +116,21 @@ export function getAllBarbers(): Barber[] {
 export function createBarber(data: {
   name: string;
   mobile: string;
-  barberType: BarberType;
   bio?: string;
   initials?: string;
   serviceIds?: string[];
+  // ادمین می‌تونه همون لحظه‌ی ساخت، پرمیشن‌های دلخواه رو مشخص کنه؛
+  // اگه ندی، آرایشگر بدون هیچ پرمیشن اختیاری ساخته می‌شه.
+  permissions?: Partial<BarberPermissions>;
 }): Barber {
   const newBarber: Barber = {
     id: `barber-${Date.now()}`,
     name: data.name,
-    barberType: data.barberType,
     bio: data.bio ?? "",
     initials: data.initials ?? data.name.slice(0, 2),
     serviceIds: data.serviceIds ?? [],
     mobile: data.mobile,
-    permissions: defaultPermissionsFor(data.barberType),
+    permissions: { ...EMPTY_PERMISSIONS, ...data.permissions },
     isActive: true,
   };
 
@@ -148,30 +149,6 @@ export function updateBarber(
   barbers = barbers.map((b) => {
     if (b.id !== id) return b;
     updated = { ...b, ...data };
-    return updated;
-  });
-
-  return updated;
-}
-
-// طبق مستند: تغییر نوع باربر توسط ادمین، پرمیشن‌ها رو خودکار override نمی‌کنه
-// مگر اینکه صراحتاً بخوایم ریست کنیم.
-export function setBarberType(
-  id: string,
-  barberType: BarberType,
-  resetPermissionsToDefault: boolean = false
-): Barber | undefined {
-  let updated: Barber | undefined;
-
-  barbers = barbers.map((b) => {
-    if (b.id !== id) return b;
-    updated = {
-      ...b,
-      barberType,
-      permissions: resetPermissionsToDefault
-        ? defaultPermissionsFor(barberType)
-        : b.permissions,
-    };
     return updated;
   });
 
