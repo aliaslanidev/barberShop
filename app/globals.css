@@ -34,8 +34,14 @@
   * {
     @apply border-border;
   }
+
+  html {
+    font-family: var(--font-rohan), sans-serif;
+  }
+
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-rohan), sans-serif;
   }
 }
 
@@ -47,13 +53,15 @@
   background: hsl(var(--card));
   color: hsl(var(--foreground));
   padding: 0 1rem;
-  font-family: var(--font-vazir);
+  font-family: var(--font-rohan), sans-serif;
   font-size: 0.875rem;
 }
+
 .jalali-input:focus {
   outline: none;
   box-shadow: 0 0 0 2px hsl(var(--ring));
 }
+
 .rmdp-container {
   width: 100%;
 }

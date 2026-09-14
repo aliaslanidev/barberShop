@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
-import { Vazirmatn } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 
-const vazir = Vazirmatn({
-  subsets: ["arabic"],
-  weight: ["400", "500", "700", "900"],
-  variable: "--font-vazir",
+const rohan = localFont({
+  src: "../fonts/WebsimaRohanRound-Regular.woff2",
+  variable: "--font-rohan",
+  display: "swap",
+  weight: "400",
+  style: "normal",
 });
 
 export const metadata: Metadata = {
@@ -31,7 +33,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="fa" dir="rtl" className="dark">
-      <body className={`${vazir.variable} font-sans antialiased`}>
+      <body className={`${rohan.variable} font-sans antialiased`}>
         {children}
       </body>
     </html>
