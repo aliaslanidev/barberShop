@@ -1,6 +1,13 @@
 import Image from "next/image";
 import Link from "next/link";
 
+import {
+  Instagram,
+  MapPin,
+  Phone,
+  Scissors,
+} from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -107,19 +114,19 @@ export default function Home() {
               <Link href="/booking">رزرو آنلاین نوبت</Link>
             </Button>
 
-       <Button
-  size="lg"
-  className="
-    border
-    border-rust
-    bg-rust
-    text-white
-    hover:bg-rust/90
-  "
-  asChild
->
-  <a href="#services">مشاهده خدمات</a>
-</Button>
+            <Button
+              size="lg"
+              className="
+                border
+                border-rust
+                bg-rust
+                text-white
+                hover:bg-rust/90
+              "
+              asChild
+            >
+              <a href="#services">مشاهده خدمات</a>
+            </Button>
           </div>
         </div>
       </section>
@@ -200,100 +207,101 @@ export default function Home() {
           "
         >
           {services.map((s) => (
-      <Card
-  key={s.title}
-  className="
-    relative
-    flex
-    h-full
-    flex-col
-    border
-    border-primary/10
-    bg-[linear-gradient(135deg,hsl(150_12%_9%_/_0.95),hsl(150_8%_5%_/_0.98))]
-    shadow-[0_10px_35px_rgba(0,0,0,0.25)]
-    backdrop-blur-md
-    transition-all
-    duration-300
-    hover:-translate-y-1
-    hover:border-primary/30
-    hover:shadow-[0_15px_45px_rgba(79,240,174,0.08)]
-  "
->
-  {/* Subtle green glow */}
-  <div
-    className="
-      pointer-events-none
-      absolute
-      -right-16
-      -top-16
-      h-32
-      w-32
-      rounded-full
-      bg-primary/10
-      blur-3xl
-    "
-  />
+            <Card
+              key={s.title}
+              className="
+                group
+                relative
+                flex
+                h-full
+                flex-col
+                border
+                border-primary/10
+                bg-[linear-gradient(135deg,hsl(150_12%_9%_/_0.95),hsl(150_8%_5%_/_0.98))]
+                shadow-[0_10px_35px_rgba(0,0,0,0.25)]
+                backdrop-blur-md
+                transition-all
+                duration-300
+                hover:-translate-y-1
+                hover:border-primary/30
+                hover:shadow-[0_15px_45px_rgba(79,240,174,0.08)]
+              "
+            >
+              {/* Subtle green glow */}
+              <div
+                className="
+                  pointer-events-none
+                  absolute
+                  -right-16
+                  -top-16
+                  h-32
+                  w-32
+                  rounded-full
+                  bg-primary/10
+                  blur-3xl
+                "
+              />
 
-  {s.featured && (
-    <span
-      className="
-        absolute
-        -top-2.5
-        right-6
-        z-20
-        rounded-full
-        bg-rust
-        px-3
-        py-0.5
-        text-xs
-        font-medium
-        text-white
-        shadow-[0_4px_15px_rgba(0,0,0,0.3)]
-      "
-    >
-      محبوب‌ترین
-    </span>
-  )}
+              {s.featured && (
+                <span
+                  className="
+                    absolute
+                    -top-2.5
+                    right-6
+                    z-20
+                    rounded-full
+                    bg-rust
+                    px-3
+                    py-0.5
+                    text-xs
+                    font-medium
+                    text-white
+                    shadow-[0_4px_15px_rgba(0,0,0,0.3)]
+                  "
+                >
+                  محبوب‌ترین
+                </span>
+              )}
 
-  <CardContent
-    className="
-      relative
-      z-10
-      flex
-      h-full
-      flex-col
-      gap-3
-      p-6
-    "
-  >
-    <h3 className="text-lg font-medium text-foreground">
-      {s.title}
-    </h3>
+              <CardContent
+                className="
+                  relative
+                  z-10
+                  flex
+                  h-full
+                  flex-col
+                  gap-3
+                  p-6
+                "
+              >
+                <h3 className="text-lg font-medium text-foreground">
+                  {s.title}
+                </h3>
 
-    <p
-      className="
-        text-sm
-        leading-7
-        text-muted-foreground
-      "
-    >
-      {s.desc}
-    </p>
+                <p
+                  className="
+                    text-sm
+                    leading-7
+                    text-muted-foreground
+                  "
+                >
+                  {s.desc}
+                </p>
 
     {/* Price always at bottom */}
     <span
-      className="
-        mt-auto
+                  className="
+                    mt-auto
         pt-3
         text-sm
         font-semibold
-        text-primary
-      "
-    >
+                      text-primary
+                    "
+                  >
       {s.price}
     </span>
-  </CardContent>
-</Card>
+              </CardContent>
+            </Card>
           ))}
         </div>
       </section>
@@ -469,10 +477,54 @@ export default function Home() {
         >
           <span>© تمامی حقوق محفوظ است.</span>
 
-          <div className="flex gap-6">
-            <span>اینستاگرام</span>
-            <span>تلفن تماس</span>
-            <span>آدرس</span>
+          <div className="flex flex-wrap items-center justify-center gap-6">
+            {/* Instagram */}
+            <a
+              href="#"
+              className="
+                flex
+                items-center
+                gap-2
+                transition-colors
+                duration-200
+                hover:text-primary
+              "
+            >
+              <Instagram className="h-4 w-4" strokeWidth={1.8} />
+              <span>اینستاگرام</span>
+            </a>
+
+            {/* Phone */}
+            <a
+              href="tel:+989000000000"
+              className="
+                flex
+                items-center
+                gap-2
+                transition-colors
+                duration-200
+                hover:text-primary
+              "
+            >
+              <Phone className="h-4 w-4" strokeWidth={1.8} />
+              <span>تلفن تماس</span>
+            </a>
+
+            {/* Address */}
+            <a
+              href="#"
+              className="
+                flex
+                items-center
+                gap-2
+                transition-colors
+                duration-200
+                hover:text-primary
+              "
+            >
+              <MapPin className="h-4 w-4" strokeWidth={1.8} />
+              <span>آدرس</span>
+            </a>
           </div>
         </div>
       </footer>
