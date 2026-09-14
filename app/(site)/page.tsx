@@ -6,6 +6,11 @@ import {
   MapPin,
   Phone,
   Scissors,
+  Sparkles,
+  UserRound,
+  Droplets,
+  Brush,
+  Crown,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -19,6 +24,10 @@ import buzzCut from "../../public/images/buzz-cut.png";
 import classic from "../../public/images/classic.png";
 import frenchCrop from "../../public/images/french-crop.jpg.png";
 import sidePart from "../../public/images/side-part.png";
+
+/* =====================================================
+   Stats
+===================================================== */
 
 const stats = [
   {
@@ -34,6 +43,10 @@ const stats = [
     label: "آرایشگر متخصص",
   },
 ];
+
+/* =====================================================
+   Gallery
+===================================================== */
 
 const galleryImages = [
   {
@@ -57,6 +70,24 @@ const galleryImages = [
     name: "ساید پارت",
   },
 ];
+
+/* =====================================================
+   Service Icons
+   هر سرویس یک آیکون اختصاصی دارد
+===================================================== */
+
+const serviceIcons = [
+  Scissors,
+  UserRound,
+  Sparkles,
+  Brush,
+  Droplets,
+  Crown,
+];
+
+/* =====================================================
+   Home
+===================================================== */
 
 export default function Home() {
   return (
@@ -206,103 +237,168 @@ export default function Home() {
             lg:grid-cols-4
           "
         >
-          {services.map((s) => (
-            <Card
-              key={s.title}
-              className="
-                group
-                relative
-                flex
-                h-full
-                flex-col
-                border
-                border-primary/10
-                bg-[linear-gradient(135deg,hsl(150_12%_9%_/_0.95),hsl(150_8%_5%_/_0.98))]
-                shadow-[0_10px_35px_rgba(0,0,0,0.25)]
-                backdrop-blur-md
-                transition-all
-                duration-300
-                hover:-translate-y-1
-                hover:border-primary/30
-                hover:shadow-[0_15px_45px_rgba(79,240,174,0.08)]
-              "
-            >
-              {/* Subtle green glow */}
-              <div
-                className="
-                  pointer-events-none
-                  absolute
-                  -right-16
-                  -top-16
-                  h-32
-                  w-32
-                  rounded-full
-                  bg-primary/10
-                  blur-3xl
-                "
-              />
+          {services.map((s, index) => {
+            /*
+             * برای هر کارت یک آیکون متفاوت انتخاب می‌شود.
+             * اگر تعداد خدمات بیشتر از آیکون‌ها باشد،
+             * لیست از ابتدا تکرار می‌شود.
+             */
+            const ServiceIcon =
+              serviceIcons[index % serviceIcons.length];
 
-              {s.featured && (
-                <span
-                  className="
-                    absolute
-                    -top-2.5
-                    right-6
-                    z-20
-                    rounded-full
-                    bg-rust
-                    px-3
-                    py-0.5
-                    text-xs
-                    font-medium
-                    text-white
-                    shadow-[0_4px_15px_rgba(0,0,0,0.3)]
-                  "
-                >
-                  محبوب‌ترین
-                </span>
-              )}
-
-              <CardContent
+            return (
+              <Card
+                key={s.title}
                 className="
+                  group
                   relative
-                  z-10
                   flex
                   h-full
                   flex-col
-                  gap-3
-                  p-6
+                  border
+                  border-primary/10
+                  bg-[linear-gradient(135deg,hsl(150_12%_9%_/_0.95),hsl(150_8%_5%_/_0.98))]
+                  shadow-[0_10px_35px_rgba(0,0,0,0.25)]
+                  backdrop-blur-md
+                  transition-all
+                  duration-300
+                  hover:-translate-y-1
+                  hover:border-primary/30
+                  hover:shadow-[0_15px_45px_rgba(79,240,174,0.08)]
                 "
               >
-                <h3 className="text-lg font-medium text-foreground">
-                  {s.title}
-                </h3>
-
-                <p
+                {/* =====================================================
+                    Subtle green glow
+                ====================================================== */}
+                <div
                   className="
-                    text-sm
-                    leading-7
-                    text-muted-foreground
+                    pointer-events-none
+                    absolute
+                    -right-16
+                    -top-16
+                    h-32
+                    w-32
+                    rounded-full
+                    bg-primary/10
+                    blur-3xl
+                  "
+                />
+
+                {/* =====================================================
+                    Featured Badge
+                ====================================================== */}
+                {s.featured && (
+                  <span
+                    className="
+                      absolute
+                      -top-2.5
+                      right-6
+                      z-20
+                      rounded-full
+                      bg-rust
+                      px-3
+                      py-0.5
+                      text-xs
+                      font-medium
+                      text-white
+                      shadow-[0_4px_15px_rgba(0,0,0,0.3)]
+                    "
+                  >
+                    محبوب‌ترین
+                  </span>
+                )}
+
+                <CardContent
+                  className="
+                    relative
+                    z-10
+                    flex
+                    h-full
+                    flex-col
+                    gap-3
+                    p-6
                   "
                 >
-                  {s.desc}
-                </p>
+                  {/* =====================================================
+                      Service Title + Icon
+                  ====================================================== */}
+                  <div
+                    className="
+                      flex
+                      items-center
+                      gap-3
+                    "
+                  >
+                    {/* Icon */}
+                    <div
+                      className="
+                        flex
+                        h-10
+                        w-10
+                        shrink-0
+                        items-center
+                        justify-center
+                        rounded-xl
+                        border
+                        border-primary/15
+                        bg-primary/10
+                        text-primary
+                        transition-all
+                        duration-300
+                        group-hover:scale-105
+                        group-hover:border-primary/30
+                        group-hover:bg-primary/15
+                      "
+                    >
+                      <ServiceIcon
+                        className="h-5 w-5"
+                        strokeWidth={1.8}
+                      />
+                    </div>
 
-    {/* Price always at bottom */}
-    <span
-                  className="
-                    mt-auto
-        pt-3
-        text-sm
-        font-semibold
+                    {/* Title */}
+                    <h3
+                      className="
+                        text-lg
+                        font-medium
+                        text-foreground
+                      "
+                    >
+                      {s.title}
+                    </h3>
+                  </div>
+
+                  {/* =====================================================
+                      Description
+                  ====================================================== */}
+                  <p
+                    className="
+                      text-sm
+                      leading-7
+                      text-muted-foreground
+                    "
+                  >
+                    {s.desc}
+                  </p>
+
+                  {/* =====================================================
+                      Price - Always Bottom
+                  ====================================================== */}
+                  <span
+                    className="
+                      mt-auto
+                      pt-3
+                      text-sm
+                      font-semibold
                       text-primary
                     "
                   >
-      {s.price}
-    </span>
-              </CardContent>
-            </Card>
-          ))}
+                    {s.price}
+                  </span>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       </section>
 
@@ -490,7 +586,10 @@ export default function Home() {
                 hover:text-primary
               "
             >
-              <Instagram className="h-4 w-4" strokeWidth={1.8} />
+              <Instagram
+                className="h-4 w-4"
+                strokeWidth={1.8}
+              />
               <span>اینستاگرام</span>
             </a>
 
@@ -506,7 +605,10 @@ export default function Home() {
                 hover:text-primary
               "
             >
-              <Phone className="h-4 w-4" strokeWidth={1.8} />
+              <Phone
+                className="h-4 w-4"
+                strokeWidth={1.8}
+              />
               <span>تلفن تماس</span>
             </a>
 
@@ -522,7 +624,10 @@ export default function Home() {
                 hover:text-primary
               "
             >
-              <MapPin className="h-4 w-4" strokeWidth={1.8} />
+              <MapPin
+                className="h-4 w-4"
+                strokeWidth={1.8}
+              />
               <span>آدرس</span>
             </a>
           </div>
