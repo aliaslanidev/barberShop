@@ -8,17 +8,32 @@ import { Label } from "@/components/ui/label";
 import { JalaliDatePicker } from "@/components/ui/jalali-date-picker";
 import type { DateObject } from "react-multi-date-picker";
 import { barberHasPermission } from "@/lib/data/barber-permissions";
-import { CURRENT_BARBER_ID } from "@/lib/data/barber-session";
-
-interface TimeOffEntry {
-  id: string;
-  dateDisplay: string;
-}
+import { getCurrentBarberId } from "@/lib/data/barber-session";
+import { getTimeOffByBarber, addTimeOff } from "@/lib/data/time-off";
 
 export default function BarberTimeOffPage() {
-  const canManage = barberHasPermission(CURRENT_BARBER_ID, "manage_time_off");
+  const barberId = getCurrentBarberId();
+
+  if (!barberId) {
+    return (
+      <div className="space-y-4">
+        <h1 className="text-xl font-bold md:text-2xl">مرخصی</h1>
+        <Card>
+          <CardContent className="p-6 text-sm text-muted-foreground">
+            ابتدا وارد حساب کاربری خود شوید.
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return <TimeOffContent barberId={barberId} />;
+}
+
+function TimeOffContent({ barberId }: { barberId: string }) {
+  const canManage = barberHasPermission(barberId, "manage_time_off");
   const [date, setDate] = useState<DateObject | null>(null);
-  const [entries, setEntries] = useState<TimeOffEntry[]>([]);
+  const [entries, setEntries] = useState(getTimeOffByBarber(barberId));
 
   if (!canManage) {
     return (
@@ -33,11 +48,12 @@ export default function BarberTimeOffPage() {
     );
   }
 
-  function addTimeOff() {
+  function handleAdd() {
     if (!date) return;
     // TODO: اتصال به API واقعی وقتی بک‌اند آماده شد؛ باید چک کنه نوبت تاییدشده‌ای تو اون تاریخ نباشه
     // (طبق قانون اسکوپ: نوبت تاییدشده نباید بی‌سروصدا حذف بشه)
-    setEntries((prev) => [...prev, { id: crypto.randomUUID(), dateDisplay: date.format("YYYY/MM/DD") }]);
+    addTimeOff(barberId, date.format("YYYY/MM/DD"));
+    setEntries(getTimeOffByBarber(barberId));
     setDate(null);
     toast.success("مرخصی ثبت شد");
   }
@@ -49,7 +65,7 @@ export default function BarberTimeOffPage() {
       <div className="space-y-3">
         <Label>ثبت روز مرخصی جدید</Label>
         <JalaliDatePicker value={date} onChange={setDate} placeholder="انتخاب تاریخ" />
-        <Button onClick={addTimeOff} disabled={!date}>
+        <Button onClick={handleAdd} disabled={!date}>
           افزودن
         </Button>
 

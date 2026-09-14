@@ -68,3 +68,19 @@ export function addMockAccount(data: {
   MOCK_ACCOUNTS.push(newAccount);
   return newAccount;
 }
+
+export function updateAccountPassword(
+  id: string,
+  currentPassword: string,
+  newPassword: string
+): { success: boolean; error?: string } {
+  const account = MOCK_ACCOUNTS.find((a) => a.id === id);
+  if (!account) {
+    return { success: false, error: "حساب کاربری پیدا نشد" };
+  }
+  if (account.password !== currentPassword) {
+    return { success: false, error: "رمز عبور فعلی اشتباه است" };
+  }
+  account.password = newPassword;
+  return { success: true };
+}
