@@ -16,7 +16,12 @@ import { JalaliDatePicker } from "@/components/ui/jalali-date-picker";
 import { cn } from "@/lib/utils";
 
 import { services, getServiceById } from "@/lib/data/services";
-import { barbers, getBarberById, getBarbersByService, getServicesByBarber } from "@/lib/data/barbers";
+import {
+  barbers,
+  getBarberById,
+  getBarbersByService,
+  getServicesByBarber,
+} from "@/lib/data/barbers";
 import { getAvailableSlots } from "@/lib/data/availability";
 
 // -------------------------------------------------------------
@@ -29,11 +34,21 @@ import { getAvailableSlots } from "@/lib/data/availability";
 type EntryPath = "barber" | "service";
 type Step = "entry" | "pick" | "date" | "time" | "notes" | "auth" | "confirm";
 
-const STEP_ORDER: Step[] = ["entry", "pick", "date", "time", "notes", "auth", "confirm"];
+const STEP_ORDER: Step[] = [
+  "entry",
+  "pick",
+  "date",
+  "time",
+  "notes",
+  "auth",
+  "confirm",
+];
 
 const authSchema = z.object({
   name: z.string().min(3, "نام باید حداقل ۳ حرف باشد"),
-  phone: z.string().regex(/^09\d{9}$/, "شماره موبایل معتبر نیست (مثلاً ۰۹۱۲xxxxxxx)"),
+  phone: z
+    .string()
+    .regex(/^09\d{9}$/, "شماره موبایل معتبر نیست (مثلاً ۰۹۱۲xxxxxxx)"),
 });
 type AuthValues = z.infer<typeof authSchema>;
 
@@ -45,7 +60,9 @@ function toPersianDigits(input: string) {
 export default function BookingPage() {
   const [step, setStep] = useState<Step>("entry");
   const [entryPath, setEntryPath] = useState<EntryPath | null>(null);
-  const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
+  const [selectedServiceId, setSelectedServiceId] = useState<string | null>(
+    null,
+  );
   const [selectedBarberId, setSelectedBarberId] = useState<string | null>(null);
   const [date, setDate] = useState<DateObject | null>(null);
   const [time, setTime] = useState<string | null>(null);
@@ -86,8 +103,12 @@ export default function BookingPage() {
     return barbers;
   }, [entryPath, selectedServiceId]);
 
-  const selectedService = selectedServiceId ? getServiceById(selectedServiceId) : null;
-  const selectedBarber = selectedBarberId ? getBarberById(selectedBarberId) : null;
+  const selectedService = selectedServiceId
+    ? getServiceById(selectedServiceId)
+    : null;
+  const selectedBarber = selectedBarberId
+    ? getBarberById(selectedBarberId)
+    : null;
 
   function goNext() {
     const idx = STEP_ORDER.indexOf(step);
@@ -105,7 +126,10 @@ export default function BookingPage() {
 
   function canProceed() {
     if (step === "entry") return entryPath !== null;
-    if (step === "pick") return entryPath === "barber" ? selectedServiceId !== null : selectedBarberId !== null;
+    if (step === "pick")
+      return entryPath === "barber"
+        ? selectedServiceId !== null
+        : selectedBarberId !== null;
     if (step === "date") return date !== null;
     if (step === "time") return time !== null;
     return true;
@@ -139,7 +163,8 @@ export default function BookingPage() {
       <div className="mb-8 text-center">
         <h1 className="text-2xl font-bold md:text-3xl">رزرو نوبت</h1>
         <p className="mt-2 text-sm leading-7 text-muted-foreground">
-          مرحله {toPersianDigits(String(stepIndex + 1))} از {toPersianDigits(String(STEP_ORDER.length))}
+          مرحله {toPersianDigits(String(stepIndex + 1))} از{" "}
+          {toPersianDigits(String(STEP_ORDER.length))}
         </p>
         <div className="mt-4 flex gap-1.5">
           {STEP_ORDER.map((s, i) => (
@@ -147,7 +172,7 @@ export default function BookingPage() {
               key={s}
               className={cn(
                 "h-1.5 flex-1 rounded-full transition-colors",
-                i <= stepIndex ? "bg-primary" : "bg-border"
+                i <= stepIndex ? "bg-primary" : "bg-border",
               )}
             />
           ))}
@@ -156,14 +181,18 @@ export default function BookingPage() {
 
       {step === "entry" && (
         <div className="space-y-4">
-          <p className="text-sm text-muted-foreground">می‌خوای اول آرایشگرت رو انتخاب کنی یا سرویس مورد نظرت رو؟</p>
+          <p className="text-sm text-muted-foreground">
+            می‌خوای اول آرایشگرت رو انتخاب کنی یا سرویس مورد نظرت رو؟
+          </p>
           <div className="grid grid-cols-2 gap-4">
             <button
               type="button"
               onClick={() => setEntryPath("barber")}
               className={cn(
                 "flex flex-col items-center gap-3 rounded-xl border p-6 text-center transition-colors",
-                entryPath === "barber" ? "border-primary bg-primary/10" : "border-border bg-card hover:border-primary/40"
+                entryPath === "barber"
+                  ? "border-primary bg-primary/10"
+                  : "border-border bg-card hover:border-primary/40",
               )}
             >
               <User className="h-6 w-6 text-primary" />
@@ -174,7 +203,9 @@ export default function BookingPage() {
               onClick={() => setEntryPath("service")}
               className={cn(
                 "flex flex-col items-center gap-3 rounded-xl border p-6 text-center transition-colors",
-                entryPath === "service" ? "border-primary bg-primary/10" : "border-border bg-card hover:border-primary/40"
+                entryPath === "service"
+                  ? "border-primary bg-primary/10"
+                  : "border-border bg-card hover:border-primary/40",
               )}
             >
               <Scissors className="h-6 w-6 text-primary" />
@@ -197,7 +228,9 @@ export default function BookingPage() {
                   onClick={() => setSelectedBarberId(b.id)}
                   className={cn(
                     "flex items-center gap-3 rounded-xl border p-4 text-right transition-colors",
-                    isSelected ? "border-primary bg-primary/10" : "border-border bg-card hover:border-primary/40"
+                    isSelected
+                      ? "border-primary bg-primary/10"
+                      : "border-border bg-card hover:border-primary/40",
                   )}
                 >
                   <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-medium text-primary">
@@ -206,7 +239,7 @@ export default function BookingPage() {
                   <span className="flex-1">
                     <span className="block text-sm font-medium">{b.name}</span>
                     <span className="block text-xs text-muted-foreground">
-                      {b.barberType === "professional" ? "آرایشگر حرفه‌ای" : "آرایشگر"}
+                      {b.serviceIds.length} سرویس
                     </span>
                   </span>
                   {isSelected && <Check className="h-4 w-4 text-primary" />}
@@ -229,14 +262,18 @@ export default function BookingPage() {
                       onClick={() => setSelectedServiceId(s.id)}
                       className={cn(
                         "flex flex-col items-start gap-2 rounded-xl border p-4 text-right transition-colors",
-                        isSelected ? "border-primary bg-primary/10" : "border-border bg-card hover:border-primary/40"
+                        isSelected
+                          ? "border-primary bg-primary/10"
+                          : "border-border bg-card hover:border-primary/40",
                       )}
                     >
                       <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
                         <Icon className="h-4 w-4" />
                       </span>
                       <span className="text-sm font-medium">{s.title}</span>
-                      <span className="text-xs text-muted-foreground">{s.price}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {s.price}
+                      </span>
                     </button>
                   );
                 })}
@@ -260,14 +297,18 @@ export default function BookingPage() {
                   onClick={() => setSelectedServiceId(s.id)}
                   className={cn(
                     "flex flex-col items-start gap-2 rounded-xl border p-4 text-right transition-colors",
-                    isSelected ? "border-primary bg-primary/10" : "border-border bg-card hover:border-primary/40"
+                    isSelected
+                      ? "border-primary bg-primary/10"
+                      : "border-border bg-card hover:border-primary/40",
                   )}
                 >
                   <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">
                     <Icon className="h-4 w-4" />
                   </span>
                   <span className="text-sm font-medium">{s.title}</span>
-                  <span className="text-xs text-muted-foreground">{s.price}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {s.price}
+                  </span>
                 </button>
               );
             })}
@@ -286,16 +327,20 @@ export default function BookingPage() {
                       onClick={() => setSelectedBarberId(b.id)}
                       className={cn(
                         "flex items-center gap-3 rounded-xl border p-4 text-right transition-colors",
-                        isSelected ? "border-primary bg-primary/10" : "border-border bg-card hover:border-primary/40"
+                        isSelected
+                          ? "border-primary bg-primary/10"
+                          : "border-border bg-card hover:border-primary/40",
                       )}
                     >
                       <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-medium text-primary">
                         {b.initials}
                       </span>
                       <span className="flex-1">
-                        <span className="block text-sm font-medium">{b.name}</span>
+                        <span className="block text-sm font-medium">
+                          {b.name}
+                        </span>
                         <span className="block text-xs text-muted-foreground">
-                          {b.barberType === "professional" ? "آرایشگر حرفه‌ای" : "آرایشگر"}
+                          {b.serviceIds.length} سرویس
                         </span>
                       </span>
                       {isSelected && <Check className="h-4 w-4 text-primary" />}
@@ -327,7 +372,8 @@ export default function BookingPage() {
           <Label>ساعت نوبت</Label>
           {availableSlots.length === 0 ? (
             <p className="rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground">
-              برای این تاریخ ساعت خالی برای این آرایشگر وجود ندارد. لطفاً تاریخ دیگری انتخاب کنید.
+              برای این تاریخ ساعت خالی برای این آرایشگر وجود ندارد. لطفاً تاریخ
+              دیگری انتخاب کنید.
             </p>
           ) : (
             <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">
@@ -342,7 +388,7 @@ export default function BookingPage() {
                       "rounded-lg border py-2.5 text-xs font-medium transition-colors",
                       isSelected
                         ? "border-primary bg-primary text-primary-foreground"
-                        : "border-border bg-card text-muted-foreground hover:border-primary/40"
+                        : "border-border bg-card text-muted-foreground hover:border-primary/40",
                     )}
                   >
                     {toPersianDigits(slot)}
@@ -373,8 +419,14 @@ export default function BookingPage() {
           </p>
           <div className="space-y-2">
             <Label htmlFor="name">نام و نام خانوادگی</Label>
-            <Input id="name" placeholder="مثلاً علی محمدی" {...register("name")} />
-            {errors.name && <p className="text-xs text-red-400">{errors.name.message}</p>}
+            <Input
+              id="name"
+              placeholder="مثلاً علی محمدی"
+              {...register("name")}
+            />
+            {errors.name && (
+              <p className="text-xs text-red-400">{errors.name.message}</p>
+            )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="phone">شماره موبایل</Label>
@@ -386,7 +438,9 @@ export default function BookingPage() {
               className="text-right"
               {...register("phone")}
             />
-            {errors.phone && <p className="text-xs text-red-400">{errors.phone.message}</p>}
+            {errors.phone && (
+              <p className="text-xs text-red-400">{errors.phone.message}</p>
+            )}
           </div>
           <Button type="submit" className="w-full" disabled={isSubmitting}>
             ادامه
@@ -411,7 +465,9 @@ export default function BookingPage() {
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">ساعت</span>
-              <span className="font-medium">{time ? toPersianDigits(time) : ""}</span>
+              <span className="font-medium">
+                {time ? toPersianDigits(time) : ""}
+              </span>
             </div>
             {notes && (
               <div className="flex justify-between gap-4">
@@ -435,12 +491,22 @@ export default function BookingPage() {
       {step !== "auth" && step !== "confirm" && (
         <div className="mt-8 flex gap-3">
           {stepIndex > 0 && (
-            <Button type="button" variant="outline" onClick={goBack} className="gap-1">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={goBack}
+              className="gap-1"
+            >
               <ChevronRight className="h-4 w-4" />
               قبلی
             </Button>
           )}
-          <Button type="button" onClick={goNext} disabled={!canProceed()} className="flex-1 gap-1">
+          <Button
+            type="button"
+            onClick={goNext}
+            disabled={!canProceed()}
+            className="flex-1 gap-1"
+          >
             بعدی
             <ChevronLeft className="h-4 w-4" />
           </Button>

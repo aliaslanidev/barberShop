@@ -15,9 +15,11 @@ export default function BarberDashboardPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-xl font-bold md:text-2xl">سلام {barber?.name.split(" ")[0]} 👋</h1>
+        <h1 className="text-xl font-bold md:text-2xl">
+          سلام {barber?.name.split(" ")[0]} 👋
+        </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          {barber?.barberType === "professional" ? "آرایشگر حرفه‌ای" : "آرایشگر"}
+          {barber?.serviceIds.length} سرویس
         </p>
       </div>
 
@@ -44,13 +46,16 @@ export default function BarberDashboardPage() {
 
       {current && (
         <div>
-          <h2 className="mb-3 text-sm font-medium text-muted-foreground">در حال انجام</h2>
+          <h2 className="mb-3 text-sm font-medium text-muted-foreground">
+            در حال انجام
+          </h2>
           <Card className="border-primary/50">
             <CardContent className="flex items-center justify-between p-5">
               <div>
                 <p className="text-sm font-medium">{current.customerName}</p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {getServiceById(current.serviceId)?.title} — ساعت {current.time}
+                  {getServiceById(current.serviceId)?.title} — ساعت{" "}
+                  {current.time}
                 </p>
               </div>
               <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
@@ -63,7 +68,9 @@ export default function BarberDashboardPage() {
 
       {next && !current && (
         <div>
-          <h2 className="mb-3 text-sm font-medium text-muted-foreground">نوبت بعدی</h2>
+          <h2 className="mb-3 text-sm font-medium text-muted-foreground">
+            نوبت بعدی
+          </h2>
           <Card>
             <CardContent className="flex items-center justify-between p-5">
               <div>
