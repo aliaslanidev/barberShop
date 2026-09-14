@@ -1,13 +1,17 @@
+"use client";
+
 import { useId } from "react";
 
 type SwooshLinesProps = {
   className?: string;
   rings?: number;
+  scrollY?: number;
 };
 
 export function SwooshLines({
   className,
   rings = 9,
+  scrollY = 0,
 }: SwooshLinesProps) {
   const uid = useId();
 
@@ -15,6 +19,20 @@ export function SwooshLines({
   const glowId = `swoosh-glow-${uid}`;
 
   const lines = Array.from({ length: rings }, (_, i) => i);
+
+  /*
+   * پیشرفت اسکرول رو به یک بازه محدود (مثلاً 0 تا 1) نگاشت می‌کنیم
+   * تا گرادیانت بی‌نهایت رد نشه و رفت‌وبرگشتی حرکت کنه
+   */
+  const cycle = 900; // هر چند پیکسل اسکرول یک چرخه کامل
+  const raw = (scrollY % cycle) / cycle; // 0 -> 1
+  const progress =
+    raw < 0.5 ? raw * 2 : (1 - raw) * 2; // رفت و برگشت (0 -> 1 -> 0)
+
+  /*
+   * جابه‌جایی افقی گرادیانت بین ۰٪ تا ۴۰٪
+   */
+  const shift = progress * 40;
 
   return (
     <svg
@@ -30,10 +48,11 @@ export function SwooshLines({
 
         <linearGradient
           id={gradientId}
-          x1="0%"
+          x1={`${0 + shift}%`}
           y1="0%"
-          x2="100%"
+          x2={`${100 + shift}%`}
           y2="0%"
+          style={{ transition: "x1 0.2s linear, x2 0.2s linear" }}
         >
           <stop
             offset="0%"
@@ -99,64 +118,26 @@ export function SwooshLines({
         strokeLinecap="round"
         strokeLinejoin="round"
         filter={`url(#${glowId})`}
+        style={{
+          transform: `translateY(${scrollY * 0.08}px)`,
+          transition: "transform 0.1s linear",
+        }}
       >
         {lines.map((index) => {
-          /*
-           * فاصله بین خطوط
-           */
           const spacing = 30;
-
-          /*
-           * فاصله عمودی
-           */
           const y = index * spacing;
-
-          /*
-           * فاصله افقی
-           */
           const x = index * spacing;
 
-          /*
-           * شروع از بالای صفحه
-           */
           const startX = 760 + x;
           const startY = 20 + y;
-
-          /*
-           * پایان بخش عمودی اول
-           */
           const firstDownY = 280 + y;
-
-          /*
-           * محل حرکت افقی
-           */
           const horizontalY = 350 + y;
-
-          /*
-           * موقعیت خط در سمت چپ
-           */
           const leftX = 40 + x;
-
-          /*
-           * شعاع خم
-           */
           const radius = 70;
-
-          /*
-           * ادامه تا پایین صفحه
-           */
           const bottomY = 1380;
 
-          /*
-           * شفافیت خطوط
-           */
           const opacity = 0.85 - index * 0.065;
-
-          /*
-           * ضخامت
-           */
-          const strokeWidth =
-            index === 0 ? 2.2 : 1.35;
+          const strokeWidth = index === 0 ? 2.2 : 1.35;
 
           return (
             <path

@@ -1,6 +1,27 @@
+"use client";
+
+import { useEffect, useState } from "react";
+
 import { SwooshLines } from "./swoosh-lines";
 
 export function HeroGlow() {
+  const [scrollY, setScrollY] = useState(0);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrollY(window.scrollY);
+    };
+
+    // مقدار اولیه (اگر صفحه رفرش شده و از وسط باشد)
+    handleScroll();
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, []);
+
   return (
     <div
       aria-hidden="true"
@@ -35,6 +56,9 @@ export function HeroGlow() {
           md:bg-accent/15
           md:blur-[120px]
         "
+        style={{
+          transform: `translate(-50%, calc(-50% + ${scrollY * 0.15}px))`,
+        }}
       />
 
       {/* =====================================================
@@ -59,6 +83,9 @@ export function HeroGlow() {
           md:bg-primary/10
           md:blur-[110px]
         "
+        style={{
+          transform: `translate(-50%, calc(-50% + ${scrollY * 0.25}px))`,
+        }}
       />
 
       {/* =====================================================
@@ -80,6 +107,7 @@ export function HeroGlow() {
         <SwooshLines
           className="h-full w-full"
           rings={9}
+          scrollY={scrollY}
         />
       </div>
     </div>
