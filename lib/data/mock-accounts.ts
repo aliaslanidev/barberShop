@@ -44,3 +44,27 @@ export function findMockAccount(
     null
   );
 }
+
+export function findAccountByMobile(mobile: string): MockAccount | null {
+  return MOCK_ACCOUNTS.find((a) => a.mobile === mobile) ?? null;
+}
+
+export function isMobileTaken(mobile: string): boolean {
+  return MOCK_ACCOUNTS.some((a) => a.mobile === mobile);
+}
+
+export function addMockAccount(data: {
+  name: string;
+  mobile: string;
+  password: string;
+}): MockAccount {
+  const newAccount: MockAccount = {
+    id: `customer-${Date.now()}`,
+    name: data.name,
+    mobile: data.mobile,
+    password: data.password,
+    role: "customer",
+  };
+  MOCK_ACCOUNTS.push(newAccount);
+  return newAccount;
+}
