@@ -42,9 +42,9 @@ export default function AdminHolidaysPage() {
   }
 
   return (
-    <main className="container flex flex-col gap-8 py-8">
+    <main className="space-y-6">
       <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold">تعطیلات</h1>
+        <h1 className="text-xl font-bold">تعطیلات</h1>
         <p className="text-sm text-muted-foreground">
           تعطیلی کل سالن و مرخصی آرایشگرها
         </p>

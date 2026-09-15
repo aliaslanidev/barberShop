@@ -51,9 +51,9 @@ export default function AdminReportsPage() {
   const maxBarberCount = Math.max(1, ...byBarber.map((b) => b.count));
 
   return (
-    <main className="container flex flex-col gap-6 py-8">
+    <main className="space-y-6">
       <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold">گزارش‌ها</h1>
+        <h1 className="text-xl font-bold">گزارش‌ها</h1>
         <p className="text-sm text-muted-foreground">
           آمار کلی نوبت‌ها بر اساس آرایشگر و وضعیت
         </p>

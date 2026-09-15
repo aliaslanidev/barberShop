@@ -76,9 +76,9 @@ export default function AdminBookingsPage() {
   }
 
   return (
-    <main className="container flex flex-col gap-6 py-8">
+    <main className="space-y-6">
       <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold">مدیریت نوبت‌ها</h1>
+        <h1 className="text-xl font-bold">مدیریت نوبت‌ها</h1>
         <p className="text-sm text-muted-foreground">
           لیست همه‌ی نوبت‌های ثبت‌شده، فارغ از آرایشگر
         </p>
