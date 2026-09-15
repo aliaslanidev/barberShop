@@ -12,6 +12,8 @@ import {
   Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import type { AdminInfo } from "@/lib/data/admin-session";
 
 const adminNavItems = [
   { label: "داشبورد", href: "/admin/dashboard", icon: LayoutDashboard },
@@ -23,11 +25,32 @@ const adminNavItems = [
   { label: "تنظیمات", href: "/admin/settings", icon: Settings },
 ] as const;
 
-export function AdminSidebar() {
+interface AdminSidebarProps {
+  admin: AdminInfo;
+}
+
+export function AdminSidebar({ admin }: AdminSidebarProps) {
   const pathname = usePathname();
+  const initial = admin.name?.trim()?.charAt(0) || "?";
 
   return (
-    <aside className="sticky top-14 hidden h-[calc(100vh-3.5rem)] w-56 shrink-0 border-l border-border bg-card md:flex md:flex-col">
+    <aside className="sticky top-20 hidden h-[calc(100vh-5rem)] w-56 shrink-0 border-l border-border bg-card md:flex md:flex-col">
+      {/* پروفایل ادمین */}
+      <div className="flex flex-col items-center gap-3 border-b border-border px-4 py-6">
+        <Avatar className="h-14 w-14">
+          <AvatarFallback className="bg-primary text-lg font-bold text-[#02100d]">
+            {initial}
+          </AvatarFallback>
+        </Avatar>
+
+        <div className="flex flex-col items-center text-center">
+          <span className="text-sm font-medium text-foreground">
+            {admin.name}
+          </span>
+          <span className="text-xs text-muted-foreground">مدیر سیستم</span>
+        </div>
+      </div>
+
       <nav className="flex flex-col gap-1 overflow-y-auto p-3">
         {adminNavItems.map((item) => {
           const Icon = item.icon;
