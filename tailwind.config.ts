@@ -69,6 +69,14 @@ const config: Config = {
           foreground: "hsl(var(--card-foreground))",
         },
 
+        // اضافه شد — SelectContent/PopoverContent/DropdownMenuContent
+        // و هر کامپوننت دیگه‌ای که از کلاس bg-popover استفاده می‌کنه
+        // بدون این mapping اصلاً رنگی نمی‌گیره (کلاس نامعتبر و بی‌اثر می‌مونه)
+        popover: {
+          DEFAULT: "hsl(var(--popover))",
+          foreground: "hsl(var(--popover-foreground))",
+        },
+
         purple: "#b515f3",
         rust: "#d16427",
         violet: "#6e3094",
