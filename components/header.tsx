@@ -16,7 +16,7 @@ export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   return (
-    <header className="border-b border-white/[0.04] bg-[#020b0a] text-white">
+    <header className="sticky top-0 z-50 border-b border-white/[0.04] bg-[#020b0a]/90 text-white backdrop-blur-md">
       <div className="mx-auto flex h-20 max-w-[1200px] items-center justify-between px-6">
         {/* لوگو */}
         <Link

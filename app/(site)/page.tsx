@@ -232,7 +232,7 @@ export default function Home() {
 
         <section
           id="services"
-          className="container py-20"
+          className="container scroll-mt-24 py-20"
         >
           <h2
             className="
@@ -414,7 +414,7 @@ export default function Home() {
 
         <section
           id="gallery"
-          className="container pb-20"
+          className="container scroll-mt-24 pb-20"
         >
           <h2
             className="
@@ -424,7 +424,7 @@ export default function Home() {
               md:text-3xl
             "
           >
-            نمونه‌کارها
+            گالری
           </h2>
 
           <div
@@ -493,6 +493,7 @@ export default function Home() {
           className="
             border-t
             border-border
+            scroll-mt-24
             bg-gradient-to-r
             from-[#071a16]
             via-[#120d1b]
@@ -542,6 +543,7 @@ export default function Home() {
           id="contact"
           className="
             container
+            scroll-mt-24
             flex
             flex-col
             items-center
