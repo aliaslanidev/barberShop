@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { Toaster } from "sonner";
+import { ScrollToTopButton } from "@/components/scroll-to-top-button";
 import "./globals.css";
 
 const yekanBakh = localFont({
@@ -59,6 +60,7 @@ export default function RootLayout({
     <html lang="fa" dir="rtl" className="dark">
       <body className={`${yekanBakh.variable} font-sans antialiased`}>
         {children}
+        <ScrollToTopButton />
         <Toaster position="top-center" richColors dir="rtl" />
       </body>
     </html>
