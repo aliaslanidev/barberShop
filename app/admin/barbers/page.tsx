@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Pencil, Plus, Search, Trash2, Users } from "lucide-react";
+import { Pencil, Plus, Search, Trash2, Users, X } from "lucide-react";
 
 import {
   getAllBarbers,
@@ -67,6 +67,9 @@ const editBarberSchema = z.object({
 
 type EditBarberValues = z.infer<typeof editBarberSchema>;
 
+// ارتفاع مشترک باکس پرمیشن‌ها، چه در حالت خالی و چه وقتی آرایشگر انتخاب شده
+const PERMISSIONS_BOX_MIN_HEIGHT = "min-h-[265px]";
+
 export default function AdminBarbersPage() {
   const [barbers, setBarbers] = useState<Barber[]>(() => getAllBarbers());
   // پیش‌فرض هیچ آرایشگری انتخاب نشده
@@ -76,6 +79,7 @@ export default function AdminBarbersPage() {
   const [isTyping, setIsTyping] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const selectedBarber = barbers.find((b) => b.id === selectedBarberId) ?? null;
 
@@ -92,6 +96,14 @@ export default function AdminBarbersPage() {
 
   function refresh() {
     setBarbers([...getAllBarbers()]);
+  }
+
+  function handleClearSearch() {
+    setSelectedBarberId(null);
+    setSearchQuery("");
+    setIsTyping(false);
+    setComboOpen(true);
+    searchInputRef.current?.focus();
   }
 
   const {
@@ -186,9 +198,10 @@ export default function AdminBarbersPage() {
               <div className="relative w-full sm:w-72">
                 <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
+                  ref={searchInputRef}
                   value={searchQuery}
                   placeholder="جستجوی آرایشگر"
-                  className="pr-9"
+                  className="pl-9 pr-9"
                   onFocus={() => setComboOpen(true)}
                   onChange={(e) => {
                     setSearchQuery(e.target.value);
@@ -196,6 +209,16 @@ export default function AdminBarbersPage() {
                     setComboOpen(true);
                   }}
                 />
+                {searchQuery.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleClearSearch}
+                    aria-label="پاک کردن جستجو"
+                    className="absolute left-3 top-1/2 -translate-y-1/2 rounded-sm p-0.5 text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
               </div>
             </PopoverAnchor>
             <PopoverPortal>
@@ -292,8 +315,11 @@ export default function AdminBarbersPage() {
       </div>
 
       {selectedBarber ? (
-        <Card key={selectedBarber.id}>
-          <CardContent className="flex flex-col gap-4 p-5">
+        <Card
+          key={selectedBarber.id}
+          className={cn(PERMISSIONS_BOX_MIN_HEIGHT, "flex flex-col")}
+        >
+          <CardContent className="flex flex-1 flex-col gap-4 p-5">
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary text-sm font-bold">
@@ -409,8 +435,8 @@ export default function AdminBarbersPage() {
           </CardContent>
         </Card>
       ) : (
-        <Card>
-          <CardContent className="flex flex-col items-center gap-3 p-10 text-center text-muted-foreground">
+        <Card className={cn(PERMISSIONS_BOX_MIN_HEIGHT, "flex flex-col")}>
+          <CardContent className="flex flex-1 flex-col items-center justify-center gap-3 p-10 text-center text-muted-foreground">
             <Users className="h-8 w-8" />
             <p className="text-sm">
               {barbers.length === 0
