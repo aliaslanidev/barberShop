@@ -68,7 +68,7 @@ const editBarberSchema = z.object({
 type EditBarberValues = z.infer<typeof editBarberSchema>;
 
 // ارتفاع مشترک باکس پرمیشن‌ها، چه در حالت خالی و چه وقتی آرایشگر انتخاب شده
-const PERMISSIONS_BOX_MIN_HEIGHT = "min-h-[320px]";
+const PERMISSIONS_BOX_MIN_HEIGHT = "min-h-[350px]";
 
 export default function AdminBarbersPage() {
   const [barbers, setBarbers] = useState<Barber[]>(() => getAllBarbers());
