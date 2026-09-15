@@ -246,15 +246,11 @@ export default function Home() {
         ====================================================== */}
 
         <section id="services" className="container scroll-mt-24 py-20">
-          <h2
-            className="
-              mb-10
-              text-2xl
-              font-bold
-              md:text-3xl
-            "
-          >
-            خدمات سالن
+          <h2 className="mb-10 inline-flex items-center gap-3">
+            <span className="rounded-lg border border-primary/30 bg-primary/5 px-4 py-1.5 text-sm font-medium text-primary">
+              خدمات سالن
+            </span>
+            <span className="h-px w-8 bg-primary" />
           </h2>
 
           <div
@@ -419,15 +415,11 @@ export default function Home() {
         ====================================================== */}
 
         <section id="gallery" className="container scroll-mt-24 pb-20">
-          <h2
-            className="
-              mb-10
-              text-2xl
-              font-bold
-              md:text-3xl
-            "
-          >
-            گالری
+          <h2 className="mb-10 inline-flex items-center gap-3">
+            <span className="rounded-lg border border-primary/30 bg-primary/5 px-4 py-1.5 text-sm font-medium text-primary">
+              گالری
+            </span>
+            <span className="h-px w-8 bg-primary" />
           </h2>
 
           <div
@@ -488,104 +480,66 @@ export default function Home() {
         </section>
 
         {/* =====================================================
-            About
-        ====================================================== */}
+    About
+====================================================== */}
 
         <section
           id="about"
           className="
-            relative
-            overflow-hidden
-            scroll-mt-24
-            border-y
-            border-border
-            bg-[#070808]
-          "
+    relative
+    overflow-hidden
+    scroll-mt-24
+    border-y
+    border-border
+    bg-[#070808]
+  "
         >
-          {/* Purple Radial Glow */}
+          {/* Soft Glow */}
 
           <div
             className="
-              pointer-events-none
-              absolute
-              left-[-10%]
-              top-1/2
-              h-[520px]
-              w-[520px]
-              -translate-y-1/2
-              rounded-full
-              bg-[radial-gradient(circle,hsl(283_90%_52%_/_0.30)_0%,hsl(283_90%_52%_/_0.10)_45%,transparent_70%)]
-              blur-3xl
-              animate-glow-pulse
-            "
-          />
-
-          {/* Green Counter Glow */}
-
-          <div
-            className="
-              pointer-events-none
-              absolute
-              -bottom-40
-              right-[-8%]
-              h-[380px]
-              w-[380px]
-              rounded-full
-              bg-[radial-gradient(circle,hsl(158_87%_62%_/_0.12)_0%,transparent_70%)]
-              blur-3xl
-            "
-          />
-
-          {/* Barber Stripes Texture */}
-
-          <div
-            className="
-              pointer-events-none
-              absolute
-              inset-0
-              opacity-[0.035]
-              bg-[repeating-linear-gradient(135deg,white_0px,white_1px,transparent_1px,transparent_14px)]
-            "
+      pointer-events-none
+      absolute
+      left-[-10%]
+      top-1/2
+      h-[420px]
+      w-[420px]
+      -translate-y-1/2
+      rounded-full
+      bg-[radial-gradient(circle,hsl(158_87%_62%_/_0.10)_0%,transparent_70%)]
+      blur-3xl
+    "
           />
 
           <div
             className="
-              container
-              relative
-              z-10
-              grid
-              items-center
-              gap-14
-              py-24
-              lg:grid-cols-[1.05fr_0.95fr]
-            "
+      container
+      relative
+      z-10
+      flex
+      flex-col
+      gap-12
+      py-24
+    "
           >
-            {/* ---------- Text Column ---------- */}
+            {/* ---------- Text ---------- */}
 
             <div className="flex flex-col gap-6">
-              {/* Eyebrow */}
-
-              <div className="flex items-center gap-3">
-                <h2
-                  className="
-              mb-10
-              text-2xl
-              font-bold
-              md:text-3xl
-            "
-                >
-                  درباره سالن
-                </h2>
-              </div>
+              <h2 className="mb-10 inline-flex items-center gap-3">
+                <span className="rounded-lg border border-primary/30 bg-primary/5 px-4 py-1.5 text-sm font-medium text-primary">
+                  درباره ما
+                </span>
+                <span className="h-px w-8 bg-primary" />
+              </h2>
 
               <h2
                 className="
-                  max-w-lg
-                  text-3xl
-                  font-bold
-                  leading-[1.6]
-                  md:text-4xl
-                "
+          max-w-2xl
+          text-3xl
+          font-bold
+          leading-[1.6]
+          md:text-4xl
+        "
               >
                 جایی که اصلاح مو،
                 <span className="text-primary"> یک مهارت </span>
@@ -594,68 +548,61 @@ export default function Home() {
 
               <p
                 className="
-                  max-w-lg
-                  leading-8
-                  text-muted-foreground
-                "
+          max-w-xl
+          leading-8
+          text-muted-foreground
+        "
               >
                 دوازده سال است که پشت این صندلی‌ها ایستاده‌ایم. تیم ما تکنیک‌های
                 کلاسیک را با نگاه امروزی ترکیب می‌کند تا نتیجه فقط در روز اول
                 خوب نباشد؛ تا هفته‌ها فرم خودش را نگه دارد.
               </p>
-
-              {/* Principles */}
-
-              <div className="mt-2 flex flex-col divide-y divide-border">
-                {principles.map((p) => {
-                  const PrincipleIcon = p.icon;
-
-                  return (
-                    <div
-                      key={p.title}
-                      className="
-                        group
-                        flex
-                        items-center
-                        gap-4
-                        py-4
-                      "
-                    >
-                      <div
-                        className="
-                          flex
-                          h-9
-                          w-9
-                          shrink-0
-                          items-center
-                          justify-center
-                          rounded-lg
-                          border
-                          border-primary/15
-                          bg-primary/10
-                          text-primary
-                          transition-colors
-                          duration-300
-                          group-hover:border-primary/35
-                        "
-                      >
-                        <PrincipleIcon className="h-4 w-4" strokeWidth={1.8} />
-                      </div>
-
-                      <div>
-                        <div className="text-sm font-medium">{p.title}</div>
-
-                        <div className="text-sm text-muted-foreground">
-                          {p.desc}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
             </div>
 
-            {/* ---------- Manifesto Card ---------- */}
+            {/* ---------- Principles Row ---------- */}
+
+            <div
+              className="
+        grid
+        gap-8
+        border-t
+        border-border
+        pt-10
+        sm:grid-cols-3
+      "
+            >
+              {principles.map((p) => {
+                const PrincipleIcon = p.icon;
+
+                return (
+                  <div key={p.title} className="flex flex-col gap-3">
+                    <div
+                      className="
+                flex
+                h-9
+                w-9
+                shrink-0
+                items-center
+                justify-center
+                rounded-lg
+                border
+                border-primary/15
+                bg-primary/10
+                text-primary
+              "
+                    >
+                      <PrincipleIcon className="h-4 w-4" strokeWidth={1.8} />
+                    </div>
+
+                    <div className="font-medium">{p.title}</div>
+
+                    <div className="text-sm leading-6 text-muted-foreground">
+                      {p.desc}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </section>
 
