@@ -52,8 +52,8 @@ export default function CustomerLayout({
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-40 border-b border-white/[0.04] bg-[#020b0a]/90 text-white backdrop-blur-md">
         <div className="mx-auto flex h-20 max-w-[1200px] items-center justify-between px-6">
-          {/* لوگو */}
-          <Link href="/customer/dashboard" className="flex items-center gap-3">
+          {/* لوگو - بازگشت به صفحه اصلی سایت */}
+          <Link href="/" className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center text-emerald-400">
               <Scissors size={27} strokeWidth={1.8} />
             </div>
