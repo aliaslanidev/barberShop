@@ -2,11 +2,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { getTodayAppointments } from "@/lib/data/appointments";
 import { getServiceById } from "@/lib/data/services";
 import { getBarberById } from "@/lib/data/barbers";
-import { CURRENT_BARBER_ID } from "@/lib/data/barber-session";
+import { getCurrentBarberId } from "@/lib/data/barber-session";
 
 export default function BarberDashboardPage() {
-  const barber = getBarberById(CURRENT_BARBER_ID);
-  const todays = getTodayAppointments(CURRENT_BARBER_ID);
+  const barberId = getCurrentBarberId() ?? "";
+  const barber = getBarberById(barberId);
+  const todays = getTodayAppointments(barberId);
   const completed = todays.filter((a) => a.status === "completed").length;
   const remaining = todays.filter((a) => a.status !== "completed").length;
   const current = todays.find((a) => a.status === "in_progress");

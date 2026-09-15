@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Scissors } from "lucide-react";
 import { getCurrentAdmin, type AdminInfo } from "@/lib/data/admin-session";
+import { clearMockSession } from "@/lib/data/mock-session";
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
 import { AdminBottomNav } from "@/components/admin/admin-bottom-nav";
 import { UserMenu } from "@/components/user-menu";
@@ -37,13 +38,8 @@ export default function AdminLayout({
   }
   if (!admin) return null;
 
-  // ⚠️ فعلاً خروج فقط کلید مخصوص سشن ادمین رو از localStorage پاک می‌کنه.
-  // اگه lib/data/admin-session.ts کلید متفاوتی استفاده می‌کنه یا خروج باید
-  // یه API call بزنه، این تابع رو با منطق واقعی (یا تابع logoutAdmin خودت) عوض کن.
   const handleLogout = () => {
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("admin-session");
-    }
+    clearMockSession();
     router.replace("/login");
   };
 
