@@ -68,7 +68,7 @@ const editBarberSchema = z.object({
 type EditBarberValues = z.infer<typeof editBarberSchema>;
 
 // ارتفاع مشترک باکس پرمیشن‌ها، چه در حالت خالی و چه وقتی آرایشگر انتخاب شده
-const PERMISSIONS_BOX_MIN_HEIGHT = "min-h-[265px]";
+const PERMISSIONS_BOX_MIN_HEIGHT = "min-h-[320px]";
 
 export default function AdminBarbersPage() {
   const [barbers, setBarbers] = useState<Barber[]>(() => getAllBarbers());
@@ -79,9 +79,26 @@ export default function AdminBarbersPage() {
   const [isTyping, setIsTyping] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [draftPermissions, setDraftPermissions] =
+    useState<BarberPermissions | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   const selectedBarber = barbers.find((b) => b.id === selectedBarberId) ?? null;
+
+  // با انتخاب یا تغییر آرایشگر، یک نسخه‌ی پیش‌نویس از پرمیشن‌ها می‌سازیم
+  // تا تغییرات سوییچ‌ها فوراً ذخیره نشن و منتظر «ذخیره» بمونن
+  useEffect(() => {
+    const found = barbers.find((b) => b.id === selectedBarberId) ?? null;
+    setDraftPermissions(found ? { ...found.permissions } : null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedBarberId]);
+
+  const isPermissionsDirty =
+    !!selectedBarber &&
+    !!draftPermissions &&
+    OPTIONAL_PERMISSIONS.some(
+      (perm) => draftPermissions[perm.key] !== selectedBarber.permissions[perm.key]
+    );
 
   const visibleBarbers = isTyping
     ? barbers.filter((b) => b.name.includes(searchQuery.trim()))
@@ -153,13 +170,23 @@ export default function AdminBarbersPage() {
     setDialogOpen(false);
   }
 
-  function handlePermissionChange(
-    barberId: string,
+  function handlePermissionDraftChange(
     key: keyof BarberPermissions,
     value: boolean
   ) {
-    updateBarberPermissions(barberId, { [key]: value });
+    setDraftPermissions((prev) => (prev ? { ...prev, [key]: value } : prev));
+  }
+
+  function handleSavePermissions() {
+    if (!selectedBarber || !draftPermissions) return;
+    updateBarberPermissions(selectedBarber.id, draftPermissions);
     refresh();
+    toast.success("پرمیشن‌ها ذخیره شد");
+  }
+
+  function handleCancelPermissions() {
+    if (!selectedBarber) return;
+    setDraftPermissions({ ...selectedBarber.permissions });
   }
 
   function handleActiveChange(barberId: string, value: boolean) {
@@ -423,20 +450,45 @@ export default function AdminBarbersPage() {
                 >
                   <span className="text-sm">{perm.label}</span>
                   <Switch
-                    checked={selectedBarber.permissions[perm.key]}
+                    checked={draftPermissions?.[perm.key] ?? false}
                     onCheckedChange={(v) =>
-                      handlePermissionChange(selectedBarber.id, perm.key, v)
+                      handlePermissionDraftChange(perm.key, v)
                     }
                     aria-label={perm.label}
                   />
                 </div>
               ))}
             </div>
+
+            <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={!isPermissionsDirty}
+                onClick={handleCancelPermissions}
+              >
+                لغو
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                disabled={!isPermissionsDirty}
+                onClick={handleSavePermissions}
+              >
+                ذخیره تغییرات
+              </Button>
+            </div>
           </CardContent>
         </Card>
       ) : (
-        <Card className={cn(PERMISSIONS_BOX_MIN_HEIGHT, "flex flex-col")}>
-          <CardContent className="flex flex-1 flex-col items-center justify-center gap-3 p-10 text-center text-muted-foreground">
+        <Card
+          className={cn(
+            PERMISSIONS_BOX_MIN_HEIGHT,
+            "flex items-center justify-center"
+          )}
+        >
+          <CardContent className="flex flex-col items-center gap-3 p-10 text-center text-muted-foreground">
             <Users className="h-8 w-8" />
             <p className="text-sm">
               {barbers.length === 0
