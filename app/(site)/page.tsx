@@ -11,6 +11,10 @@ import {
   Droplets,
   Brush,
   Crown,
+  Quote,
+  ShieldCheck,
+  Sparkle,
+  Timer,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -75,13 +79,28 @@ const galleryImages = [
    Service Icons
 ===================================================== */
 
-const serviceIcons = [
-  Scissors,
-  UserRound,
-  Sparkles,
-  Brush,
-  Droplets,
-  Crown,
+const serviceIcons = [Scissors, UserRound, Sparkles, Brush, Droplets, Crown];
+
+/* =====================================================
+   About Principles
+===================================================== */
+
+const principles = [
+  {
+    icon: Timer,
+    title: "وقت‌شناسی",
+    desc: "نوبت شما سر ساعت شروع می‌شود.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "بهداشت کامل",
+    desc: "ابزار استریل برای هر مشتری.",
+  },
+  {
+    icon: Sparkle,
+    title: "مشاوره رایگان",
+    desc: "انتخاب مدل متناسب با فرم صورت.",
+  },
 ];
 
 /* =====================================================
@@ -143,15 +162,13 @@ export default function Home() {
                 text-muted-foreground
               "
             >
-              از اصلاح مو تا مراقبت پوست، همه‌چیز با دست استادکارانی که به جزئیات
-              اهمیت می‌دهند.
+              از اصلاح مو تا مراقبت پوست، همه‌چیز با دست استادکارانی که به
+              جزئیات اهمیت می‌دهند.
             </p>
 
             <div className="mt-4 flex gap-4">
               <Button size="lg" asChild>
-                <Link href="/booking">
-                  رزرو آنلاین نوبت
-                </Link>
+                <Link href="/booking">رزرو آنلاین نوبت</Link>
               </Button>
 
               <Button
@@ -165,9 +182,7 @@ export default function Home() {
                 "
                 asChild
               >
-                <a href="#services">
-                  مشاهده خدمات
-                </a>
+                <a href="#services">مشاهده خدمات</a>
               </Button>
             </div>
           </div>
@@ -230,10 +245,7 @@ export default function Home() {
             Services
         ====================================================== */}
 
-        <section
-          id="services"
-          className="container scroll-mt-24 py-20"
-        >
+        <section id="services" className="container scroll-mt-24 py-20">
           <h2
             className="
               mb-10
@@ -254,10 +266,7 @@ export default function Home() {
             "
           >
             {services.map((s, index) => {
-              const ServiceIcon =
-                serviceIcons[
-                  index % serviceIcons.length
-                ];
+              const ServiceIcon = serviceIcons[index % serviceIcons.length];
 
               return (
                 <Card
@@ -359,10 +368,7 @@ export default function Home() {
                           group-hover:bg-primary/15
                         "
                       >
-                        <ServiceIcon
-                          className="h-5 w-5"
-                          strokeWidth={1.8}
-                        />
+                        <ServiceIcon className="h-5 w-5" strokeWidth={1.8} />
                       </div>
 
                       <h3
@@ -412,10 +418,7 @@ export default function Home() {
             Gallery
         ====================================================== */}
 
-        <section
-          id="gallery"
-          className="container scroll-mt-24 pb-20"
-        >
+        <section id="gallery" className="container scroll-mt-24 pb-20">
           <h2
             className="
               mb-10
@@ -491,47 +494,168 @@ export default function Home() {
         <section
           id="about"
           className="
-            border-t
-            border-border
+            relative
+            overflow-hidden
             scroll-mt-24
-            bg-gradient-to-r
-            from-[#071a16]
-            via-[#120d1b]
-            to-[#080909]
+            border-y
+            border-border
+            bg-[#070808]
           "
         >
+          {/* Purple Radial Glow */}
+
+          <div
+            className="
+              pointer-events-none
+              absolute
+              left-[-10%]
+              top-1/2
+              h-[520px]
+              w-[520px]
+              -translate-y-1/2
+              rounded-full
+              bg-[radial-gradient(circle,hsl(283_90%_52%_/_0.30)_0%,hsl(283_90%_52%_/_0.10)_45%,transparent_70%)]
+              blur-3xl
+              animate-glow-pulse
+            "
+          />
+
+          {/* Green Counter Glow */}
+
+          <div
+            className="
+              pointer-events-none
+              absolute
+              -bottom-40
+              right-[-8%]
+              h-[380px]
+              w-[380px]
+              rounded-full
+              bg-[radial-gradient(circle,hsl(158_87%_62%_/_0.12)_0%,transparent_70%)]
+              blur-3xl
+            "
+          />
+
+          {/* Barber Stripes Texture */}
+
+          <div
+            className="
+              pointer-events-none
+              absolute
+              inset-0
+              opacity-[0.035]
+              bg-[repeating-linear-gradient(135deg,white_0px,white_1px,transparent_1px,transparent_14px)]
+            "
+          />
+
           <div
             className="
               container
-              flex
-              flex-col
-              gap-4
-              py-20
-              text-center
+              relative
+              z-10
+              grid
+              items-center
+              gap-14
+              py-24
+              lg:grid-cols-[1.05fr_0.95fr]
             "
           >
-            <h2
-              className="
-                text-2xl
-                font-bold
-                md:text-3xl
-              "
-            >
-              درباره سالن
-            </h2>
+            {/* ---------- Text Column ---------- */}
 
-            <p
-              className="
-                mx-auto
-                max-w-xl
-                leading-8
-                text-muted-foreground
-              "
-            >
-              سالن ما محلی برای مردانی است که به ظاهر خود اهمیت می‌دهند. تیم ما
-              با سال‌ها تجربه، ترکیبی از تکنیک‌های کلاسیک و مدرن را برای رسیدن
-              به بهترین نتیجه به کار می‌گیرد.
-            </p>
+            <div className="flex flex-col gap-6">
+              {/* Eyebrow */}
+
+              <div className="flex items-center gap-3">
+                <h2
+                  className="
+              mb-10
+              text-2xl
+              font-bold
+              md:text-3xl
+            "
+                >
+                  درباره سالن
+                </h2>
+              </div>
+
+              <h2
+                className="
+                  max-w-lg
+                  text-3xl
+                  font-bold
+                  leading-[1.6]
+                  md:text-4xl
+                "
+              >
+                جایی که اصلاح مو،
+                <span className="text-primary"> یک مهارت </span>
+                است نه یک عادت
+              </h2>
+
+              <p
+                className="
+                  max-w-lg
+                  leading-8
+                  text-muted-foreground
+                "
+              >
+                دوازده سال است که پشت این صندلی‌ها ایستاده‌ایم. تیم ما تکنیک‌های
+                کلاسیک را با نگاه امروزی ترکیب می‌کند تا نتیجه فقط در روز اول
+                خوب نباشد؛ تا هفته‌ها فرم خودش را نگه دارد.
+              </p>
+
+              {/* Principles */}
+
+              <div className="mt-2 flex flex-col divide-y divide-border">
+                {principles.map((p) => {
+                  const PrincipleIcon = p.icon;
+
+                  return (
+                    <div
+                      key={p.title}
+                      className="
+                        group
+                        flex
+                        items-center
+                        gap-4
+                        py-4
+                      "
+                    >
+                      <div
+                        className="
+                          flex
+                          h-9
+                          w-9
+                          shrink-0
+                          items-center
+                          justify-center
+                          rounded-lg
+                          border
+                          border-primary/15
+                          bg-primary/10
+                          text-primary
+                          transition-colors
+                          duration-300
+                          group-hover:border-primary/35
+                        "
+                      >
+                        <PrincipleIcon className="h-4 w-4" strokeWidth={1.8} />
+                      </div>
+
+                      <div>
+                        <div className="text-sm font-medium">{p.title}</div>
+
+                        <div className="text-sm text-muted-foreground">
+                          {p.desc}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* ---------- Manifesto Card ---------- */}
           </div>
         </section>
 
@@ -567,9 +691,7 @@ export default function Home() {
           </p>
 
           <Button size="lg" asChild>
-            <Link href="/booking">
-              رزرو نوبت
-            </Link>
+            <Link href="/booking">رزرو نوبت</Link>
           </Button>
         </section>
 
@@ -592,9 +714,7 @@ export default function Home() {
               md:flex-row
             "
           >
-            <span>
-              © تمامی حقوق محفوظ است.
-            </span>
+            <span>© تمامی حقوق محفوظ است.</span>
 
             <div
               className="
@@ -618,14 +738,9 @@ export default function Home() {
                   hover:text-primary
                 "
               >
-                <Instagram
-                  className="h-4 w-4"
-                  strokeWidth={1.8}
-                />
+                <Instagram className="h-4 w-4" strokeWidth={1.8} />
 
-                <span>
-                  اینستاگرام
-                </span>
+                <span>اینستاگرام</span>
               </a>
 
               {/* Phone */}
@@ -641,14 +756,9 @@ export default function Home() {
                   hover:text-primary
                 "
               >
-                <Phone
-                  className="h-4 w-4"
-                  strokeWidth={1.8}
-                />
+                <Phone className="h-4 w-4" strokeWidth={1.8} />
 
-                <span>
-                  تلفن تماس
-                </span>
+                <span>تلفن تماس</span>
               </a>
 
               {/* Address */}
@@ -664,14 +774,9 @@ export default function Home() {
                   hover:text-primary
                 "
               >
-                <MapPin
-                  className="h-4 w-4"
-                  strokeWidth={1.8}
-                />
+                <MapPin className="h-4 w-4" strokeWidth={1.8} />
 
-                <span>
-                  آدرس
-                </span>
+                <span>آدرس</span>
               </a>
             </div>
           </div>
