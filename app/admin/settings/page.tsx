@@ -35,7 +35,7 @@ export default function AdminSettingsPage() {
 
   function handleHourChange(
     day: WeekDay,
-    data: Partial<{ isOpen: boolean; openTime: string; closeTime: string }>
+    data: Partial<{ isOpen: boolean; openTime: string; closeTime: string }>,
   ) {
     const updated = updateWorkingHours(day, data);
     setHours(updated);
@@ -67,7 +67,7 @@ export default function AdminSettingsPage() {
     const result = updateAccountPassword(
       admin.id,
       currentPassword,
-      newPassword
+      newPassword,
     );
 
     if (!result.success) {
@@ -82,9 +82,9 @@ export default function AdminSettingsPage() {
   }
 
   return (
-    <main className="container flex flex-col gap-6 py-8">
+    <main className="space-y-6">
       <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold">تنظیمات</h1>
+        <h1 className="text-xl font-bold">تنظیمات</h1>
         <p className="text-sm text-muted-foreground">
           اطلاعات سالن، ساعات کاری و امنیت حساب
         </p>
