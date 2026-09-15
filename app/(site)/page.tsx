@@ -31,11 +31,11 @@ import sidePart from "../../public/images/side-part.png";
 
 const stats = [
   {
-    value: "+۱۲",
+    value: "۱۲+",
     label: "سال سابقه",
   },
   {
-    value: "+۴۰۰۰",
+    value: "۴۰۰۰+",
     label: "مشتری راضی",
   },
   {
