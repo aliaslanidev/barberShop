@@ -23,12 +23,12 @@ const adminNavItems = [
   { label: "تنظیمات", href: "/admin/settings", icon: Settings },
 ] as const;
 
-export function AdminNav() {
+export function AdminSidebar() {
   const pathname = usePathname();
 
   return (
-    <nav className="sticky top-14 z-30 border-b border-border bg-card shadow-sm">
-      <div className="container flex gap-2 overflow-x-auto py-3">
+    <aside className="sticky top-14 hidden h-[calc(100vh-3.5rem)] w-56 shrink-0 border-l border-border bg-card md:flex md:flex-col">
+      <nav className="flex flex-col gap-1 overflow-y-auto p-3">
         {adminNavItems.map((item) => {
           const Icon = item.icon;
           const isActive = pathname.startsWith(item.href);
@@ -38,18 +38,18 @@ export function AdminNav() {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex shrink-0 items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors",
+                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
                 isActive
                   ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-secondary"
+                  : "text-muted-foreground hover:bg-secondary hover:text-foreground"
               )}
             >
-              <Icon className="h-4 w-4" />
+              <Icon className="h-4 w-4 shrink-0" />
               {item.label}
             </Link>
           );
         })}
-      </div>
-    </nav>
+      </nav>
+    </aside>
   );
 }

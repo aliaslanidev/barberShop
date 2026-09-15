@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import { Toaster } from "sonner";
 import "./globals.css";
 
 const yekanBakh = localFont({
@@ -58,6 +59,7 @@ export default function RootLayout({
     <html lang="fa" dir="rtl" className="dark">
       <body className={`${yekanBakh.variable} font-sans antialiased`}>
         {children}
+        <Toaster position="top-center" richColors dir="rtl" />
       </body>
     </html>
   );

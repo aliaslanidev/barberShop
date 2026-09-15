@@ -23,12 +23,12 @@ const adminNavItems = [
   { label: "تنظیمات", href: "/admin/settings", icon: Settings },
 ] as const;
 
-export function AdminNav() {
+export function AdminBottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="sticky top-14 z-30 border-b border-border bg-card shadow-sm">
-      <div className="container flex gap-2 overflow-x-auto py-3">
+    <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card pb-[env(safe-area-inset-bottom)] md:hidden">
+      <div className="flex gap-1 overflow-x-auto px-2 py-2">
         {adminNavItems.map((item) => {
           const Icon = item.icon;
           const isActive = pathname.startsWith(item.href);
@@ -38,13 +38,13 @@ export function AdminNav() {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex shrink-0 items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors",
+                "flex shrink-0 flex-col items-center gap-1 rounded-lg px-3 py-1.5 text-[11px] font-medium transition-colors",
                 isActive
                   ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-secondary"
+                  : "text-muted-foreground hover:bg-secondary hover:text-foreground"
               )}
             >
-              <Icon className="h-4 w-4" />
+              <Icon className="h-5 w-5" />
               {item.label}
             </Link>
           );
