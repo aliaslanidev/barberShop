@@ -134,107 +134,109 @@ export default function AdminSettingsPage() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardContent className="flex flex-col gap-4 p-4">
-          <h2 className="font-semibold">ساعات کاری</h2>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card>
+          <CardContent className="flex flex-col gap-4 p-4">
+            <h2 className="font-semibold">ساعات کاری</h2>
 
-          <div className="flex flex-col gap-3">
-            {hours.map((h) => (
-              <div
-                key={h.day}
-                className="flex flex-wrap items-center gap-3 rounded-lg border border-border px-3 py-2"
-              >
-                <span className="w-16 shrink-0 text-sm font-medium">
-                  {h.day}
-                </span>
-
-                <div className="flex items-center gap-2">
-                  <Switch
-                    checked={h.isOpen}
-                    onCheckedChange={(checked) =>
-                      handleHourChange(h.day, { isOpen: checked })
-                    }
-                  />
-                  <span className="text-sm text-muted-foreground">
-                    {h.isOpen ? "باز" : "تعطیل"}
+            <div className="flex flex-col gap-3">
+              {hours.map((h) => (
+                <div
+                  key={h.day}
+                  className="flex flex-wrap items-center gap-3 rounded-lg border border-border px-3 py-2"
+                >
+                  <span className="w-16 shrink-0 text-sm font-medium">
+                    {h.day}
                   </span>
-                </div>
 
-                {h.isOpen && (
                   <div className="flex items-center gap-2">
-                    <Input
-                      type="time"
-                      dir="ltr"
-                      className="w-28"
-                      value={h.openTime}
-                      onChange={(e) =>
-                        handleHourChange(h.day, { openTime: e.target.value })
+                    <Switch
+                      checked={h.isOpen}
+                      onCheckedChange={(checked) =>
+                        handleHourChange(h.day, { isOpen: checked })
                       }
                     />
-                    <span className="text-sm text-muted-foreground">تا</span>
-                    <Input
-                      type="time"
-                      dir="ltr"
-                      className="w-28"
-                      value={h.closeTime}
-                      onChange={(e) =>
-                        handleHourChange(h.day, { closeTime: e.target.value })
-                      }
-                    />
+                    <span className="text-sm text-muted-foreground">
+                      {h.isOpen ? "باز" : "تعطیل"}
+                    </span>
                   </div>
-                )}
-              </div>
-            ))}
-          </div>
 
-          <Button onClick={handleSaveHours} className="self-start">
-            ذخیره ساعات کاری
-          </Button>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardContent className="flex flex-col gap-4 p-4">
-          <h2 className="font-semibold">تغییر رمز عبور</h2>
-
-          <div className="grid max-w-md gap-4">
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="current-password">رمز عبور فعلی</Label>
-              <Input
-                id="current-password"
-                type="password"
-                dir="ltr"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="new-password">رمز عبور جدید</Label>
-              <Input
-                id="new-password"
-                type="password"
-                dir="ltr"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="confirm-password">تکرار رمز جدید</Label>
-              <Input
-                id="confirm-password"
-                type="password"
-                dir="ltr"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-              />
+                  {h.isOpen && (
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="time"
+                        dir="ltr"
+                        className="w-28"
+                        value={h.openTime}
+                        onChange={(e) =>
+                          handleHourChange(h.day, { openTime: e.target.value })
+                        }
+                      />
+                      <span className="text-sm text-muted-foreground">تا</span>
+                      <Input
+                        type="time"
+                        dir="ltr"
+                        className="w-28"
+                        value={h.closeTime}
+                        onChange={(e) =>
+                          handleHourChange(h.day, { closeTime: e.target.value })
+                        }
+                      />
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
 
-            <Button onClick={handleChangePassword} className="self-start">
-              تغییر رمز عبور
+            <Button onClick={handleSaveHours} className="self-start">
+              ذخیره ساعات کاری
             </Button>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="flex flex-col gap-4 p-4">
+            <h2 className="font-semibold">تغییر رمز عبور</h2>
+
+            <div className="grid gap-4">
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="current-password">رمز عبور فعلی</Label>
+                <Input
+                  id="current-password"
+                  type="password"
+                  dir="ltr"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="new-password">رمز عبور جدید</Label>
+                <Input
+                  id="new-password"
+                  type="password"
+                  dir="ltr"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="confirm-password">تکرار رمز جدید</Label>
+                <Input
+                  id="confirm-password"
+                  type="password"
+                  dir="ltr"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                />
+              </div>
+
+              <Button onClick={handleChangePassword} className="self-start">
+                تغییر رمز عبور
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </main>
   );
 }
