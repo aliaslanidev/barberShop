@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: barbershop_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: barbershop
+      POSTGRES_PASSWORD: barbershop
+      POSTGRES_DB: barbershop
+    ports:
+      # پورت چپ (میزبان/ویندوز) رو عمداً غیرپیش‌فرض گذاشتیم (5433 نه 5432)
+      # تا با هر Postgres دیگه‌ای که رو سیستمت (حتی تو داکر پروژه‌ی دیگه) هست تداخل نکنه.
+      - "5433:5432"
+    volumes:
+      # اسم volume مخصوص همین پروژه‌ست، با هیچ پروژه‌ی دیگه‌ای مشترک نیست.
+      - barbershop_pgdata:/var/lib/postgresql/data
+
+volumes:
+  barbershop_pgdata:
+    name: barbershop_pgdata

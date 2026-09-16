@@ -1,0 +1,207 @@
+// اسکیمای دیتابیس — معادل واقعیِ چیزی که الان تو lib/data/*.ts با آرایه‌های in-memory
+// شبیه‌سازی شده. هر مدل زیر رو با فایل mock متناظرش مقایسه کن تا رابطه رو ببینی:
+// User          -> mock-accounts.ts / mock-session.ts
+// BarberProfile -> barbers.ts
+// Service       -> services.ts
+// Booking       -> bookings.ts + appointments.ts (این دو تو دنیای واقعی یکی هستن)
+// TimeOff       -> time-off.ts
+// SalonHoliday  -> holidays.ts
+// SalonSettings -> salon-settings.ts
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  MANAGER
+  BARBER
+  CUSTOMER
+}
+
+enum BookingStatus {
+  CONFIRMED // نوبت ثبت‌شده، هنوز شروع نشده
+  IN_PROGRESS // آرایشگر سرویس رو شروع کرده
+  COMPLETED
+  CANCELLED
+}
+
+enum Weekday {
+  SATURDAY
+  SUNDAY
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+}
+
+// --- کاربران و احراز هویت ---------------------------------------------------
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  mobile       String   @unique
+  passwordHash String
+  role         Role
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  barberProfile BarberProfile?
+  bookings      Booking[]       @relation("CustomerBookings")
+
+  @@map("users")
+}
+
+// اطلاعات اختصاصیِ آرایشگر — هر آرایشگر دقیقاً یک User با role=BARBER داره
+// و یک BarberProfile متناظر که فیلدهای اضافه (bio, permissions, ...) توشه.
+model BarberProfile {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bio       String   @default("")
+  initials  String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  // پرمیشن‌های اختیاری — هرکدوم رو ادمین جدا فعال/غیرفعال می‌کنه، هیچ‌کدوم
+  // به‌صورت خودکار از روی «نوع» آرایشگر ست نمی‌شن (طبق منطقی که تو
+  // barbers.ts و barber-permissions.ts پیاده‌سازی شده بود).
+  manageServices     Boolean @default(false)
+  managePricing      Boolean @default(false)
+  manageSchedule     Boolean @default(false)
+  manageTimeOff      Boolean @default(false)
+  blockSlots         Boolean @default(false)
+  cancelOwnBookings  Boolean @default(false)
+
+  services  BarberService[]
+  bookings  Booking[]
+  timeOffs  TimeOff[]
+  leaveRequests LeaveRequest[]
+
+  @@map("barber_profiles")
+}
+
+// --- خدمات -------------------------------------------------------------------
+
+model Service {
+  id         String   @id @default(cuid())
+  title      String
+  desc       String
+  priceValue Int // به تومان
+  icon       String // key متناظر با SERVICE_ICONS تو فرانت (scissors|sparkles|droplet|palette)
+  featured   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  barbers  BarberService[]
+  bookings Booking[]
+
+  @@map("services")
+}
+
+// جدول واسط many-to-many بین آرایشگر و خدماتی که ارائه می‌ده
+model BarberService {
+  barberId  String
+  serviceId String
+
+  barber  BarberProfile @relation(fields: [barberId], references: [id], onDelete: Cascade)
+  service Service       @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@id([barberId, serviceId])
+  @@map("barber_services")
+}
+
+// --- نوبت‌ها -------------------------------------------------------------------
+
+// این مدل جایگزین هم bookings.ts (دید مشتری) و هم appointments.ts (دید آرایشگر) می‌شه؛
+// چون هر دو در واقع یک چیزن، فقط از دو زاویه دیده می‌شدن.
+model Booking {
+  id         String        @id @default(cuid())
+  customerId String
+  barberId   String
+  serviceId  String
+  date       DateTime // تاریخ نوبت (میلادی در دیتابیس؛ تبدیل به جلالی سمت فرانت انجام می‌شه)
+  time       String // مثلاً "14:00"
+  status     BookingStatus @default(CONFIRMED)
+  notes      String?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  customer User          @relation("CustomerBookings", fields: [customerId], references: [id])
+  barber   BarberProfile @relation(fields: [barberId], references: [id])
+  service  Service       @relation(fields: [serviceId], references: [id])
+
+  @@index([barberId, date])
+  @@index([customerId])
+  @@map("bookings")
+}
+
+// --- مرخصی و تعطیلات -----------------------------------------------------------
+
+enum LeaveRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model TimeOff {
+  id       String   @id @default(cuid())
+  barberId String
+  date     DateTime
+
+  barber BarberProfile @relation(fields: [barberId], references: [id], onDelete: Cascade)
+
+  @@map("time_offs")
+}
+
+// درخواست مرخصی برای آرایشگرهایی که پرمیشن manageTimeOff رو ندارن.
+// بعد از تایید ادمین/مدیر سالن، یک ردیف متناظر در TimeOff ساخته می‌شه.
+model LeaveRequest {
+  id         String             @id @default(cuid())
+  barberId   String
+  date       DateTime
+  reason     String?
+  status     LeaveRequestStatus @default(PENDING)
+  reviewedBy String? // userId ادمین/مدیر سالنی که تایید/رد کرده
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+
+  barber BarberProfile @relation(fields: [barberId], references: [id], onDelete: Cascade)
+
+  @@map("leave_requests")
+}
+
+model SalonHoliday {
+  id     String   @id @default(cuid())
+  date   DateTime
+  reason String?
+
+  @@map("salon_holidays")
+}
+
+// --- تنظیمات سالن ---------------------------------------------------------------
+
+// رکورد singleton — همیشه فقط یک ردیف داره (id ثابت "main")
+model SalonSettings {
+  id      String @id @default("main")
+  name    String @default("سالن آرایشی")
+  address String @default("")
+  phone   String @default("")
+
+  @@map("salon_settings")
+}
+
+model WorkingHours {
+  id        String  @id @default(cuid())
+  day       Weekday @unique
+  isOpen    Boolean @default(true)
+  openTime  String  @default("09:00")
+  closeTime String  @default("20:00")
+
+  @@map("working_hours")
+}
