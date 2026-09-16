@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
+import type { DateObject } from "react-multi-date-picker";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,37 +13,40 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
+import { JalaliDatePicker } from "@/components/ui/jalali-date-picker";
+import { DataTable } from "@/components/ui/data-table";
 import { cn } from "@/lib/utils";
 
 import {
   getAllAppointments,
   cancelAppointment,
-  type ServiceSessionStatus,
 } from "@/lib/data/appointments";
 import { getAllBarbers } from "@/lib/data/barbers";
+import {
+  STATUS_LABELS,
+  formatPersianDate,
+  getBookingColumns,
+} from "./columns";
 
-const STATUS_LABELS: Record<ServiceSessionStatus, string> = {
-  upcoming: "در انتظار",
-  in_progress: "در حال انجام",
-  completed: "انجام‌شده",
-  cancelled: "لغو‌شده",
-};
+type DayFilter = "today" | "tomorrow" | "upcoming7" | "history" | "all" | "custom";
 
-const STATUS_STYLES: Record<ServiceSessionStatus, string> = {
-  upcoming: "bg-blue-100 text-blue-700",
-  in_progress: "bg-amber-100 text-amber-700",
-  completed: "bg-green-100 text-green-700",
-  cancelled: "bg-red-100 text-red-700",
-};
+const DAY_TABS: { value: DayFilter; label: string }[] = [
+  { value: "today", label: "امروز" },
+  { value: "tomorrow", label: "فردا" },
+  { value: "upcoming7", label: "۷ روز آینده" },
+  { value: "history", label: "تاریخچه" },
+  { value: "all", label: "همه" },
+];
 
-// اگه lib/data/services.ts داری، این رو با اسم واقعی سرویس‌ها جایگزین کن
-const SERVICE_LABELS: Record<string, string> = {
-  haircut: "اصلاح مو",
-  beard: "اصلاح ریش",
-  color: "رنگ مو",
-  facial: "پاکسازی پوست",
-};
+function toISODate(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+function addDays(base: Date, days: number): Date {
+  const copy = new Date(base);
+  copy.setDate(copy.getDate() + days);
+  return copy;
+}
 
 export default function AdminBookingsPage() {
   const barbers = getAllBarbers();
@@ -50,6 +54,28 @@ export default function AdminBookingsPage() {
   const [search, setSearch] = useState("");
   const [barberFilter, setBarberFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+
+  // --- فیلتر روز/تاریخ ---
+  const [dayFilter, setDayFilter] = useState<DayFilter>("today");
+  const [customDate, setCustomDate] = useState<DateObject | null>(null);
+
+  const todayStr = useMemo(() => toISODate(new Date()), []);
+  const tomorrowStr = useMemo(() => toISODate(addDays(new Date(), 1)), []);
+  const weekEndStr = useMemo(() => toISODate(addDays(new Date(), 6)), []);
+
+  // معادل میلادی (ISO) تاریخ شمسی انتخاب‌شده، برای مقایسه با appointment.date
+  // toDate() صرف‌نظر از تقویم نمایشی، همون لحظه‌ی واقعی رو به‌صورت Date میلادی برمی‌گردونه
+  const customDateStr = customDate ? toISODate(customDate.toDate()) : "";
+
+  function handleSelectTab(tab: DayFilter) {
+    setDayFilter(tab);
+    setCustomDate(null);
+  }
+
+  function handleCustomDateChange(value: DateObject | null) {
+    setCustomDate(value);
+    setDayFilter(value ? "custom" : "today");
+  }
 
   const barberNameById = useMemo(() => {
     const map = new Map<string, string>();
@@ -59,21 +85,52 @@ export default function AdminBookingsPage() {
 
   const filtered = useMemo(() => {
     return appointments
+      .filter((a) => {
+        switch (dayFilter) {
+          case "today":
+            return a.date === todayStr;
+          case "tomorrow":
+            return a.date === tomorrowStr;
+          case "upcoming7":
+            return a.date >= todayStr && a.date <= weekEndStr;
+          case "history":
+            return a.date < todayStr;
+          case "custom":
+            return a.date === customDateStr;
+          case "all":
+          default:
+            return true;
+        }
+      })
       .filter((a) => barberFilter === "all" || a.barberId === barberFilter)
       .filter((a) => statusFilter === "all" || a.status === statusFilter)
       .filter(
         (a) =>
           !search.trim() ||
           a.customerName.includes(search.trim()) ||
-          a.customerPhone.includes(search.trim())
-      )
-      .sort((a, b) => a.time.localeCompare(b.time));
-  }, [appointments, barberFilter, statusFilter, search]);
+          a.customerPhone.includes(search.trim()),
+      );
+  }, [
+    appointments,
+    dayFilter,
+    customDateStr,
+    todayStr,
+    tomorrowStr,
+    weekEndStr,
+    barberFilter,
+    statusFilter,
+    search,
+  ]);
 
   function handleCancel(id: string) {
     cancelAppointment(id);
     setAppointments(getAllAppointments());
   }
+
+  const columns = useMemo(
+    () => getBookingColumns({ barberNameById, onCancel: handleCancel }),
+    [barberNameById],
+  );
 
   return (
     <main className="space-y-6">
@@ -83,6 +140,56 @@ export default function AdminBookingsPage() {
           لیست همه‌ی نوبت‌های ثبت‌شده، فارغ از آرایشگر
         </p>
       </div>
+
+      {/* باکس انتخاب روز / تاریخ */}
+      <Card>
+        <CardContent className="flex flex-col gap-3 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              {DAY_TABS.map((tab) => (
+                <button
+                  key={tab.value}
+                  type="button"
+                  onClick={() => handleSelectTab(tab.value)}
+                  className={cn(
+                    "rounded-full border px-4 py-1.5 text-sm font-medium transition-colors",
+                    dayFilter === tab.value
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border bg-background text-muted-foreground hover:bg-muted",
+                  )}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground shrink-0">
+                تاریخ دلخواه:
+              </span>
+              <JalaliDatePicker
+                value={customDate}
+                onChange={handleCustomDateChange}
+                placeholder="انتخاب تاریخ"
+              />
+            </div>
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            {dayFilter === "custom" && customDate
+              ? `نمایش نوبت‌های تاریخ ${customDate.format("YYYY/MM/DD")}`
+              : dayFilter === "today"
+                ? `نمایش نوبت‌های امروز، ${formatPersianDate(todayStr)}`
+                : dayFilter === "tomorrow"
+                  ? `نمایش نوبت‌های فردا، ${formatPersianDate(tomorrowStr)}`
+                  : dayFilter === "upcoming7"
+                    ? "نمایش نوبت‌های ۷ روز آینده"
+                    : dayFilter === "history"
+                      ? "نمایش تاریخچه‌ی نوبت‌های گذشته"
+                      : "نمایش همه‌ی نوبت‌ها"}
+          </p>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardContent className="flex flex-col gap-4 p-4">
@@ -126,71 +233,11 @@ export default function AdminBookingsPage() {
             </Select>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b text-right text-muted-foreground">
-                  <th className="p-2 font-medium">ساعت</th>
-                  <th className="p-2 font-medium">مشتری</th>
-                  <th className="p-2 font-medium">شماره تماس</th>
-                  <th className="p-2 font-medium">آرایشگر</th>
-                  <th className="p-2 font-medium">خدمت</th>
-                  <th className="p-2 font-medium">وضعیت</th>
-                  <th className="p-2 font-medium">عملیات</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((a) => (
-                  <tr key={a.id} className="border-b last:border-0">
-                    <td className="p-2 font-mono">{a.time}</td>
-                    <td className="p-2">{a.customerName}</td>
-                    <td className="p-2 font-mono text-left" dir="ltr">
-                      {a.customerPhone}
-                    </td>
-                    <td className="p-2">
-                      {barberNameById.get(a.barberId) ?? a.barberId}
-                    </td>
-                    <td className="p-2">
-                      {SERVICE_LABELS[a.serviceId] ?? a.serviceId}
-                    </td>
-                    <td className="p-2">
-                      <span
-                        className={cn(
-                          "rounded-full px-2 py-1 text-xs font-medium",
-                          STATUS_STYLES[a.status]
-                        )}
-                      >
-                        {STATUS_LABELS[a.status]}
-                      </span>
-                    </td>
-                    <td className="p-2">
-                      {a.status !== "cancelled" &&
-                        a.status !== "completed" && (
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => handleCancel(a.id)}
-                          >
-                            لغو نوبت
-                          </Button>
-                        )}
-                    </td>
-                  </tr>
-                ))}
-
-                {filtered.length === 0 && (
-                  <tr>
-                    <td
-                      colSpan={7}
-                      className="p-6 text-center text-muted-foreground"
-                    >
-                      نوبتی با این فیلترها پیدا نشد
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+          <DataTable
+            columns={columns}
+            data={filtered}
+            emptyMessage="نوبتی با این فیلترها پیدا نشد"
+          />
         </CardContent>
       </Card>
     </main>
