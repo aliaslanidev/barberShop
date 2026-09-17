@@ -1,13 +1,3 @@
-// اسکیمای دیتابیس — معادل واقعیِ چیزی که الان تو lib/data/*.ts با آرایه‌های in-memory
-// شبیه‌سازی شده. هر مدل زیر رو با فایل mock متناظرش مقایسه کن تا رابطه رو ببینی:
-// User          -> mock-accounts.ts / mock-session.ts
-// BarberProfile -> barbers.ts
-// Service       -> services.ts
-// Booking       -> bookings.ts + appointments.ts (این دو تو دنیای واقعی یکی هستن)
-// TimeOff       -> time-off.ts
-// SalonHoliday  -> holidays.ts
-// SalonSettings -> salon-settings.ts
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -41,8 +31,6 @@ enum Weekday {
   FRIDAY
 }
 
-// --- کاربران و احراز هویت ---------------------------------------------------
-
 model User {
   id           String   @id @default(cuid())
   name         String
@@ -73,6 +61,7 @@ model BarberProfile {
   manageTimeOff      Boolean @default(false)
   blockSlots         Boolean @default(false)
   cancelOwnBookings  Boolean @default(false)
+  viewCustomers      Boolean @default(false)
 
   services  BarberService[]
   bookings  Booking[]
@@ -81,8 +70,6 @@ model BarberProfile {
 
   @@map("barber_profiles")
 }
-
-// --- خدمات -------------------------------------------------------------------
 
 model Service {
   id         String   @id @default(cuid())
@@ -99,12 +86,11 @@ model Service {
   @@map("services")
 }
 
-// جدول واسط many-to-many بین آرایشگر و خدماتی که ارائه می‌ده
 model BarberService {
   barberId    String
   serviceId   String
-  customPrice Int? // فقط وقتی پر می‌شه که آرایشگر پرمیشن managePricing داشته باشه؛
-                    // اگه null بود، قیمت نمایشی = Service.priceValue
+  customPrice Int?
+  isActive    Boolean @default(true)
 
   barber  BarberProfile @relation(fields: [barberId], references: [id], onDelete: Cascade)
   service Service       @relation(fields: [serviceId], references: [id], onDelete: Cascade)
@@ -112,8 +98,6 @@ model BarberService {
   @@id([barberId, serviceId])
   @@map("barber_services")
 }
-
-// --- نوبت‌ها -------------------------------------------------------------------
 
 model Booking {
   id         String        @id @default(cuid())
@@ -135,8 +119,6 @@ model Booking {
   @@index([customerId])
   @@map("bookings")
 }
-
-// --- مرخصی و تعطیلات -----------------------------------------------------------
 
 enum LeaveRequestStatus {
   PENDING
@@ -176,8 +158,6 @@ model SalonHoliday {
 
   @@map("salon_holidays")
 }
-
-// --- تنظیمات سالن ---------------------------------------------------------------
 
 model SalonSettings {
   id      String @id @default("main")

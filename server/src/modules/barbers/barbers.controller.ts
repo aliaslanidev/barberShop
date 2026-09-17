@@ -5,6 +5,7 @@ import {
   updateBarberSchema,
   updatePermissionsSchema,
   updateServicePriceSchema,
+  updateServiceActiveSchema,
 } from "@/modules/barbers/barbers.schema";
 
 export async function listBarbersHandler(_req: Request, res: Response) {
@@ -41,6 +42,16 @@ export async function updateOwnServicePriceHandler(req: Request, res: Response) 
     req.user!.userId,
     req.params.serviceId,
     input.customPrice
+  );
+  res.json(barber);
+}
+
+export async function updateOwnServiceActiveHandler(req: Request, res: Response) {
+  const input = updateServiceActiveSchema.parse(req.body);
+  const barber = await barbersService.updateOwnServiceActive(
+    req.user!.userId,
+    req.params.serviceId,
+    input.isActive
   );
   res.json(barber);
 }

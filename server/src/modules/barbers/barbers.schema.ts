@@ -23,15 +23,19 @@ export const updatePermissionsSchema = z.object({
   manageTimeOff: z.boolean().optional(),
   blockSlots: z.boolean().optional(),
   cancelOwnBookings: z.boolean().optional(),
+  viewCustomers: z.boolean().optional(),
 });
 
-// آرایشگر با پرمیشن managePricing قیمت خودش رو برای یه سرویس مشخص ست می‌کنه.
-// null یعنی برگرد به قیمت پیش‌فرض سالن.
 export const updateServicePriceSchema = z.object({
   customPrice: z.number().int().positive().nullable(),
+});
+
+export const updateServiceActiveSchema = z.object({
+  isActive: z.boolean(),
 });
 
 export type CreateBarberInput = z.infer<typeof createBarberSchema>;
 export type UpdateBarberInput = z.infer<typeof updateBarberSchema>;
 export type UpdatePermissionsInput = z.infer<typeof updatePermissionsSchema>;
 export type UpdateServicePriceInput = z.infer<typeof updateServicePriceSchema>;
+export type UpdateServiceActiveInput = z.infer<typeof updateServiceActiveSchema>;

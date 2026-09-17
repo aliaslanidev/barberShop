@@ -112,12 +112,14 @@ export interface ApiBarberPermissions {
   manageTimeOff: boolean;
   blockSlots: boolean;
   cancelOwnBookings: boolean;
+  viewCustomers: boolean;
 }
 
 export interface ApiBarberService {
   barberId: string;
   serviceId: string;
   customPrice: number | null;
+  isActive: boolean;
   service: ApiService;
 }
 
@@ -194,6 +196,18 @@ export function updateMyServicePriceApi(
   return apiFetch<ApiBarber>(`/barbers/me/services/${serviceId}/price`, {
     method: "PATCH",
     body: { customPrice },
+    token,
+  });
+}
+
+export function updateMyServiceActiveApi(
+  serviceId: string,
+  isActive: boolean,
+  token: string
+) {
+  return apiFetch<ApiBarber>(`/barbers/me/services/${serviceId}/active`, {
+    method: "PATCH",
+    body: { isActive },
     token,
   });
 }

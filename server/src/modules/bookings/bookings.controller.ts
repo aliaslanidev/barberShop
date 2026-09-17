@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import * as bookingsService from "@/modules/bookings/bookings.service";
+import * as barbersService from "@/modules/barbers/barbers.service";
 import {
   createBookingSchema,
   updateBookingStatusSchema,
@@ -9,14 +10,12 @@ import {
 } from "@/modules/bookings/bookings.schema";
 import { AppError } from "@/utils/AppError";
 
-// عمومی — تو فلوی بوکینگ، تاریخ/ساعت قبل از مرحله‌ی auth انتخاب می‌شن
 export async function availabilityHandler(req: Request, res: Response) {
   const { barberId, date } = availabilityQuerySchema.parse(req.query);
   const slots = await bookingsService.getAvailableSlots(barberId, date);
   res.json(slots);
 }
 
-// برای رنگ‌کردن/غیرفعال‌کردن روزهای بدون ظرفیت تو تقویم رزرو
 export async function availabilityRangeHandler(req: Request, res: Response) {
   const { barberId, from, to } = availabilityRangeQuerySchema.parse(req.query);
   const dates = await bookingsService.getAvailableDatesInRange(barberId, from, to);
@@ -29,8 +28,6 @@ export async function createBookingHandler(req: Request, res: Response) {
   res.status(201).json(booking);
 }
 
-// نتیجه بر اساس نقش کاربر خودکار محدود می‌شه — دقیقاً معادل منطقی که
-// قبلاً تو getUpcomingBookings/getBarberCustomers/... تو فرانت mock بود
 export async function listBookingsHandler(req: Request, res: Response) {
   const query = listBookingsQuerySchema.parse(req.query);
   const user = req.user!;
@@ -42,7 +39,6 @@ export async function listBookingsHandler(req: Request, res: Response) {
     if (!barberId) throw new AppError("پروفایل آرایشگری برای این حساب پیدا نشد", 404);
     query.barberId = barberId;
   }
-  // ADMIN/MANAGER: هر فیلتری که تو query اومده همون‌طور اعمال می‌شه (یا خالی = همه)
 
   const bookings = await bookingsService.listBookings(query);
   res.json(bookings);
@@ -71,9 +67,16 @@ export async function updateBookingStatusHandler(req: Request, res: Response) {
   res.json(booking);
 }
 
+// فقط اگه پرمیشن viewCustomers رو داشته باشه
 export async function myCustomersHandler(req: Request, res: Response) {
   const barberId = await bookingsService.getBarberProfileIdForUser(req.user!.userId);
   if (!barberId) throw new AppError("پروفایل آرایشگری برای این حساب پیدا نشد", 404);
+
+  const barber = await barbersService.getBarberById(barberId);
+  if (!barber.viewCustomers) {
+    throw new AppError("شما اجازه‌ی مشاهده‌ی لیست مشتریان را ندارید", 403);
+  }
+
   const customers = await bookingsService.getBarberCustomers(barberId);
   res.json(customers);
 }

@@ -7,10 +7,7 @@ import type {
   UpdateBookingStatusInput,
 } from "@/modules/bookings/bookings.schema";
 
-// ==================== کمک‌تابع‌های تاریخ ====================
-
 function parseDateOnly(dateStr: string): Date {
-  // ذخیره‌ی تاریخ به‌صورت نیمه‌شب UTC، تا مقایسه‌ها همیشه دقیق باشن
   return new Date(`${dateStr}T00:00:00.000Z`);
 }
 
@@ -31,8 +28,6 @@ const WEEKDAY_BY_JS_DAY: Record<number, Weekday> = {
   6: "SATURDAY",
 };
 
-// ⚠️ فرض معماری: چون Service فیلد duration نداره، هر نوبت دقیقاً ۶۰ دقیقه
-// در نظر گرفته می‌شه (دقیقاً همون منطق mock قبلی تو lib/data/availability.ts)
 const SLOT_DURATION_MINUTES = 60;
 
 function generateSlotsInRange(openTime: string, closeTime: string): string[] {
@@ -49,10 +44,6 @@ function generateSlotsInRange(openTime: string, closeTime: string): string[] {
   }
   return slots;
 }
-
-// ==================== Availability واقعی ====================
-// فرمول طبق کامنت خودِ availability.ts قدیمی:
-// Working Hours + Fixed Slots - Holidays - TimeOff - Existing Bookings
 
 export async function getAvailableSlots(barberId: string, dateStr: string): Promise<string[]> {
   const barber = await prisma.barberProfile.findUnique({ where: { id: barberId } });
@@ -73,7 +64,7 @@ export async function getAvailableSlots(barberId: string, dateStr: string): Prom
       where: {
         barberId,
         date: { gte, lt },
-        status: { not: "CANCELLED" }, // فقط نوبت لغوشده اسلات رو آزاد می‌کنه
+        status: { not: "CANCELLED" },
       },
       select: { time: true },
     }),
@@ -85,10 +76,6 @@ export async function getAvailableSlots(barberId: string, dateStr: string): Prom
   const allSlots = generateSlotsInRange(workingHours.openTime, workingHours.closeTime);
   return allSlots.filter((slot) => !bookedTimes.has(slot));
 }
-
-// ==================== ظرفیت یه بازه (برای رنگ‌کردن تقویم) ====================
-// نسخه‌ی بهینه‌ی getAvailableSlots برای یه بازه‌ی چندروزه: به‌جای N کوئری
-// جدا برای هر روز، فقط ۳ کوئری (holidays/timeOff/bookings) رو رو کل بازه می‌زنه.
 
 export async function getAvailableDatesInRange(
   barberId: string,
@@ -102,7 +89,7 @@ export async function getAvailableDatesInRange(
   const hoursByDay = new Map(allWorkingHours.map((w) => [w.day, w]));
 
   const from = parseDateOnly(fromStr);
-  const toExclusive = dateRangeForDay(toStr).lt; // شامل خودِ toStr هم بشه
+  const toExclusive = dateRangeForDay(toStr).lt;
 
   const [holidays, timeOffs, bookings] = await Promise.all([
     prisma.salonHoliday.findMany({ where: { date: { gte: from, lt: toExclusive } } }),
@@ -141,8 +128,6 @@ export async function getAvailableDatesInRange(
   return result;
 }
 
-// ==================== ساخت نوبت ====================
-
 const bookingIncludes = {
   barber: { include: { user: true } },
   service: true,
@@ -155,8 +140,14 @@ export async function createBooking(customerId: string, input: CreateBookingInpu
     throw new AppError("این اسلات زمانی دیگه در دسترس نیست، لطفاً زمان دیگری انتخاب کنید", 409);
   }
 
-  const service = await prisma.service.findUnique({ where: { id: input.serviceId } });
-  if (!service) throw new AppError("سرویس پیدا نشد", 404);
+  // سرویس باید هم به این آرایشگر assign شده باشه، هم توسط خودش (اگه پرمیشن
+  // manageServices داره) غیرفعال نشده باشه
+  const barberService = await prisma.barberService.findUnique({
+    where: { barberId_serviceId: { barberId: input.barberId, serviceId: input.serviceId } },
+  });
+  if (!barberService || !barberService.isActive) {
+    throw new AppError("این سرویس در حال حاضر توسط این آرایشگر ارائه نمی‌شود", 400);
+  }
 
   return prisma.booking.create({
     data: {
@@ -171,8 +162,6 @@ export async function createBooking(customerId: string, input: CreateBookingInpu
     include: bookingIncludes,
   });
 }
-
-// ==================== خواندن نوبت‌ها ====================
 
 export async function getBarberProfileIdForUser(userId: string): Promise<string | null> {
   const profile = await prisma.barberProfile.findUnique({ where: { userId } });
@@ -217,8 +206,6 @@ export async function getBarberCustomers(barberId: string) {
   });
   return bookings.map((b) => ({ name: b.customer.name, phone: b.customer.mobile }));
 }
-
-// ==================== تغییر وضعیت (شروع/پایان/لغو) ====================
 
 interface ActingUser {
   userId: string;

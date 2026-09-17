@@ -7,6 +7,7 @@ import {
   getBarberHandler,
   listBarbersHandler,
   updateBarberHandler,
+  updateOwnServiceActiveHandler,
   updateOwnServicePriceHandler,
   updatePermissionsHandler,
 } from "@/modules/barbers/barbers.controller";
@@ -21,6 +22,13 @@ barbersRouter.patch(
   requireAuth,
   requireRole("BARBER"),
   asyncHandler(updateOwnServicePriceHandler)
+);
+
+barbersRouter.patch(
+  "/me/services/:serviceId/active",
+  requireAuth,
+  requireRole("BARBER"),
+  asyncHandler(updateOwnServiceActiveHandler)
 );
 
 barbersRouter.post("/", requireAuth, requireRole("ADMIN"), asyncHandler(createBarberHandler));

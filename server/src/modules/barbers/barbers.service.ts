@@ -93,28 +93,51 @@ export async function deleteBarber(id: string) {
   await prisma.user.delete({ where: { id: barber.user.id } });
 }
 
-// آرایشگر (نه ادمین) قیمت اختصاصی خودش رو برای یه سرویس ست می‌کنه.
-// userId از JWT میاد (User.id)، پس اول باید BarberProfile متناظرش رو پیدا کنیم.
-export async function updateOwnServicePrice(
-  userId: string,
-  serviceId: string,
-  customPrice: number | null
-) {
+async function getOwnBarberServiceOrThrow(userId: string, serviceId: string) {
   const barberProfile = await prisma.barberProfile.findUnique({ where: { userId } });
   if (!barberProfile) throw new AppError("پروفایل آرایشگر پیدا نشد", 404);
-
-  if (!barberProfile.managePricing) {
-    throw new AppError("شما اجازه‌ی تعیین قیمت را ندارید", 403);
-  }
 
   const link = await prisma.barberService.findUnique({
     where: { barberId_serviceId: { barberId: barberProfile.id, serviceId } },
   });
   if (!link) throw new AppError("این سرویس برای شما تعریف نشده است", 404);
 
+  return { barberProfile, link };
+}
+
+export async function updateOwnServicePrice(
+  userId: string,
+  serviceId: string,
+  customPrice: number | null
+) {
+  const { barberProfile } = await getOwnBarberServiceOrThrow(userId, serviceId);
+
+  if (!barberProfile.managePricing) {
+    throw new AppError("شما اجازه‌ی تعیین قیمت را ندارید", 403);
+  }
+
   await prisma.barberService.update({
     where: { barberId_serviceId: { barberId: barberProfile.id, serviceId } },
     data: { customPrice },
+  });
+
+  return getBarberById(barberProfile.id);
+}
+
+export async function updateOwnServiceActive(
+  userId: string,
+  serviceId: string,
+  isActive: boolean
+) {
+  const { barberProfile } = await getOwnBarberServiceOrThrow(userId, serviceId);
+
+  if (!barberProfile.manageServices) {
+    throw new AppError("شما اجازه‌ی فعال/غیرفعال‌کردن خدمات را ندارید", 403);
+  }
+
+  await prisma.barberService.update({
+    where: { barberId_serviceId: { barberId: barberProfile.id, serviceId } },
+    data: { isActive },
   });
 
   return getBarberById(barberProfile.id);

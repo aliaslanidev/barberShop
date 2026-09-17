@@ -27,7 +27,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-// import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -44,12 +43,13 @@ import {
 } from "@radix-ui/react-popover";
 
 const OPTIONAL_PERMISSIONS: { key: keyof ApiBarberPermissions; label: string }[] = [
-  { key: "manageServices", label: "مدیریت خدمات" },
+  { key: "manageServices", label: "فعال/غیرفعال‌کردن سرویس‌های خودش" },
   { key: "managePricing", label: "مدیریت قیمت" },
   { key: "manageSchedule", label: "مدیریت زمان‌بندی" },
   { key: "manageTimeOff", label: "مدیریت مرخصی" },
   { key: "blockSlots", label: "بلاک کردن اسلات" },
   { key: "cancelOwnBookings", label: "کنسل کردن نوبت تاییدشده" },
+  { key: "viewCustomers", label: "دیدن لیست مشتری‌ها" },
 ];
 
 const createBarberSchema = z.object({
@@ -123,6 +123,7 @@ export default function AdminBarbersPage() {
         manageTimeOff: found.manageTimeOff,
         blockSlots: found.blockSlots,
         cancelOwnBookings: found.cancelOwnBookings,
+        viewCustomers: found.viewCustomers,
       });
       setDraftServiceIds(found.services.map((s) => s.serviceId));
     } else {
@@ -254,6 +255,7 @@ export default function AdminBarbersPage() {
       manageTimeOff: selectedBarber.manageTimeOff,
       blockSlots: selectedBarber.blockSlots,
       cancelOwnBookings: selectedBarber.cancelOwnBookings,
+      viewCustomers: selectedBarber.viewCustomers,
     });
   }
 
@@ -583,7 +585,6 @@ export default function AdminBarbersPage() {
               </Button>
             </div>
 
-            {/* خدمات این آرایشگر */}
             <div className="flex flex-col gap-3 border-t border-border pt-4">
               <p className="text-sm font-medium">خدماتی که این آرایشگر انجام می‌دهد</p>
               {services.length === 0 ? (
@@ -591,21 +592,21 @@ export default function AdminBarbersPage() {
                   هنوز هیچ سرویسی تعریف نشده. اول از صفحه‌ی «خدمات» چند سرویس بساز.
                 </p>
               ) : (
-               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-  {services.map((service) => (
-    <div
-      key={service.id}
-      className="flex items-center justify-between gap-3 rounded-lg bg-secondary/40 px-3 py-2"
-    >
-      <span className="text-sm">{service.title}</span>
-      <Switch
-        checked={draftServiceIds?.includes(service.id) ?? false}
-        onCheckedChange={(v) => handleServiceDraftToggle(service.id, v)}
-        aria-label={service.title}
-      />
-    </div>
-  ))}
-</div>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {services.map((service) => (
+                    <div
+                      key={service.id}
+                      className="flex items-center justify-between gap-3 rounded-lg bg-secondary/40 px-3 py-2"
+                    >
+                      <span className="text-sm">{service.title}</span>
+                      <Switch
+                        checked={draftServiceIds?.includes(service.id) ?? false}
+                        onCheckedChange={(v) => handleServiceDraftToggle(service.id, v)}
+                        aria-label={service.title}
+                      />
+                    </div>
+                  ))}
+                </div>
               )}
 
               <div className="flex items-center justify-end gap-2 pt-2">

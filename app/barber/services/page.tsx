@@ -6,9 +6,16 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/lib/auth-context";
 import { getAuthToken } from "@/lib/data/mock-session";
-import { listBarbers, updateMyServicePriceApi, ApiError, type ApiBarber } from "@/lib/api";
+import {
+  listBarbers,
+  updateMyServicePriceApi,
+  updateMyServiceActiveApi,
+  ApiError,
+  type ApiBarber,
+} from "@/lib/api";
 import { formatToman } from "@/lib/utils";
 
 export default function BarberServicesPage() {
@@ -17,6 +24,7 @@ export default function BarberServicesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [prices, setPrices] = useState<Record<string, string>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
 
   async function refresh() {
     try {
@@ -50,22 +58,22 @@ export default function BarberServicesPage() {
     );
   }
 
-  if (!barber?.managePricing) {
+  if (!barber || (!barber.managePricing && !barber.manageServices)) {
     return (
       <div className="space-y-4">
         <h1 className="text-xl font-bold md:text-2xl">سرویس‌ها و قیمت‌گذاری</h1>
         <Card>
           <CardContent className="p-6 text-sm text-muted-foreground">
-            شما دسترسی مدیریت قیمت را ندارید؛ قیمت خدمات شما توسط سالن تعیین می‌شود.
+            شما دسترسی مدیریت خدمات/قیمت را ندارید؛ این تنظیمات توسط سالن مدیریت می‌شود.
           </CardContent>
         </Card>
       </div>
     );
   }
 
-  async function handleSave(serviceId: string) {
+  async function handleSavePrice(serviceId: string) {
     const token = getAuthToken();
-    if (!token) return;
+    if (!token || !barber?.managePricing) return;
     const raw = prices[serviceId];
     const value = Number(raw);
     if (!raw || Number.isNaN(value) || value <= 0) {
@@ -84,6 +92,21 @@ export default function BarberServicesPage() {
     }
   }
 
+  async function handleToggleActive(serviceId: string, isActive: boolean) {
+    const token = getAuthToken();
+    if (!token || !barber?.manageServices) return;
+    setTogglingId(serviceId);
+    try {
+      const updated = await updateMyServiceActiveApi(serviceId, isActive, token);
+      setBarber(updated);
+      toast.success(isActive ? "سرویس فعال شد" : "سرویس غیرفعال شد");
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "خطا در تغییر وضعیت سرویس");
+    } finally {
+      setTogglingId(null);
+    }
+  }
+
   return (
     <div className="max-w-lg space-y-6">
       <h1 className="text-xl font-bold md:text-2xl">سرویس‌ها و قیمت‌گذاری</h1>
@@ -91,25 +114,49 @@ export default function BarberServicesPage() {
         {barber.services.length === 0 ? (
           <p className="text-sm text-muted-foreground">هنوز سرویسی به شما اختصاص داده نشده است.</p>
         ) : (
-          barber.services.map(({ serviceId, service, customPrice }) => (
-            <div key={serviceId} className="space-y-2">
-              <Label htmlFor={serviceId}>{service.title}</Label>
-              <div className="flex items-center gap-2">
-                <Input
-                  id={serviceId}
-                  type="number"
-                  value={prices[serviceId] ?? ""}
-                  onChange={(e) => setPrices((p) => ({ ...p, [serviceId]: e.target.value }))}
-                />
-                <Button size="sm" disabled={savingId === serviceId} onClick={() => handleSave(serviceId)}>
-                  {savingId === serviceId ? "..." : "ذخیره"}
-                </Button>
+          barber.services.map(({ serviceId, service, customPrice, isActive }) => (
+            <div key={serviceId} className="space-y-2 rounded-lg border border-border p-3">
+              <div className="flex items-center justify-between gap-3">
+                <Label htmlFor={serviceId}>{service.title}</Label>
+                {barber.manageServices && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">
+                      {isActive ? "فعال" : "غیرفعال"}
+                    </span>
+                    <Switch
+                      checked={isActive}
+                      disabled={togglingId === serviceId}
+                      onCheckedChange={(v) => handleToggleActive(serviceId, v)}
+                      aria-label={`فعال/غیرفعال ${service.title}`}
+                    />
+                  </div>
+                )}
               </div>
-              <p className="text-xs text-muted-foreground">
-                {customPrice != null
-                  ? `قیمت اختصاصی فعلی: ${formatToman(customPrice)}`
-                  : `از قیمت پیش‌فرض سالن استفاده می‌شود: ${formatToman(service.priceValue)}`}
-              </p>
+
+              {barber.managePricing && (
+                <>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id={serviceId}
+                      type="number"
+                      value={prices[serviceId] ?? ""}
+                      onChange={(e) => setPrices((p) => ({ ...p, [serviceId]: e.target.value }))}
+                    />
+                    <Button
+                      size="sm"
+                      disabled={savingId === serviceId}
+                      onClick={() => handleSavePrice(serviceId)}
+                    >
+                      {savingId === serviceId ? "..." : "ذخیره"}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {customPrice != null
+                      ? `قیمت اختصاصی فعلی: ${formatToman(customPrice)}`
+                      : `از قیمت پیش‌فرض سالن استفاده می‌شود: ${formatToman(service.priceValue)}`}
+                  </p>
+                </>
+              )}
             </div>
           ))
         )}
