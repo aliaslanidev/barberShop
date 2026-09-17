@@ -13,9 +13,11 @@ import {
   updateBarberApi,
   updateBarberPermissionsApi,
   deleteBarberApi,
+  listServices,
   ApiError,
   type ApiBarber,
   type ApiBarberPermissions,
+  type ApiService,
 } from "@/lib/api";
 import { getAuthToken } from "@/lib/data/mock-session";
 
@@ -25,6 +27,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+// import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -71,8 +74,15 @@ type EditBarberValues = z.infer<typeof editBarberSchema>;
 
 const PERMISSIONS_BOX_MIN_HEIGHT = "min-h-[350px]";
 
+function sameIdSet(a: string[], b: string[]) {
+  if (a.length !== b.length) return false;
+  const setB = new Set(b);
+  return a.every((id) => setB.has(id));
+}
+
 export default function AdminBarbersPage() {
   const [barbers, setBarbers] = useState<ApiBarber[]>([]);
+  const [services, setServices] = useState<ApiService[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedBarberId, setSelectedBarberId] = useState<string | null>(null);
   const [comboOpen, setComboOpen] = useState(false);
@@ -81,16 +91,19 @@ export default function AdminBarbersPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [draftPermissions, setDraftPermissions] = useState<ApiBarberPermissions | null>(null);
+  const [draftServiceIds, setDraftServiceIds] = useState<string[] | null>(null);
+  const [isSavingServices, setIsSavingServices] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   const selectedBarber = barbers.find((b) => b.id === selectedBarberId) ?? null;
 
   async function refresh() {
     try {
-      const data = await listBarbers();
-      setBarbers(data);
+      const [barbersData, servicesData] = await Promise.all([listBarbers(), listServices()]);
+      setBarbers(barbersData);
+      setServices(servicesData);
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "خطا در دریافت آرایشگرها");
+      toast.error(err instanceof ApiError ? err.message : "خطا در دریافت اطلاعات");
     } finally {
       setIsLoading(false);
     }
@@ -111,8 +124,10 @@ export default function AdminBarbersPage() {
         blockSlots: found.blockSlots,
         cancelOwnBookings: found.cancelOwnBookings,
       });
+      setDraftServiceIds(found.services.map((s) => s.serviceId));
     } else {
       setDraftPermissions(null);
+      setDraftServiceIds(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedBarberId, barbers]);
@@ -121,6 +136,11 @@ export default function AdminBarbersPage() {
     !!selectedBarber &&
     !!draftPermissions &&
     OPTIONAL_PERMISSIONS.some((perm) => draftPermissions[perm.key] !== selectedBarber[perm.key]);
+
+  const isServicesDirty =
+    !!selectedBarber &&
+    !!draftServiceIds &&
+    !sameIdSet(draftServiceIds, selectedBarber.services.map((s) => s.serviceId));
 
   const visibleBarbers = isTyping
     ? barbers.filter((b) => b.user.name.includes(searchQuery.trim()))
@@ -235,6 +255,34 @@ export default function AdminBarbersPage() {
       blockSlots: selectedBarber.blockSlots,
       cancelOwnBookings: selectedBarber.cancelOwnBookings,
     });
+  }
+
+  function handleServiceDraftToggle(serviceId: string, checked: boolean) {
+    setDraftServiceIds((prev) => {
+      if (!prev) return prev;
+      return checked ? [...prev, serviceId] : prev.filter((id) => id !== serviceId);
+    });
+  }
+
+  async function handleSaveServices() {
+    if (!selectedBarber || !draftServiceIds) return;
+    const token = getAuthToken();
+    if (!token) return;
+    setIsSavingServices(true);
+    try {
+      await updateBarberApi(selectedBarber.id, { serviceIds: draftServiceIds }, token);
+      await refresh();
+      toast.success("خدمات این آرایشگر به‌روزرسانی شد");
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "خطا در ذخیره‌ی خدمات");
+    } finally {
+      setIsSavingServices(false);
+    }
+  }
+
+  function handleCancelServices() {
+    if (!selectedBarber) return;
+    setDraftServiceIds(selectedBarber.services.map((s) => s.serviceId));
   }
 
   async function handleActiveChange(barberId: string, value: boolean) {
@@ -533,6 +581,52 @@ export default function AdminBarbersPage() {
               >
                 ذخیره تغییرات
               </Button>
+            </div>
+
+            {/* خدمات این آرایشگر */}
+            <div className="flex flex-col gap-3 border-t border-border pt-4">
+              <p className="text-sm font-medium">خدماتی که این آرایشگر انجام می‌دهد</p>
+              {services.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  هنوز هیچ سرویسی تعریف نشده. اول از صفحه‌ی «خدمات» چند سرویس بساز.
+                </p>
+              ) : (
+               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+  {services.map((service) => (
+    <div
+      key={service.id}
+      className="flex items-center justify-between gap-3 rounded-lg bg-secondary/40 px-3 py-2"
+    >
+      <span className="text-sm">{service.title}</span>
+      <Switch
+        checked={draftServiceIds?.includes(service.id) ?? false}
+        onCheckedChange={(v) => handleServiceDraftToggle(service.id, v)}
+        aria-label={service.title}
+      />
+    </div>
+  ))}
+</div>
+              )}
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={!isServicesDirty}
+                  onClick={handleCancelServices}
+                >
+                  لغو
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={!isServicesDirty || isSavingServices}
+                  onClick={handleSaveServices}
+                >
+                  {isSavingServices ? "..." : "ذخیره خدمات"}
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>

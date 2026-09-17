@@ -7,14 +7,21 @@ import {
   getBarberHandler,
   listBarbersHandler,
   updateBarberHandler,
+  updateOwnServicePriceHandler,
   updatePermissionsHandler,
 } from "@/modules/barbers/barbers.controller";
 
 export const barbersRouter = Router();
 
-// لیست/جزئیات آرایشگرها برای صفحه‌ی بوکینگ عمومی هم لازمه، پس نیازی به login نیست
 barbersRouter.get("/", asyncHandler(listBarbersHandler));
 barbersRouter.get("/:id", asyncHandler(getBarberHandler));
+
+barbersRouter.patch(
+  "/me/services/:serviceId/price",
+  requireAuth,
+  requireRole("BARBER"),
+  asyncHandler(updateOwnServicePriceHandler)
+);
 
 barbersRouter.post("/", requireAuth, requireRole("ADMIN"), asyncHandler(createBarberHandler));
 barbersRouter.patch("/:id", requireAuth, requireRole("ADMIN"), asyncHandler(updateBarberHandler));

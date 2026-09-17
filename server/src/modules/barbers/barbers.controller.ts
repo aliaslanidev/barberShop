@@ -4,6 +4,7 @@ import {
   createBarberSchema,
   updateBarberSchema,
   updatePermissionsSchema,
+  updateServicePriceSchema,
 } from "@/modules/barbers/barbers.schema";
 
 export async function listBarbersHandler(_req: Request, res: Response) {
@@ -32,4 +33,14 @@ export async function updatePermissionsHandler(req: Request, res: Response) {
 export async function deleteBarberHandler(req: Request, res: Response) {
   await barbersService.deleteBarber(req.params.id);
   res.status(204).send();
+}
+
+export async function updateOwnServicePriceHandler(req: Request, res: Response) {
+  const input = updateServicePriceSchema.parse(req.body);
+  const barber = await barbersService.updateOwnServicePrice(
+    req.user!.userId,
+    req.params.serviceId,
+    input.customPrice
+  );
+  res.json(barber);
 }

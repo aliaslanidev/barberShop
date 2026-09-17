@@ -1,6 +1,3 @@
-// لایه‌ی ارتباط با بک‌اند واقعی (Express روی http://localhost:4010/api).
-// همه‌ی صفحاتی که قراره به API وصل بشن، فقط از همین فایل import می‌کنن.
-
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4010/api";
 
 export class ApiError extends Error {
@@ -26,7 +23,6 @@ async function apiFetch<T>(
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
 
-  // برای DELETE ممکنه بدنه‌ای برنگرده (204)
   const data = await res.json().catch(() => null);
 
   if (!res.ok) {
@@ -118,6 +114,13 @@ export interface ApiBarberPermissions {
   cancelOwnBookings: boolean;
 }
 
+export interface ApiBarberService {
+  barberId: string;
+  serviceId: string;
+  customPrice: number | null;
+  service: ApiService;
+}
+
 export interface ApiBarber extends ApiBarberPermissions {
   id: string;
   userId: string;
@@ -126,7 +129,7 @@ export interface ApiBarber extends ApiBarberPermissions {
   isActive: boolean;
   createdAt: string;
   user: { id: string; name: string; mobile: string };
-  services: { barberId: string; serviceId: string; service: ApiService }[];
+  services: ApiBarberService[];
 }
 
 export function listBarbers() {
@@ -137,8 +140,6 @@ export function getBarberApi(id: string) {
   return apiFetch<ApiBarber>(`/barbers/${id}`);
 }
 
-// ⚠️ فرض: بک‌اند اجازه‌ی ساخت هم‌زمان User+BarberProfile با این بادی رو می‌ده
-// (طبق قانون پروژه: فقط ادمین می‌سازه و username/password اولیه رو خودش تعیین می‌کنه)
 export function createBarberApi(
   data: {
     name: string;
@@ -153,9 +154,6 @@ export function createBarberApi(
   return apiFetch<ApiBarber>("/barbers", { method: "POST", body: data, token });
 }
 
-// ⚠️ فرض: PATCH /barbers/:id هم فیلدهای User (name, mobile, password) و هم
-// BarberProfile (bio, initials, isActive, serviceIds) رو قبول می‌کنه.
-// اگه سرور فقط بخشی رو پشتیبانی کرد، همینجا باید تفکیک بشه.
 export function updateBarberApi(
   id: string,
   data: Partial<{
@@ -188,11 +186,22 @@ export function deleteBarberApi(id: string, token: string) {
   return apiFetch<void>(`/barbers/${id}`, { method: "DELETE", token });
 }
 
+export function updateMyServicePriceApi(
+  serviceId: string,
+  customPrice: number | null,
+  token: string
+) {
+  return apiFetch<ApiBarber>(`/barbers/me/services/${serviceId}/price`, {
+    method: "PATCH",
+    body: { customPrice },
+    token,
+  });
+}
+
 // ==================== Bookings ====================
 
 export type BookingStatus = "CONFIRMED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
 
-// نسخه‌ی سبک‌تر ApiBarber — چون include بوکینگ فقط user رو با barber میاره، نه services
 export interface ApiBookingBarber extends ApiBarberPermissions {
   id: string;
   userId: string;
@@ -208,7 +217,7 @@ export interface ApiBooking {
   customerId: string;
   barberId: string;
   serviceId: string;
-  date: string; // ISO
+  date: string;
   time: string;
   status: BookingStatus;
   notes: string | null;
@@ -225,8 +234,6 @@ export function getAvailability(barberId: string, date: string) {
   );
 }
 
-// برای رنگ‌کردن/غیرفعال‌کردن روزهای بدون ظرفیت تو تقویم، قبل از اینکه
-// کاربر یه روز خاص رو انتخاب کنه و تازه بفهمه خالی نیست
 export function getAvailabilityRange(barberId: string, from: string, to: string) {
   return apiFetch<string[]>(
     `/bookings/availability-range?barberId=${encodeURIComponent(barberId)}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`
