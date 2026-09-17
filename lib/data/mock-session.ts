@@ -1,12 +1,16 @@
-// ⚠️ شبیه‌سازی سشن با localStorage — فقط برای توسعه‌ی بدون بک‌اند.
-// وقتی auth واقعی (JWT/سشن سمت سرور) وصل شد، این فایل باید کامل حذف بشه.
+// از فاز ۳ به بعد این فایل دیگه شبیه‌سازی نیست — همون کش سبک سشنِ کاربرِ واقعاً
+// لاگین‌کرده (بعد از تایید بک‌اند) هست، به‌همراه توکن JWT، تو localStorage.
+// اسم فایل/توابع رو عمداً عوض نکردیم تا importهای زیادی که تو کل پروژه
+// (admin-session.ts, barber-session.ts, customer-session.ts, سایدبارها...)
+// به این فایل وصلن نشکنن. منبع حقیقت داده الان بک‌انده، نه اینجا.
 
-export type MockRole = "admin" | "barber" | "customer";
+export type MockRole = "admin" | "barber" | "customer" | "manager";
 
 export type MockSession = {
   role: MockRole;
   id: string;
   name: string;
+  token: string;
 };
 
 const STORAGE_KEY = "mock_session";
@@ -30,4 +34,9 @@ export function getMockSession(): MockSession | null {
 export function clearMockSession() {
   if (typeof window === "undefined") return;
   window.localStorage.removeItem(STORAGE_KEY);
+}
+
+// برای استفاده‌ی lib/api.ts هنگام ارسال درخواست‌های احراز هویت‌دار
+export function getAuthToken(): string | null {
+  return getMockSession()?.token ?? null;
 }

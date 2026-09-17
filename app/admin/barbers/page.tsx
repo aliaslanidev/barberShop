@@ -8,14 +8,16 @@ import { toast } from "sonner";
 import { Pencil, Plus, Search, Trash2, Users, X } from "lucide-react";
 
 import {
-  getAllBarbers,
-  createBarber,
-  updateBarber,
-  updateBarberPermissions,
-  deleteBarber,
-  type Barber,
-  type BarberPermissions,
-} from "@/lib/data/barbers";
+  listBarbers,
+  createBarberApi,
+  updateBarberApi,
+  updateBarberPermissionsApi,
+  deleteBarberApi,
+  ApiError,
+  type ApiBarber,
+  type ApiBarberPermissions,
+} from "@/lib/api";
+import { getAuthToken } from "@/lib/data/mock-session";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -38,82 +40,98 @@ import {
   PopoverPortal,
 } from "@radix-ui/react-popover";
 
-const OPTIONAL_PERMISSIONS: { key: keyof BarberPermissions; label: string }[] = [
-  { key: "manage_services", label: "مدیریت خدمات" },
-  { key: "manage_pricing", label: "مدیریت قیمت" },
-  { key: "manage_schedule", label: "مدیریت زمان‌بندی" },
-  { key: "manage_time_off", label: "مدیریت مرخصی" },
-  { key: "block_slots", label: "بلاک کردن اسلات" },
-  { key: "cancel_own_bookings", label: "کنسل کردن نوبت تاییدشده" },
+const OPTIONAL_PERMISSIONS: { key: keyof ApiBarberPermissions; label: string }[] = [
+  { key: "manageServices", label: "مدیریت خدمات" },
+  { key: "managePricing", label: "مدیریت قیمت" },
+  { key: "manageSchedule", label: "مدیریت زمان‌بندی" },
+  { key: "manageTimeOff", label: "مدیریت مرخصی" },
+  { key: "blockSlots", label: "بلاک کردن اسلات" },
+  { key: "cancelOwnBookings", label: "کنسل کردن نوبت تاییدشده" },
 ];
 
 const createBarberSchema = z.object({
   name: z.string().min(2, "نام باید حداقل ۲ حرف باشد"),
-  mobile: z
-    .string()
-    .regex(/^09\d{9}$/, "شماره موبایل معتبر نیست (مثال: 09123456789)"),
+  mobile: z.string().regex(/^09\d{9}$/, "شماره موبایل معتبر نیست (مثال: 09123456789)"),
+  password: z.string().min(4, "رمز عبور باید حداقل ۴ کاراکتر باشد"),
   bio: z.string().optional(),
 });
-
 type CreateBarberValues = z.infer<typeof createBarberSchema>;
 
 const editBarberSchema = z.object({
   name: z.string().min(2, "نام باید حداقل ۲ حرف باشد"),
-  mobile: z
-    .string()
-    .regex(/^09\d{9}$/, "شماره موبایل معتبر نیست (مثال: 09123456789)"),
+  mobile: z.string().regex(/^09\d{9}$/, "شماره موبایل معتبر نیست (مثال: 09123456789)"),
   bio: z.string().optional(),
+  newPassword: z
+    .string()
+    .min(4, "رمز جدید باید حداقل ۴ کاراکتر باشد")
+    .optional()
+    .or(z.literal("")),
 });
-
 type EditBarberValues = z.infer<typeof editBarberSchema>;
 
-// ارتفاع مشترک باکس پرمیشن‌ها، چه در حالت خالی و چه وقتی آرایشگر انتخاب شده
 const PERMISSIONS_BOX_MIN_HEIGHT = "min-h-[350px]";
 
 export default function AdminBarbersPage() {
-  const [barbers, setBarbers] = useState<Barber[]>(() => getAllBarbers());
-  // پیش‌فرض هیچ آرایشگری انتخاب نشده
+  const [barbers, setBarbers] = useState<ApiBarber[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedBarberId, setSelectedBarberId] = useState<string | null>(null);
   const [comboOpen, setComboOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [draftPermissions, setDraftPermissions] =
-    useState<BarberPermissions | null>(null);
+  const [draftPermissions, setDraftPermissions] = useState<ApiBarberPermissions | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   const selectedBarber = barbers.find((b) => b.id === selectedBarberId) ?? null;
 
-  // با انتخاب یا تغییر آرایشگر، یک نسخه‌ی پیش‌نویس از پرمیشن‌ها می‌سازیم
-  // تا تغییرات سوییچ‌ها فوراً ذخیره نشن و منتظر «ذخیره» بمونن
+  async function refresh() {
+    try {
+      const data = await listBarbers();
+      setBarbers(data);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "خطا در دریافت آرایشگرها");
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    refresh();
+  }, []);
+
   useEffect(() => {
     const found = barbers.find((b) => b.id === selectedBarberId) ?? null;
-    setDraftPermissions(found ? { ...found.permissions } : null);
+    if (found) {
+      setDraftPermissions({
+        manageServices: found.manageServices,
+        managePricing: found.managePricing,
+        manageSchedule: found.manageSchedule,
+        manageTimeOff: found.manageTimeOff,
+        blockSlots: found.blockSlots,
+        cancelOwnBookings: found.cancelOwnBookings,
+      });
+    } else {
+      setDraftPermissions(null);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedBarberId]);
+  }, [selectedBarberId, barbers]);
 
   const isPermissionsDirty =
     !!selectedBarber &&
     !!draftPermissions &&
-    OPTIONAL_PERMISSIONS.some(
-      (perm) => draftPermissions[perm.key] !== selectedBarber.permissions[perm.key]
-    );
+    OPTIONAL_PERMISSIONS.some((perm) => draftPermissions[perm.key] !== selectedBarber[perm.key]);
 
   const visibleBarbers = isTyping
-    ? barbers.filter((b) => b.name.includes(searchQuery.trim()))
+    ? barbers.filter((b) => b.user.name.includes(searchQuery.trim()))
     : barbers;
 
   useEffect(() => {
     if (!comboOpen) {
-      setSearchQuery(selectedBarber?.name ?? "");
+      setSearchQuery(selectedBarber?.user.name ?? "");
       setIsTyping(false);
     }
   }, [comboOpen, selectedBarber]);
-
-  function refresh() {
-    setBarbers([...getAllBarbers()]);
-  }
 
   function handleClearSearch() {
     setSelectedBarberId(null);
@@ -144,69 +162,114 @@ export default function AdminBarbersPage() {
   useEffect(() => {
     if (editDialogOpen && selectedBarber) {
       resetEdit({
-        name: selectedBarber.name,
-        mobile: selectedBarber.mobile ?? "",
+        name: selectedBarber.user.name,
+        mobile: selectedBarber.user.mobile,
         bio: selectedBarber.bio ?? "",
+        newPassword: "",
       });
     }
   }, [editDialogOpen, selectedBarber, resetEdit]);
 
-  function onEditBarber(values: EditBarberValues) {
+  async function onEditBarber(values: EditBarberValues) {
     if (!selectedBarber) return;
-    updateBarber(selectedBarber.id, values);
-    refresh();
-    toast.success("اطلاعات آرایشگر ویرایش شد");
-    setEditDialogOpen(false);
+    const token = getAuthToken();
+    if (!token) return;
+    try {
+      const payload: Record<string, unknown> = {
+        name: values.name,
+        mobile: values.mobile,
+        bio: values.bio ?? "",
+      };
+      if (values.newPassword) payload.password = values.newPassword;
+      await updateBarberApi(selectedBarber.id, payload, token);
+      await refresh();
+      toast.success("اطلاعات آرایشگر ویرایش شد");
+      setEditDialogOpen(false);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "خطا در ویرایش آرایشگر");
+    }
   }
 
-  function onCreateBarber(values: CreateBarberValues) {
-    createBarber(values);
-    const updated = getAllBarbers();
-    setBarbers(updated);
-    const created = updated.find((b) => b.mobile === values.mobile);
-    if (created) setSelectedBarberId(created.id);
-    toast.success("آرایشگر جدید اضافه شد");
-    reset();
-    setDialogOpen(false);
+  async function onCreateBarber(values: CreateBarberValues) {
+    const token = getAuthToken();
+    if (!token) return;
+    try {
+      const created = await createBarberApi(
+        { name: values.name, mobile: values.mobile, password: values.password, bio: values.bio, serviceIds: [] },
+        token
+      );
+      await refresh();
+      setSelectedBarberId(created.id);
+      toast.success("آرایشگر جدید اضافه شد");
+      reset();
+      setDialogOpen(false);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "خطا در ساخت آرایشگر");
+    }
   }
 
-  function handlePermissionDraftChange(
-    key: keyof BarberPermissions,
-    value: boolean
-  ) {
+  function handlePermissionDraftChange(key: keyof ApiBarberPermissions, value: boolean) {
     setDraftPermissions((prev) => (prev ? { ...prev, [key]: value } : prev));
   }
 
-  function handleSavePermissions() {
+  async function handleSavePermissions() {
     if (!selectedBarber || !draftPermissions) return;
-    updateBarberPermissions(selectedBarber.id, draftPermissions);
-    refresh();
-    toast.success("پرمیشن‌ها ذخیره شد");
+    const token = getAuthToken();
+    if (!token) return;
+    try {
+      await updateBarberPermissionsApi(selectedBarber.id, draftPermissions, token);
+      await refresh();
+      toast.success("پرمیشن‌ها ذخیره شد");
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "خطا در ذخیره‌ی پرمیشن‌ها");
+    }
   }
 
   function handleCancelPermissions() {
     if (!selectedBarber) return;
-    setDraftPermissions({ ...selectedBarber.permissions });
+    setDraftPermissions({
+      manageServices: selectedBarber.manageServices,
+      managePricing: selectedBarber.managePricing,
+      manageSchedule: selectedBarber.manageSchedule,
+      manageTimeOff: selectedBarber.manageTimeOff,
+      blockSlots: selectedBarber.blockSlots,
+      cancelOwnBookings: selectedBarber.cancelOwnBookings,
+    });
   }
 
-  function handleActiveChange(barberId: string, value: boolean) {
-    updateBarber(barberId, { isActive: value });
-    refresh();
-    toast.success(value ? "آرایشگر فعال شد" : "آرایشگر غیرفعال شد");
-  }
-
-  function handleDelete(barberId: string, name: string) {
-    const confirmed = window.confirm(
-      `آرایشگر «${name}» حذف شود؟ این عمل قابل بازگشت نیست.`
-    );
-    if (!confirmed) return;
-    deleteBarber(barberId);
-    const updated = getAllBarbers();
-    setBarbers(updated);
-    if (selectedBarberId === barberId) {
-      setSelectedBarberId(null);
+  async function handleActiveChange(barberId: string, value: boolean) {
+    const token = getAuthToken();
+    if (!token) return;
+    try {
+      await updateBarberApi(barberId, { isActive: value }, token);
+      await refresh();
+      toast.success(value ? "آرایشگر فعال شد" : "آرایشگر غیرفعال شد");
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "خطا در تغییر وضعیت");
     }
-    toast.success("آرایشگر حذف شد");
+  }
+
+  async function handleDelete(barberId: string, name: string) {
+    const confirmed = window.confirm(`آرایشگر «${name}» حذف شود؟ این عمل قابل بازگشت نیست.`);
+    if (!confirmed) return;
+    const token = getAuthToken();
+    if (!token) return;
+    try {
+      await deleteBarberApi(barberId, token);
+      await refresh();
+      if (selectedBarberId === barberId) setSelectedBarberId(null);
+      toast.success("آرایشگر حذف شد");
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "خطا در حذف آرایشگر");
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-10 text-sm text-muted-foreground">
+        در حال دریافت آرایشگرها...
+      </div>
+    );
   }
 
   return (
@@ -273,11 +336,10 @@ export default function AdminBarbersPage() {
                         }}
                         className={cn(
                           "flex w-full items-center rounded-md px-3 py-2 text-right text-sm transition-colors hover:bg-secondary",
-                          selectedBarberId === barber.id &&
-                            "bg-secondary font-medium"
+                          selectedBarberId === barber.id && "bg-secondary font-medium"
                         )}
                       >
-                        {barber.name}
+                        {barber.user.name}
                       </button>
                     ))
                   )}
@@ -297,18 +359,12 @@ export default function AdminBarbersPage() {
               <DialogHeader>
                 <DialogTitle>آرایشگر جدید</DialogTitle>
               </DialogHeader>
-              <form
-                onSubmit={handleSubmit(onCreateBarber)}
-                className="flex flex-col gap-4"
-                noValidate
-              >
+              <form onSubmit={handleSubmit(onCreateBarber)} className="flex flex-col gap-4" noValidate>
                 <div className="flex flex-col gap-2">
                   <Label htmlFor="name">نام</Label>
                   <Input id="name" {...register("name")} />
                   {errors.name && (
-                    <span className="text-xs text-destructive">
-                      {errors.name.message}
-                    </span>
+                    <span className="text-xs text-destructive">{errors.name.message}</span>
                   )}
                 </div>
                 <div className="flex flex-col gap-2">
@@ -321,9 +377,14 @@ export default function AdminBarbersPage() {
                     {...register("mobile")}
                   />
                   {errors.mobile && (
-                    <span className="text-xs text-destructive">
-                      {errors.mobile.message}
-                    </span>
+                    <span className="text-xs text-destructive">{errors.mobile.message}</span>
+                  )}
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="password">رمز عبور اولیه</Label>
+                  <Input id="password" type="text" dir="ltr" className="text-left" {...register("password")} />
+                  {errors.password && (
+                    <span className="text-xs text-destructive">{errors.password.message}</span>
                   )}
                 </div>
                 <div className="flex flex-col gap-2">
@@ -342,10 +403,7 @@ export default function AdminBarbersPage() {
       </div>
 
       {selectedBarber ? (
-        <Card
-          key={selectedBarber.id}
-          className={cn(PERMISSIONS_BOX_MIN_HEIGHT, "flex flex-col")}
-        >
+        <Card key={selectedBarber.id} className={cn(PERMISSIONS_BOX_MIN_HEIGHT, "flex flex-col")}>
           <CardContent className="flex flex-1 flex-col gap-4 p-5">
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
@@ -353,9 +411,9 @@ export default function AdminBarbersPage() {
                   {selectedBarber.initials}
                 </div>
                 <div>
-                  <p className="font-bold">{selectedBarber.name}</p>
+                  <p className="font-bold">{selectedBarber.user.name}</p>
                   <p dir="ltr" className="text-left text-xs text-muted-foreground">
-                    {selectedBarber.mobile ?? "—"}
+                    {selectedBarber.user.mobile}
                   </p>
                 </div>
               </div>
@@ -367,19 +425,13 @@ export default function AdminBarbersPage() {
                   </span>
                   <Switch
                     checked={selectedBarber.isActive}
-                    onCheckedChange={(v) =>
-                      handleActiveChange(selectedBarber.id, v)
-                    }
+                    onCheckedChange={(v) => handleActiveChange(selectedBarber.id, v)}
                     aria-label="فعال/غیرفعال"
                   />
                 </div>
                 <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      aria-label="ویرایش آرایشگر"
-                    >
+                    <Button type="button" variant="ghost" aria-label="ویرایش آرایشگر">
                       <Pencil className="h-4 w-4" />
                     </Button>
                   </DialogTrigger>
@@ -387,18 +439,12 @@ export default function AdminBarbersPage() {
                     <DialogHeader>
                       <DialogTitle>ویرایش آرایشگر</DialogTitle>
                     </DialogHeader>
-                    <form
-                      onSubmit={handleEditSubmit(onEditBarber)}
-                      className="flex flex-col gap-4"
-                      noValidate
-                    >
+                    <form onSubmit={handleEditSubmit(onEditBarber)} className="flex flex-col gap-4" noValidate>
                       <div className="flex flex-col gap-2">
                         <Label htmlFor="edit-name">نام</Label>
                         <Input id="edit-name" {...registerEdit("name")} />
                         {editErrors.name && (
-                          <span className="text-xs text-destructive">
-                            {editErrors.name.message}
-                          </span>
+                          <span className="text-xs text-destructive">{editErrors.name.message}</span>
                         )}
                       </div>
                       <div className="flex flex-col gap-2">
@@ -411,14 +457,27 @@ export default function AdminBarbersPage() {
                           {...registerEdit("mobile")}
                         />
                         {editErrors.mobile && (
-                          <span className="text-xs text-destructive">
-                            {editErrors.mobile.message}
-                          </span>
+                          <span className="text-xs text-destructive">{editErrors.mobile.message}</span>
                         )}
                       </div>
                       <div className="flex flex-col gap-2">
                         <Label htmlFor="edit-bio">بیوگرافی (اختیاری)</Label>
                         <Input id="edit-bio" {...registerEdit("bio")} />
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <Label htmlFor="edit-password">رمز جدید (اختیاری)</Label>
+                        <Input
+                          id="edit-password"
+                          dir="ltr"
+                          className="text-left"
+                          placeholder="خالی بذار تا تغییر نکنه"
+                          {...registerEdit("newPassword")}
+                        />
+                        {editErrors.newPassword && (
+                          <span className="text-xs text-destructive">
+                            {editErrors.newPassword.message}
+                          </span>
+                        )}
                       </div>
                       <DialogFooter>
                         <Button type="submit" disabled={isEditSubmitting}>
@@ -432,9 +491,7 @@ export default function AdminBarbersPage() {
                   type="button"
                   variant="ghost"
                   className="text-destructive hover:text-destructive"
-                  onClick={() =>
-                    handleDelete(selectedBarber.id, selectedBarber.name)
-                  }
+                  onClick={() => handleDelete(selectedBarber.id, selectedBarber.user.name)}
                   aria-label="حذف آرایشگر"
                 >
                   <Trash2 className="h-4 w-4" />
@@ -451,9 +508,7 @@ export default function AdminBarbersPage() {
                   <span className="text-sm">{perm.label}</span>
                   <Switch
                     checked={draftPermissions?.[perm.key] ?? false}
-                    onCheckedChange={(v) =>
-                      handlePermissionDraftChange(perm.key, v)
-                    }
+                    onCheckedChange={(v) => handlePermissionDraftChange(perm.key, v)}
                     aria-label={perm.label}
                   />
                 </div>
@@ -482,12 +537,7 @@ export default function AdminBarbersPage() {
           </CardContent>
         </Card>
       ) : (
-        <Card
-          className={cn(
-            PERMISSIONS_BOX_MIN_HEIGHT,
-            "flex items-center justify-center"
-          )}
-        >
+        <Card className={cn(PERMISSIONS_BOX_MIN_HEIGHT, "flex items-center justify-center")}>
           <CardContent className="flex flex-col items-center gap-3 p-10 text-center text-muted-foreground">
             <Users className="h-8 w-8" />
             <p className="text-sm">

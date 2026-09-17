@@ -14,8 +14,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-import { isMobileTaken, addMockAccount } from "@/lib/data/mock-accounts";
-import { setMockSession } from "@/lib/data/mock-session";
+import { useAuth } from "@/lib/auth-context";
+import { ApiError } from "@/lib/api";
 
 const registerSchema = z
   .object({
@@ -36,6 +36,7 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 
 export default function RegisterPage() {
   const router = useRouter();
+  const { register: registerUser } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -52,29 +53,19 @@ export default function RegisterPage() {
   async function onSubmit(values: RegisterFormValues) {
     setIsSubmitting(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 400));
-
-      if (isMobileTaken(values.mobile)) {
-        setError("mobile", { message: "این شماره موبایل قبلاً ثبت شده است" });
-        return;
-      }
-
-      const account = addMockAccount({
-        name: values.name,
-        mobile: values.mobile,
-        password: values.password,
-      });
-
-      setMockSession({
-        role: account.role,
-        id: account.id,
-        name: account.name,
-      });
-
+      await registerUser(values.name, values.mobile, values.password);
       toast.success("ثبت‌نام با موفقیت انجام شد");
       router.push("/customer/dashboard");
-    } catch {
-      toast.error("مشکلی پیش آمد، دوباره تلاش کنید");
+    } catch (err) {
+      if (err instanceof ApiError) {
+        if (err.status === 409) {
+          setError("mobile", { message: "این شماره موبایل قبلاً ثبت شده است" });
+        } else {
+          toast.error(err.message);
+        }
+      } else {
+        toast.error("مشکلی پیش آمد، دوباره تلاش کنید");
+      }
     } finally {
       setIsSubmitting(false);
     }

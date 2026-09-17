@@ -14,8 +14,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-import { findMockAccount } from "@/lib/data/mock-accounts";
-import { setMockSession } from "@/lib/data/mock-session";
+import { useAuth } from "@/lib/auth-context";
+import { ApiError } from "@/lib/api";
 
 const loginSchema = z.object({
   mobile: z
@@ -27,8 +27,17 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
+// TODO: وقتی پنل مدیر سالن ساخته شد، مسیر مخصوص خودش رو بگیره
+const redirectByRole: Record<string, string> = {
+  admin: "/admin/dashboard",
+  manager: "/admin/dashboard",
+  barber: "/barber/dashboard",
+  customer: "/customer/dashboard",
+};
+
 export default function LoginPage() {
   const router = useRouter();
+  const { login } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -43,30 +52,19 @@ export default function LoginPage() {
   async function onSubmit(values: LoginFormValues) {
     setIsSubmitting(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 400));
-
-      const account = findMockAccount(values.mobile, values.password);
-      if (!account) {
-        toast.error("شماره موبایل یا رمز عبور اشتباه است");
-        return;
-      }
-
-      setMockSession({
-        role: account.role,
-        id: account.id,
-        name: account.name,
-      });
-
+      const user = await login(values.mobile, values.password);
       toast.success("ورود با موفقیت انجام شد");
-
-      const redirectByRole: Record<typeof account.role, string> = {
-        admin: "/admin/dashboard",
-        barber: "/barber/dashboard",
-        customer: "/customer/dashboard",
-      };
-      router.push(redirectByRole[account.role]);
-    } catch {
-      toast.error("مشکلی پیش آمد، دوباره تلاش کنید");
+      router.push(redirectByRole[user.role] ?? "/");
+    } catch (err) {
+      if (err instanceof ApiError) {
+        toast.error(
+          err.status === 401
+            ? "شماره موبایل یا رمز عبور اشتباه است"
+            : err.message
+        );
+      } else {
+        toast.error("مشکلی پیش آمد، دوباره تلاش کنید");
+      }
     } finally {
       setIsSubmitting(false);
     }

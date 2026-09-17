@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Plus, Search, Trash2, X } from "lucide-react";
+import { Plus, Search, Trash2, X, type LucideIcon } from "lucide-react";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -29,14 +29,16 @@ import {
 } from "@/components/ui/select";
 
 import {
-  getAllServices,
-  createService,
-  updateService,
-  deleteService,
-  SERVICE_ICONS,
-  type Service,
-  type ServiceIconKey,
-} from "@/lib/data/services";
+  listServices,
+  createServiceApi,
+  updateServiceApi,
+  deleteServiceApi,
+  ApiError,
+  type ApiService,
+} from "@/lib/api";
+import { getAuthToken } from "@/lib/data/mock-session";
+// نگاشت آیکون فقط یه ثابت فرانتی‌ه (نه CRUD)، بی‌خطر از فایل قبلی import می‌شه
+import { SERVICE_ICONS, type ServiceIconKey } from "@/lib/data/services";
 
 const serviceSchema = z.object({
   title: z.string().min(2, "عنوان باید حداقل ۲ حرف باشد"),
@@ -55,66 +57,94 @@ const ICON_LABELS: Record<ServiceIconKey, string> = {
   palette: "پالت رنگ",
 };
 
+function formatPriceLabel(priceValue: number) {
+  return `از ${priceValue.toLocaleString("fa-IR")} تومان`;
+}
+
+function getServiceIcon(icon: string): LucideIcon {
+  return SERVICE_ICONS[icon as ServiceIconKey] ?? SERVICE_ICONS.scissors;
+}
+
 export default function AdminServicesPage() {
-  const [services, setServices] = useState<Service[]>(() => getAllServices());
+  const [services, setServices] = useState<ApiService[] | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  // ویرایش قیمت به‌صورت inline روی هر کارت انجام می‌شه؛ این state فقط
-  // مقدار در حال ویرایش (پیش‌نویس) رو نگه می‌داره تا با هر keypress خودِ داده تغییر نکنه
-  // و دکمه‌های ذخیره/لغو فقط وقتی مقدار واقعاً تغییر کرده فعال بشن.
   const [priceDrafts, setPriceDrafts] = useState<Record<string, number>>({});
 
-  const visibleServices = searchQuery.trim()
-    ? services.filter(
-        (s) =>
-          s.title.includes(searchQuery.trim()) ||
-          s.desc.includes(searchQuery.trim()),
-      )
-    : services;
+  async function refresh() {
+    try {
+      const data = await listServices();
+      setServices(data);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "خطا در دریافت خدمات");
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    refresh();
+  }, []);
+
+  const visibleServices = (services ?? []).filter(
+    (s) =>
+      !searchQuery.trim() ||
+      s.title.includes(searchQuery.trim()) ||
+      s.desc.includes(searchQuery.trim()),
+  );
 
   const {
     register,
     handleSubmit,
     reset,
     setValue,
-    watch,
     formState: { errors, isSubmitting },
   } = useForm<ServiceFormValues>({
     resolver: zodResolver(serviceSchema),
     defaultValues: { title: "", desc: "", priceValue: 0, icon: "scissors" },
   });
 
-  function refresh() {
-    setServices([...getAllServices()]);
+  async function onCreateSubmit(values: ServiceFormValues) {
+    const token = getAuthToken();
+    if (!token) {
+      toast.error("ابتدا دوباره وارد حساب کاربری شوید");
+      return;
+    }
+    try {
+      await createServiceApi(values, token);
+      await refresh();
+      toast.success(`سرویس «${values.title}» اضافه شد`);
+      reset();
+      setDialogOpen(false);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "خطا در ساخت سرویس");
+    }
   }
 
-  function onCreateSubmit(values: ServiceFormValues) {
-    createService(values);
-    refresh();
-    toast.success(`سرویس «${values.title}» اضافه شد`);
-    reset();
-    setDialogOpen(false);
-  }
-
-  function getDraftPrice(service: Service) {
+  function getDraftPrice(service: ApiService) {
     return priceDrafts[service.id] ?? service.priceValue;
   }
 
-  function isPriceDirty(service: Service) {
+  function isPriceDirty(service: ApiService) {
     return (
-      service.id in priceDrafts &&
-      priceDrafts[service.id] !== service.priceValue
+      service.id in priceDrafts && priceDrafts[service.id] !== service.priceValue
     );
   }
 
-  function handleSavePrice(service: Service) {
-    const newPrice = getDraftPrice(service);
-    updateService(service.id, { priceValue: newPrice });
-    refresh();
-    toast.success(`قیمت «${service.title}» به‌روزرسانی شد`);
+  async function handleSavePrice(service: ApiService) {
+    const token = getAuthToken();
+    if (!token) return;
+    try {
+      await updateServiceApi(service.id, { priceValue: getDraftPrice(service) }, token);
+      await refresh();
+      toast.success(`قیمت «${service.title}» به‌روزرسانی شد`);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "خطا در ذخیره‌ی قیمت");
+    }
   }
 
-  function handleCancelPrice(service: Service) {
+  function handleCancelPrice(service: ApiService) {
     setPriceDrafts((p) => {
       const next = { ...p };
       delete next[service.id];
@@ -122,11 +152,24 @@ export default function AdminServicesPage() {
     });
   }
 
-  function handleDelete(service: Service) {
-    // TODO: قبل از حذف واقعی، باید چک بشه که این سرویس به نوبت آینده‌ی فعالی وصل نیست.
-    deleteService(service.id);
-    refresh();
-    toast.success(`سرویس «${service.title}» حذف شد`);
+  async function handleDelete(service: ApiService) {
+    const token = getAuthToken();
+    if (!token) return;
+    try {
+      await deleteServiceApi(service.id, token);
+      await refresh();
+      toast.success(`سرویس «${service.title}» حذف شد`);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "خطا در حذف سرویس");
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-10 text-sm text-muted-foreground">
+        در حال دریافت خدمات...
+      </div>
+    );
   }
 
   return (
@@ -171,21 +214,12 @@ export default function AdminServicesPage() {
               <DialogHeader>
                 <DialogTitle>افزودن سرویس جدید</DialogTitle>
               </DialogHeader>
-              <form
-                onSubmit={handleSubmit(onCreateSubmit)}
-                className="space-y-4"
-              >
+              <form onSubmit={handleSubmit(onCreateSubmit)} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="title">عنوان سرویس</Label>
-                  <Input
-                    id="title"
-                    placeholder="مثلاً اصلاح مو"
-                    {...register("title")}
-                  />
+                  <Input id="title" placeholder="مثلاً اصلاح مو" {...register("title")} />
                   {errors.title && (
-                    <p className="text-xs text-red-400">
-                      {errors.title.message}
-                    </p>
+                    <p className="text-xs text-red-400">{errors.title.message}</p>
                   )}
                 </div>
 
@@ -197,23 +231,15 @@ export default function AdminServicesPage() {
                     {...register("desc")}
                   />
                   {errors.desc && (
-                    <p className="text-xs text-red-400">
-                      {errors.desc.message}
-                    </p>
+                    <p className="text-xs text-red-400">{errors.desc.message}</p>
                   )}
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="priceValue">قیمت (تومان)</Label>
-                  <Input
-                    id="priceValue"
-                    type="number"
-                    {...register("priceValue")}
-                  />
+                  <Input id="priceValue" type="number" {...register("priceValue")} />
                   {errors.priceValue && (
-                    <p className="text-xs text-red-400">
-                      {errors.priceValue.message}
-                    </p>
+                    <p className="text-xs text-red-400">{errors.priceValue.message}</p>
                   )}
                 </div>
 
@@ -229,23 +255,17 @@ export default function AdminServicesPage() {
                       <SelectValue placeholder="انتخاب آیکون" />
                     </SelectTrigger>
                     <SelectContent>
-                      {(Object.keys(SERVICE_ICONS) as ServiceIconKey[]).map(
-                        (key) => (
-                          <SelectItem key={key} value={key}>
-                            {ICON_LABELS[key]}
-                          </SelectItem>
-                        ),
-                      )}
+                      {(Object.keys(SERVICE_ICONS) as ServiceIconKey[]).map((key) => (
+                        <SelectItem key={key} value={key}>
+                          {ICON_LABELS[key]}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
 
                 <DialogFooter>
-                  <Button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="w-full"
-                  >
+                  <Button type="submit" disabled={isSubmitting} className="w-full">
                     افزودن سرویس
                   </Button>
                 </DialogFooter>
@@ -264,7 +284,7 @@ export default function AdminServicesPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
           {visibleServices.map((service) => {
-            const Icon = service.icon;
+            const Icon = getServiceIcon(service.icon);
             const dirty = isPriceDirty(service);
             return (
               <Card key={service.id}>
@@ -292,7 +312,7 @@ export default function AdminServicesPage() {
 
                   <div className="space-y-1">
                     <Label htmlFor={`price-${service.id}`} className="text-xs">
-                      قیمت (تومان)
+                      قیمت (تومان) — {formatPriceLabel(service.priceValue)}
                     </Label>
                     <Input
                       id={`price-${service.id}`}
