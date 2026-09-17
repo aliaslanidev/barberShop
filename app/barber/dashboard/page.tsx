@@ -1,27 +1,43 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { getTodayAppointments } from "@/lib/data/appointments";
-import { getServiceById } from "@/lib/data/services";
-import { getBarberById } from "@/lib/data/barbers";
-import { getCurrentBarberId } from "@/lib/data/barber-session";
+import { useCurrentBarberProfile } from "@/lib/hooks/use-current-barber";
+import { listBookingsApi, ApiError, type ApiBooking } from "@/lib/api";
+import { getAuthToken } from "@/lib/data/mock-session";
+
+function toISODate(d: Date) {
+  return d.toISOString().slice(0, 10);
+}
 
 export default function BarberDashboardPage() {
-  const barberId = getCurrentBarberId() ?? "";
-  const barber = getBarberById(barberId);
-  const todays = getTodayAppointments(barberId);
-  const completed = todays.filter((a) => a.status === "completed").length;
-  const remaining = todays.filter((a) => a.status !== "completed").length;
-  const current = todays.find((a) => a.status === "in_progress");
-  const next = todays.find((a) => a.status === "upcoming");
+  const barber = useCurrentBarberProfile();
+  const [todays, setTodays] = useState<ApiBooking[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const token = getAuthToken();
+    if (!token) return;
+    listBookingsApi(token, { date: toISODate(new Date()) })
+      .then(setTodays)
+      .catch((err) => console.error(err instanceof ApiError ? err.message : err))
+      .finally(() => setIsLoading(false));
+  }, []);
+
+  if (barber === undefined || isLoading) {
+    return <div className="p-8 text-center text-sm text-muted-foreground">در حال بارگذاری...</div>;
+  }
+  if (!barber) return null;
+
+  const completed = todays.filter((a) => a.status === "COMPLETED").length;
+  const remaining = todays.filter((a) => a.status !== "COMPLETED" && a.status !== "CANCELLED").length;
+  const current = todays.find((a) => a.status === "IN_PROGRESS");
+  const next = todays.find((a) => a.status === "CONFIRMED");
 
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-xl font-bold md:text-2xl">
-          سلام {barber?.name.split(" ")[0]} 👋
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {barber?.serviceIds.length} سرویس
-        </p>
+        <h1 className="text-xl font-bold md:text-2xl">سلام {barber.user.name.split(" ")[0]} 👋</h1>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
@@ -47,16 +63,13 @@ export default function BarberDashboardPage() {
 
       {current && (
         <div>
-          <h2 className="mb-3 text-sm font-medium text-muted-foreground">
-            در حال انجام
-          </h2>
+          <h2 className="mb-3 text-sm font-medium text-muted-foreground">در حال انجام</h2>
           <Card className="border-primary/50">
             <CardContent className="flex items-center justify-between p-5">
               <div>
-                <p className="text-sm font-medium">{current.customerName}</p>
+                <p className="text-sm font-medium">{current.customer.name}</p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {getServiceById(current.serviceId)?.title} — ساعت{" "}
-                  {current.time}
+                  {current.service.title} — ساعت {current.time}
                 </p>
               </div>
               <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
@@ -69,15 +82,13 @@ export default function BarberDashboardPage() {
 
       {next && !current && (
         <div>
-          <h2 className="mb-3 text-sm font-medium text-muted-foreground">
-            نوبت بعدی
-          </h2>
+          <h2 className="mb-3 text-sm font-medium text-muted-foreground">نوبت بعدی</h2>
           <Card>
             <CardContent className="flex items-center justify-between p-5">
               <div>
-                <p className="text-sm font-medium">{next.customerName}</p>
+                <p className="text-sm font-medium">{next.customer.name}</p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {getServiceById(next.serviceId)?.title} — ساعت {next.time}
+                  {next.service.title} — ساعت {next.time}
                 </p>
               </div>
             </CardContent>

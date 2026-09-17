@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import { Search } from "lucide-react";
 import type { DateObject } from "react-multi-date-picker";
 
@@ -18,15 +19,15 @@ import { DataTable } from "@/components/ui/data-table";
 import { cn } from "@/lib/utils";
 
 import {
-  getAllAppointments,
-  cancelAppointment,
-} from "@/lib/data/appointments";
-import { getAllBarbers } from "@/lib/data/barbers";
-import {
-  STATUS_LABELS,
-  formatPersianDate,
-  getBookingColumns,
-} from "./columns";
+  listBookingsApi,
+  updateBookingStatusApi,
+  listBarbers,
+  ApiError,
+  type ApiBooking,
+  type ApiBarber,
+} from "@/lib/api";
+import { getAuthToken } from "@/lib/data/mock-session";
+import { STATUS_LABELS, formatPersianDate, getBookingColumns } from "./columns";
 
 type DayFilter = "today" | "tomorrow" | "upcoming7" | "history" | "all" | "custom";
 
@@ -49,23 +50,39 @@ function addDays(base: Date, days: number): Date {
 }
 
 export default function AdminBookingsPage() {
-  const barbers = getAllBarbers();
-  const [appointments, setAppointments] = useState(getAllAppointments());
+  const [barbers, setBarbers] = useState<ApiBarber[]>([]);
+  const [bookings, setBookings] = useState<ApiBooking[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
   const [search, setSearch] = useState("");
   const [barberFilter, setBarberFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
-  // --- فیلتر روز/تاریخ ---
   const [dayFilter, setDayFilter] = useState<DayFilter>("today");
   const [customDate, setCustomDate] = useState<DateObject | null>(null);
 
   const todayStr = useMemo(() => toISODate(new Date()), []);
   const tomorrowStr = useMemo(() => toISODate(addDays(new Date(), 1)), []);
   const weekEndStr = useMemo(() => toISODate(addDays(new Date(), 6)), []);
-
-  // معادل میلادی (ISO) تاریخ شمسی انتخاب‌شده، برای مقایسه با appointment.date
-  // toDate() صرف‌نظر از تقویم نمایشی، همون لحظه‌ی واقعی رو به‌صورت Date میلادی برمی‌گردونه
   const customDateStr = customDate ? toISODate(customDate.toDate()) : "";
+
+  async function refresh() {
+    const token = getAuthToken();
+    if (!token) return;
+    try {
+      const [b, list] = await Promise.all([listBarbers(), listBookingsApi(token)]);
+      setBarbers(b);
+      setBookings(list);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "خطا در دریافت نوبت‌ها");
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    refresh();
+  }, []);
 
   function handleSelectTab(tab: DayFilter) {
     setDayFilter(tab);
@@ -77,71 +94,61 @@ export default function AdminBookingsPage() {
     setDayFilter(value ? "custom" : "today");
   }
 
-  const barberNameById = useMemo(() => {
-    const map = new Map<string, string>();
-    barbers.forEach((b) => map.set(b.id, b.name));
-    return map;
-  }, [barbers]);
-
   const filtered = useMemo(() => {
-    return appointments
-      .filter((a) => {
+    return bookings
+      .filter((b) => {
+        const dateStr = b.date.slice(0, 10); // ISO -> فقط بخش تاریخ
         switch (dayFilter) {
           case "today":
-            return a.date === todayStr;
+            return dateStr === todayStr;
           case "tomorrow":
-            return a.date === tomorrowStr;
+            return dateStr === tomorrowStr;
           case "upcoming7":
-            return a.date >= todayStr && a.date <= weekEndStr;
+            return dateStr >= todayStr && dateStr <= weekEndStr;
           case "history":
-            return a.date < todayStr;
+            return dateStr < todayStr;
           case "custom":
-            return a.date === customDateStr;
+            return dateStr === customDateStr;
           case "all":
           default:
             return true;
         }
       })
-      .filter((a) => barberFilter === "all" || a.barberId === barberFilter)
-      .filter((a) => statusFilter === "all" || a.status === statusFilter)
+      .filter((b) => barberFilter === "all" || b.barberId === barberFilter)
+      .filter((b) => statusFilter === "all" || b.status === statusFilter)
       .filter(
-        (a) =>
+        (b) =>
           !search.trim() ||
-          a.customerName.includes(search.trim()) ||
-          a.customerPhone.includes(search.trim()),
+          b.customer.name.includes(search.trim()) ||
+          b.customer.mobile.includes(search.trim()),
       );
-  }, [
-    appointments,
-    dayFilter,
-    customDateStr,
-    todayStr,
-    tomorrowStr,
-    weekEndStr,
-    barberFilter,
-    statusFilter,
-    search,
-  ]);
+  }, [bookings, dayFilter, customDateStr, todayStr, tomorrowStr, weekEndStr, barberFilter, statusFilter, search]);
 
-  function handleCancel(id: string) {
-    cancelAppointment(id);
-    setAppointments(getAllAppointments());
+  async function handleCancel(id: string) {
+    const token = getAuthToken();
+    if (!token) return;
+    try {
+      await updateBookingStatusApi(id, "CANCELLED", token);
+      await refresh();
+      toast.success("نوبت لغو شد");
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "خطا در لغو نوبت");
+    }
   }
 
-  const columns = useMemo(
-    () => getBookingColumns({ barberNameById, onCancel: handleCancel }),
-    [barberNameById],
-  );
+  const columns = useMemo(() => getBookingColumns({ onCancel: handleCancel }), []);
+
+  if (isLoading) {
+    return <div className="p-8 text-center text-sm text-muted-foreground">در حال دریافت نوبت‌ها...</div>;
+  }
 
   return (
     <main className="space-y-6">
       <div className="flex flex-col gap-1">
         <h1 className="text-xl font-bold">مدیریت نوبت‌ها</h1>
-        <p className="text-sm text-muted-foreground">
-          لیست همه‌ی نوبت‌های ثبت‌شده، فارغ از آرایشگر
-        </p>
+        <p className="text-sm text-muted-foreground">لیست همه‌ی نوبت‌های ثبت‌شده، فارغ از آرایشگر</p>
       </div>
 
-      {/* باکس انتخاب روز / تاریخ */}
       <Card>
         <CardContent className="flex flex-col gap-3 p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -164,14 +171,8 @@ export default function AdminBookingsPage() {
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground shrink-0">
-                تاریخ دلخواه:
-              </span>
-              <JalaliDatePicker
-                value={customDate}
-                onChange={handleCustomDateChange}
-                placeholder="انتخاب تاریخ"
-              />
+              <span className="text-sm text-muted-foreground shrink-0">تاریخ دلخواه:</span>
+              <JalaliDatePicker value={customDate} onChange={handleCustomDateChange} placeholder="انتخاب تاریخ" />
             </div>
           </div>
 
@@ -212,7 +213,7 @@ export default function AdminBookingsPage() {
                 <SelectItem value="all">همه‌ی آرایشگرها</SelectItem>
                 {barbers.map((b) => (
                   <SelectItem key={b.id} value={b.id}>
-                    {b.name}
+                    {b.user.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -233,11 +234,7 @@ export default function AdminBookingsPage() {
             </Select>
           </div>
 
-          <DataTable
-            columns={columns}
-            data={filtered}
-            emptyMessage="نوبتی با این فیلترها پیدا نشد"
-          />
+          <DataTable columns={columns} data={filtered} emptyMessage="نوبتی با این فیلترها پیدا نشد" />
         </CardContent>
       </Card>
     </main>

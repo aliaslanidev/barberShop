@@ -1,26 +1,68 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { getTodayAppointments, type Appointment, type ServiceSessionStatus } from "@/lib/data/appointments";
-import { getServiceById } from "@/lib/data/services";
-import { CURRENT_BARBER_ID } from "@/lib/data/barber-session";
+import {
+  listBookingsApi,
+  updateBookingStatusApi,
+  ApiError,
+  type ApiBooking,
+  type BookingStatus,
+} from "@/lib/api";
+import { getAuthToken } from "@/lib/data/mock-session";
 
-const statusLabel: Record<ServiceSessionStatus, string> = {
-  upcoming: "در انتظار",
-  in_progress: "در حال انجام",
-  completed: "انجام‌شده",
+const statusLabel: Record<BookingStatus, string> = {
+  CONFIRMED: "در انتظار",
+  IN_PROGRESS: "در حال انجام",
+  COMPLETED: "انجام‌شده",
+  CANCELLED: "لغوشده",
 };
 
-export default function BarberBookingsPage() {
-  const [items, setItems] = useState<Appointment[]>(getTodayAppointments(CURRENT_BARBER_ID));
+function toISODate(d: Date) {
+  return d.toISOString().slice(0, 10);
+}
 
-  function updateStatus(id: string, status: ServiceSessionStatus) {
-    // TODO: اتصال به API واقعی (Start/End Service) وقتی بک‌اند آماده شد
-    setItems((prev) => prev.map((a) => (a.id === id ? { ...a, status } : a)));
-    toast.success(status === "in_progress" ? "سرویس شروع شد" : "سرویس پایان یافت");
+export default function BarberBookingsPage() {
+  const [items, setItems] = useState<ApiBooking[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  async function refresh() {
+    const token = getAuthToken();
+    if (!token) return;
+    try {
+      const data = await listBookingsApi(token, { date: toISODate(new Date()) });
+      setItems(data);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "خطا در دریافت نوبت‌ها");
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    refresh();
+  }, []);
+
+  async function updateStatus(id: string, status: BookingStatus) {
+    const token = getAuthToken();
+    if (!token) return;
+    try {
+      await updateBookingStatusApi(id, status, token);
+      await refresh();
+      toast.success(status === "IN_PROGRESS" ? "سرویس شروع شد" : "سرویس پایان یافت");
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "خطا در تغییر وضعیت");
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="p-8 text-center text-sm text-muted-foreground">
+        در حال دریافت نوبت‌های امروز...
+      </div>
+    );
   }
 
   return (
@@ -39,19 +81,19 @@ export default function BarberBookingsPage() {
             <Card key={a.id}>
               <CardContent className="flex flex-wrap items-center justify-between gap-3 p-5">
                 <div>
-                  <p className="text-sm font-medium">{a.customerName}</p>
+                  <p className="text-sm font-medium">{a.customer.name}</p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {getServiceById(a.serviceId)?.title} — ساعت {a.time} · {statusLabel[a.status]}
+                    {a.service.title} — ساعت {a.time} · {statusLabel[a.status]}
                   </p>
                 </div>
                 <div className="flex gap-2">
-                  {a.status === "upcoming" && (
-                    <Button size="sm" onClick={() => updateStatus(a.id, "in_progress")}>
+                  {a.status === "CONFIRMED" && (
+                    <Button size="sm" onClick={() => updateStatus(a.id, "IN_PROGRESS")}>
                       شروع سرویس
                     </Button>
                   )}
-                  {a.status === "in_progress" && (
-                    <Button size="sm" onClick={() => updateStatus(a.id, "completed")}>
+                  {a.status === "IN_PROGRESS" && (
+                    <Button size="sm" onClick={() => updateStatus(a.id, "COMPLETED")}>
                       پایان سرویس
                     </Button>
                   )}

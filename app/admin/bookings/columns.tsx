@@ -5,31 +5,20 @@ import { ArrowUpDown } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import type {
-  Appointment,
-  ServiceSessionStatus,
-} from "@/lib/data/appointments";
+import type { ApiBooking, BookingStatus } from "@/lib/api";
 
-export const STATUS_LABELS: Record<ServiceSessionStatus, string> = {
-  upcoming: "در انتظار",
-  in_progress: "در حال انجام",
-  completed: "انجام‌شده",
-  cancelled: "لغو‌شده",
+export const STATUS_LABELS: Record<BookingStatus, string> = {
+  CONFIRMED: "در انتظار",
+  IN_PROGRESS: "در حال انجام",
+  COMPLETED: "انجام‌شده",
+  CANCELLED: "لغو‌شده",
 };
 
-export const STATUS_STYLES: Record<ServiceSessionStatus, string> = {
-  upcoming: "bg-blue-100 text-blue-700",
-  in_progress: "bg-amber-100 text-amber-700",
-  completed: "bg-green-100 text-green-700",
-  cancelled: "bg-red-100 text-red-700",
-};
-
-// اگه lib/data/services.ts داری، این رو با اسم واقعی سرویس‌ها جایگزین کن
-export const SERVICE_LABELS: Record<string, string> = {
-  haircut: "اصلاح مو",
-  beard: "اصلاح ریش",
-  color: "رنگ مو",
-  facial: "پاکسازی پوست",
+export const STATUS_STYLES: Record<BookingStatus, string> = {
+  CONFIRMED: "bg-blue-100 text-blue-700",
+  IN_PROGRESS: "bg-amber-100 text-amber-700",
+  COMPLETED: "bg-green-100 text-green-700",
+  CANCELLED: "bg-red-100 text-red-700",
 };
 
 export function formatPersianDate(iso: string): string {
@@ -44,13 +33,7 @@ export function formatPersianDate(iso: string): string {
   }
 }
 
-function SortableHeader({
-  label,
-  column,
-}: {
-  label: string;
-  column: Column<Appointment, unknown>;
-}) {
+function SortableHeader({ label, column }: { label: string; column: Column<ApiBooking, unknown> }) {
   return (
     <Button
       type="button"
@@ -66,22 +49,18 @@ function SortableHeader({
 }
 
 interface BookingColumnsOptions {
-  barberNameById: Map<string, string>;
   onCancel: (id: string) => void;
 }
 
-export function getBookingColumns({
-  barberNameById,
-  onCancel,
-}: BookingColumnsOptions): ColumnDef<Appointment>[] {
+// دیگه نیازی به barberNameById/SERVICE_LABELS نیست — ApiBooking خودش
+// barber.user.name و service.title رو join‌شده از بک‌اند میاره
+export function getBookingColumns({ onCancel }: BookingColumnsOptions): ColumnDef<ApiBooking>[] {
   return [
     {
       accessorKey: "date",
       header: ({ column }) => <SortableHeader label="تاریخ" column={column} />,
       cell: ({ row }) => (
-        <span className="whitespace-nowrap">
-          {formatPersianDate(row.original.date)}
-        </span>
+        <span className="whitespace-nowrap">{formatPersianDate(row.original.date)}</span>
       ),
     },
     {
@@ -90,40 +69,35 @@ export function getBookingColumns({
       cell: ({ row }) => <span className="font-mono">{row.original.time}</span>,
     },
     {
-      accessorKey: "customerName",
+      id: "customerName",
+      accessorFn: (row) => row.customer.name,
       header: "مشتری",
     },
     {
-      accessorKey: "customerPhone",
+      id: "customerPhone",
+      accessorFn: (row) => row.customer.mobile,
       header: "شماره تماس",
       cell: ({ row }) => (
         <span className="font-mono" dir="ltr">
-          {row.original.customerPhone}
+          {row.original.customer.mobile}
         </span>
       ),
     },
     {
-      accessorKey: "barberId",
+      id: "barberName",
+      accessorFn: (row) => row.barber.user.name,
       header: "آرایشگر",
-      cell: ({ row }) =>
-        barberNameById.get(row.original.barberId) ?? row.original.barberId,
     },
     {
-      accessorKey: "serviceId",
+      id: "serviceTitle",
+      accessorFn: (row) => row.service.title,
       header: "خدمت",
-      cell: ({ row }) =>
-        SERVICE_LABELS[row.original.serviceId] ?? row.original.serviceId,
     },
     {
       accessorKey: "status",
       header: ({ column }) => <SortableHeader label="وضعیت" column={column} />,
       cell: ({ row }) => (
-        <span
-          className={cn(
-            "rounded-full px-2 py-1 text-xs font-medium",
-            STATUS_STYLES[row.original.status],
-          )}
-        >
+        <span className={cn("rounded-full px-2 py-1 text-xs font-medium", STATUS_STYLES[row.original.status])}>
           {STATUS_LABELS[row.original.status]}
         </span>
       ),
@@ -132,19 +106,10 @@ export function getBookingColumns({
       id: "actions",
       header: "عملیات",
       cell: ({ row }) => {
-        const appointment = row.original;
-        if (
-          appointment.status === "cancelled" ||
-          appointment.status === "completed"
-        ) {
-          return null;
-        }
+        const booking = row.original;
+        if (booking.status === "CANCELLED" || booking.status === "COMPLETED") return null;
         return (
-          <Button
-            size="sm"
-            variant="destructive"
-            onClick={() => onCancel(appointment.id)}
-          >
+          <Button size="sm" variant="destructive" onClick={() => onCancel(booking.id)}>
             لغو نوبت
           </Button>
         );

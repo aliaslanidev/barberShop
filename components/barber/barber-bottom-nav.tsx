@@ -9,11 +9,8 @@ import {
   Clock,
 } from "lucide-react";
 import { RoleBottomNav, type RoleNavItem } from "@/components/role-bottom-nav";
-import {
-  getBarberPermissions,
-  type Permission,
-} from "@/lib/data/barber-permissions";
-import { getCurrentBarberId } from "@/lib/data/barber-session";
+import { useCurrentBarberProfile } from "@/lib/hooks/use-current-barber";
+import type { ApiBarber } from "@/lib/api";
 
 const baseItems: RoleNavItem[] = [
   { href: "/barber/dashboard", label: "داشبورد", icon: LayoutDashboard },
@@ -21,36 +18,33 @@ const baseItems: RoleNavItem[] = [
   { href: "/barber/customers", label: "مشتریان من", icon: Users },
 ];
 
-const managedItems: (RoleNavItem & { permission: Permission })[] = [
+const managedItems: (RoleNavItem & { permissionKey: keyof ApiBarber })[] = [
   {
     href: "/barber/services",
     label: "سرویس و قیمت",
     icon: Scissors,
-    permission: "manage_services",
+    permissionKey: "manageServices",
   },
   {
     href: "/barber/schedule",
     label: "زمان‌بندی",
     icon: Clock,
-    permission: "manage_schedule",
+    permissionKey: "manageSchedule",
   },
   {
     href: "/barber/time-off",
     label: "مرخصی",
     icon: CalendarX,
-    permission: "manage_time_off",
+    permissionKey: "manageTimeOff",
   },
 ];
 
 export function BarberBottomNav() {
-  const currentBarberId = getCurrentBarberId();
-  const permissions = currentBarberId
-    ? getBarberPermissions(currentBarberId)
-    : [];
+  const barber = useCurrentBarberProfile();
 
-  const visibleManaged = managedItems.filter((item) =>
-    permissions.includes(item.permission)
-  );
+  const visibleManaged = barber
+    ? managedItems.filter((item) => barber[item.permissionKey] === true)
+    : [];
   const items: RoleNavItem[] = [...baseItems, ...visibleManaged];
 
   return <RoleBottomNav items={items} />;

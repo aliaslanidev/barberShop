@@ -187,3 +187,81 @@ export function updateBarberPermissionsApi(
 export function deleteBarberApi(id: string, token: string) {
   return apiFetch<void>(`/barbers/${id}`, { method: "DELETE", token });
 }
+
+// ==================== Bookings ====================
+
+export type BookingStatus = "CONFIRMED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
+
+// نسخه‌ی سبک‌تر ApiBarber — چون include بوکینگ فقط user رو با barber میاره، نه services
+export interface ApiBookingBarber extends ApiBarberPermissions {
+  id: string;
+  userId: string;
+  bio: string;
+  initials: string;
+  isActive: boolean;
+  createdAt: string;
+  user: { id: string; name: string; mobile: string };
+}
+
+export interface ApiBooking {
+  id: string;
+  customerId: string;
+  barberId: string;
+  serviceId: string;
+  date: string; // ISO
+  time: string;
+  status: BookingStatus;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  barber: ApiBookingBarber;
+  service: ApiService;
+  customer: { id: string; name: string; mobile: string };
+}
+
+export function getAvailability(barberId: string, date: string) {
+  return apiFetch<string[]>(
+    `/bookings/availability?barberId=${encodeURIComponent(barberId)}&date=${encodeURIComponent(date)}`
+  );
+}
+
+export function createBookingApi(
+  data: { barberId: string; serviceId: string; date: string; time: string; notes?: string },
+  token: string
+) {
+  return apiFetch<ApiBooking>("/bookings", { method: "POST", body: data, token });
+}
+
+export interface ListBookingsFilter {
+  barberId?: string;
+  customerId?: string;
+  status?: BookingStatus;
+  date?: string;
+  dateFrom?: string;
+  dateTo?: string;
+}
+
+export function listBookingsApi(token: string, filter: ListBookingsFilter = {}) {
+  const params = new URLSearchParams();
+  Object.entries(filter).forEach(([key, value]) => {
+    if (value) params.set(key, value);
+  });
+  const qs = params.toString();
+  return apiFetch<ApiBooking[]>(`/bookings${qs ? `?${qs}` : ""}`, { token });
+}
+
+export function getBookingApi(id: string, token: string) {
+  return apiFetch<ApiBooking>(`/bookings/${id}`, { token });
+}
+
+export function updateBookingStatusApi(id: string, status: BookingStatus, token: string) {
+  return apiFetch<ApiBooking>(`/bookings/${id}/status`, {
+    method: "PATCH",
+    body: { status },
+    token,
+  });
+}
+
+export function getMyCustomersApi(token: string) {
+  return apiFetch<{ name: string; phone: string }[]>("/bookings/my-customers", { token });
+}
