@@ -10,12 +10,19 @@ interface JalaliDatePickerProps {
   value: DateObject | null;
   onChange: (date: DateObject | null) => void;
   placeholder?: string;
+  minDate?: DateObject | Date;
+  maxDate?: DateObject | Date;
+  // برای غیرفعال/خاکستری‌کردن روزهای بدون ظرفیت تو تقویم رزرو
+  mapDays?: (args: { date: DateObject }) => Record<string, unknown> | void;
 }
 
 export function JalaliDatePicker({
   value,
   onChange,
   placeholder = "انتخاب تاریخ",
+  minDate,
+  maxDate,
+  mapDays,
 }: JalaliDatePickerProps) {
   return (
     <DatePicker
@@ -27,7 +34,9 @@ export function JalaliDatePicker({
       className="bg-dark green"
       inputClass="jalali-input"
       placeholder={placeholder}
-      minDate={new Date()}
+      minDate={minDate ?? new Date()}
+      maxDate={maxDate}
+      mapDays={mapDays}
     />
   );
 }

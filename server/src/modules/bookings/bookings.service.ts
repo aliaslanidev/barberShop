@@ -86,6 +86,61 @@ export async function getAvailableSlots(barberId: string, dateStr: string): Prom
   return allSlots.filter((slot) => !bookedTimes.has(slot));
 }
 
+// ==================== ظرفیت یه بازه (برای رنگ‌کردن تقویم) ====================
+// نسخه‌ی بهینه‌ی getAvailableSlots برای یه بازه‌ی چندروزه: به‌جای N کوئری
+// جدا برای هر روز، فقط ۳ کوئری (holidays/timeOff/bookings) رو رو کل بازه می‌زنه.
+
+export async function getAvailableDatesInRange(
+  barberId: string,
+  fromStr: string,
+  toStr: string
+): Promise<string[]> {
+  const barber = await prisma.barberProfile.findUnique({ where: { id: barberId } });
+  if (!barber || !barber.isActive) return [];
+
+  const allWorkingHours = await prisma.workingHours.findMany();
+  const hoursByDay = new Map(allWorkingHours.map((w) => [w.day, w]));
+
+  const from = parseDateOnly(fromStr);
+  const toExclusive = dateRangeForDay(toStr).lt; // شامل خودِ toStr هم بشه
+
+  const [holidays, timeOffs, bookings] = await Promise.all([
+    prisma.salonHoliday.findMany({ where: { date: { gte: from, lt: toExclusive } } }),
+    prisma.timeOff.findMany({ where: { barberId, date: { gte: from, lt: toExclusive } } }),
+    prisma.booking.findMany({
+      where: { barberId, date: { gte: from, lt: toExclusive }, status: { not: "CANCELLED" } },
+      select: { date: true, time: true },
+    }),
+  ]);
+
+  const holidaySet = new Set(holidays.map((h) => h.date.toISOString().slice(0, 10)));
+  const timeOffSet = new Set(timeOffs.map((t) => t.date.toISOString().slice(0, 10)));
+
+  const bookingCountByDate = new Map<string, number>();
+  for (const b of bookings) {
+    const key = b.date.toISOString().slice(0, 10);
+    bookingCountByDate.set(key, (bookingCountByDate.get(key) ?? 0) + 1);
+  }
+
+  const result: string[] = [];
+  const cursor = new Date(from);
+  while (cursor < toExclusive) {
+    const dateStr = cursor.toISOString().slice(0, 10);
+    const weekday = WEEKDAY_BY_JS_DAY[cursor.getUTCDay()];
+    const wh = hoursByDay.get(weekday);
+
+    if (wh?.isOpen && !holidaySet.has(dateStr) && !timeOffSet.has(dateStr)) {
+      const totalSlots = generateSlotsInRange(wh.openTime, wh.closeTime).length;
+      const booked = bookingCountByDate.get(dateStr) ?? 0;
+      if (booked < totalSlots) result.push(dateStr);
+    }
+
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+  }
+
+  return result;
+}
+
 // ==================== ساخت نوبت ====================
 
 const bookingIncludes = {

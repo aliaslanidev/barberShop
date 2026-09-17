@@ -225,6 +225,14 @@ export function getAvailability(barberId: string, date: string) {
   );
 }
 
+// برای رنگ‌کردن/غیرفعال‌کردن روزهای بدون ظرفیت تو تقویم، قبل از اینکه
+// کاربر یه روز خاص رو انتخاب کنه و تازه بفهمه خالی نیست
+export function getAvailabilityRange(barberId: string, from: string, to: string) {
+  return apiFetch<string[]>(
+    `/bookings/availability-range?barberId=${encodeURIComponent(barberId)}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`
+  );
+}
+
 export function createBookingApi(
   data: { barberId: string; serviceId: string; date: string; time: string; notes?: string },
   token: string

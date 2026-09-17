@@ -7,7 +7,10 @@ import { listBookingsApi, ApiError, type ApiBooking } from "@/lib/api";
 import { getAuthToken } from "@/lib/data/mock-session";
 
 function toISODate(d: Date) {
-  return d.toISOString().slice(0, 10);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 export default function BarberDashboardPage() {

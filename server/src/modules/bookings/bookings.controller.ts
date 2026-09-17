@@ -4,6 +4,7 @@ import {
   createBookingSchema,
   updateBookingStatusSchema,
   availabilityQuerySchema,
+  availabilityRangeQuerySchema,
   listBookingsQuerySchema,
 } from "@/modules/bookings/bookings.schema";
 import { AppError } from "@/utils/AppError";
@@ -13,6 +14,13 @@ export async function availabilityHandler(req: Request, res: Response) {
   const { barberId, date } = availabilityQuerySchema.parse(req.query);
   const slots = await bookingsService.getAvailableSlots(barberId, date);
   res.json(slots);
+}
+
+// برای رنگ‌کردن/غیرفعال‌کردن روزهای بدون ظرفیت تو تقویم رزرو
+export async function availabilityRangeHandler(req: Request, res: Response) {
+  const { barberId, from, to } = availabilityRangeQuerySchema.parse(req.query);
+  const dates = await bookingsService.getAvailableDatesInRange(barberId, from, to);
+  res.json(dates);
 }
 
 export async function createBookingHandler(req: Request, res: Response) {

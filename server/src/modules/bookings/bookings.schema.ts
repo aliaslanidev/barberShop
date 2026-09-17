@@ -23,6 +23,15 @@ export const availabilityQuerySchema = z.object({
 });
 export type AvailabilityQuery = z.infer<typeof availabilityQuerySchema>;
 
+// برای رنگ‌کردن/غیرفعال‌کردن روزهای بدون ظرفیت تو تقویم، قبل از اینکه
+// کاربر یه روز خاص رو انتخاب کنه و بفهمه خالی نیست
+export const availabilityRangeQuerySchema = z.object({
+  barberId: z.string().min(1, "آرایشگر مشخص نشده"),
+  from: z.string().regex(dateRegex, "فرمت تاریخ باید YYYY-MM-DD باشد"),
+  to: z.string().regex(dateRegex, "فرمت تاریخ باید YYYY-MM-DD باشد"),
+});
+export type AvailabilityRangeQuery = z.infer<typeof availabilityRangeQuerySchema>;
+
 export const listBookingsQuerySchema = z.object({
   barberId: z.string().optional(),
   customerId: z.string().optional(),

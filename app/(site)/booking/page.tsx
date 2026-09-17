@@ -19,6 +19,7 @@ import {
   listServices,
   listBarbers,
   getAvailability,
+  getAvailabilityRange,
   createBookingApi,
   ApiError,
   type ApiService,
@@ -54,7 +55,10 @@ function toPersianDigits(input: string) {
 // شمسی برمی‌گردونه نه میلادی! بک‌اند تاریخ میلادی می‌خواد، پس همیشه از
 // toDate() (که Date واقعی میلادی می‌ده) به این تابع رد می‌شه.
 function toISODate(d: Date) {
-  return d.toISOString().slice(0, 10);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 export default function BookingPage() {
@@ -91,6 +95,30 @@ export default function BookingPage() {
 
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
+
+  // روزهایی که تو ۳۰ روز آینده حداقل یه اسلات خالی دارن — برای رنگ‌کردن تقویم
+  const [availableDates, setAvailableDates] = useState<Set<string>>(new Set());
+  const [isLoadingDates, setIsLoadingDates] = useState(false);
+  const CALENDAR_WINDOW_DAYS = 30;
+  const calendarMaxDate = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + CALENDAR_WINDOW_DAYS);
+    return d;
+  }, []);
+
+  useEffect(() => {
+    if (!selectedBarberId) {
+      setAvailableDates(new Set());
+      return;
+    }
+    setIsLoadingDates(true);
+    const from = toISODate(new Date());
+    const to = toISODate(calendarMaxDate);
+    getAvailabilityRange(selectedBarberId, from, to)
+      .then((dates) => setAvailableDates(new Set(dates)))
+      .catch(() => setAvailableDates(new Set()))
+      .finally(() => setIsLoadingDates(false));
+  }, [selectedBarberId, calendarMaxDate]);
 
   const dateKey = date ? toISODate(date.toDate()) : null;
 
@@ -399,6 +427,9 @@ export default function BookingPage() {
       {step === "date" && (
         <div className="space-y-2">
           <Label>تاریخ نوبت</Label>
+          {isLoadingDates && (
+            <p className="text-xs text-muted-foreground">در حال بررسی روزهای خالی...</p>
+          )}
           <JalaliDatePicker
             value={date}
             onChange={(newDate) => {
@@ -406,7 +437,23 @@ export default function BookingPage() {
               setTime(null);
             }}
             placeholder="انتخاب تاریخ"
+            maxDate={calendarMaxDate}
+            mapDays={({ date: d }) => {
+              const iso = toISODate(d.toDate());
+              if (!availableDates.has(iso)) {
+                return {
+                  disabled: true,
+                  style: { opacity: 0.35, textDecoration: "line-through" },
+                };
+              }
+              return {};
+            }}
           />
+          <p className="text-xs text-muted-foreground">
+            روزهای خاکستری/خط‌خورده یعنی این آرایشگر ظرفیت خالی نداره (تعطیل،
+            مرخصی یا پر شده). فقط تا {toPersianDigits(String(CALENDAR_WINDOW_DAYS))}{" "}
+            روز آینده قابل رزروه.
+          </p>
         </div>
       )}
 
