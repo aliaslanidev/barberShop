@@ -1,31 +1,50 @@
 "use client";
 
-import { useEffect } from "react";
-import Link from "next/link";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { BookingCard } from "@/components/customer/booking-card";
-import { getNextBooking, getUpcomingBookings, getBookingHistory } from "@/lib/data/bookings";
 import { getCurrentCustomer } from "@/lib/data/customer-session";
+import { listBookingsApi, ApiError, type ApiBooking } from "@/lib/api";
+import { getAuthToken } from "@/lib/data/mock-session";
 
 export default function CustomerDashboardPage() {
   const router = useRouter();
   const customer = getCurrentCustomer();
+  const [bookings, setBookings] = useState<ApiBooking[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (!customer) {
       router.replace("/login");
+      return;
     }
+    const token = getAuthToken();
+    if (!token) return;
+    listBookingsApi(token)
+      .then(setBookings)
+      .catch((err) => console.error(err instanceof ApiError ? err.message : err))
+      .finally(() => setIsLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [customer, router]);
 
-  if (!customer) {
-    return null;
+  if (!customer) return null;
+
+  if (isLoading) {
+    return (
+      <div className="p-8 text-center text-sm text-muted-foreground">
+        در حال بارگذاری...
+      </div>
+    );
   }
 
-  const nextBooking = getNextBooking(customer.id);
-  const upcomingCount = getUpcomingBookings(customer.id).length;
-  const historyCount = getBookingHistory(customer.id).length;
+  const upcoming = bookings
+    .filter((b) => b.status === "CONFIRMED")
+    .sort((a, b) => (a.date + a.time > b.date + b.time ? 1 : -1));
+  const nextBooking = upcoming[0] ?? null;
+  const historyCount = bookings.filter((b) => b.status === "COMPLETED" || b.status === "CANCELLED").length;
 
   return (
     <div className="space-y-8">
@@ -38,7 +57,7 @@ export default function CustomerDashboardPage() {
         <Card>
           <CardContent className="p-5">
             <p className="text-xs text-muted-foreground">نوبت‌های آینده</p>
-            <p className="mt-1 text-2xl font-bold text-primary">{upcomingCount}</p>
+            <p className="mt-1 text-2xl font-bold text-primary">{upcoming.length}</p>
           </CardContent>
         </Card>
         <Card>

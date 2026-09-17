@@ -1,18 +1,51 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { BookingCard } from "@/components/customer/booking-card";
-import { getUpcomingBookings, type Booking } from "@/lib/data/bookings";
+import { listBookingsApi, updateBookingStatusApi, ApiError, type ApiBooking } from "@/lib/api";
+import { getAuthToken } from "@/lib/data/mock-session";
 
 export default function CustomerBookingsPage() {
-  const [items, setItems] = useState<Booking[]>(getUpcomingBookings());
+  const [items, setItems] = useState<ApiBooking[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  function handleCancel(id: string) {
-    // TODO: وقتی بک‌اند آماده شد، اینجا باید یه درخواست DELETE/PATCH به API بره
-    setItems((prev) => prev.filter((b) => b.id !== id));
-    toast.success("نوبت لغو شد");
+  async function refresh() {
+    const token = getAuthToken();
+    if (!token) return;
+    try {
+      const data = await listBookingsApi(token, { status: "CONFIRMED" });
+      setItems(data);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "خطا در دریافت نوبت‌ها");
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    refresh();
+  }, []);
+
+  async function handleCancel(id: string) {
+    const token = getAuthToken();
+    if (!token) return;
+    try {
+      await updateBookingStatusApi(id, "CANCELLED", token);
+      await refresh();
+      toast.success("نوبت لغو شد");
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "خطا در لغو نوبت");
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="p-8 text-center text-sm text-muted-foreground">
+        در حال دریافت نوبت‌ها...
+      </div>
+    );
   }
 
   return (
