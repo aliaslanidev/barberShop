@@ -105,6 +105,15 @@ export function deleteServiceApi(id: string, token: string) {
 
 // ==================== Barbers ====================
 
+export type ApiWeekday =
+  | "SATURDAY"
+  | "SUNDAY"
+  | "MONDAY"
+  | "TUESDAY"
+  | "WEDNESDAY"
+  | "THURSDAY"
+  | "FRIDAY";
+
 export interface ApiBarberPermissions {
   manageServices: boolean;
   managePricing: boolean;
@@ -130,6 +139,7 @@ export interface ApiBarber extends ApiBarberPermissions {
   initials: string;
   isActive: boolean;
   createdAt: string;
+  workingDays: ApiWeekday[];
   user: { id: string; name: string; mobile: string };
   services: ApiBarberService[];
 }
@@ -208,6 +218,14 @@ export function updateMyServiceActiveApi(
   return apiFetch<ApiBarber>(`/barbers/me/services/${serviceId}/active`, {
     method: "PATCH",
     body: { isActive },
+    token,
+  });
+}
+
+export function updateMyWorkingDaysApi(workingDays: ApiWeekday[], token: string) {
+  return apiFetch<ApiBarber>("/barbers/me/working-days", {
+    method: "PATCH",
+    body: { workingDays },
     token,
   });
 }

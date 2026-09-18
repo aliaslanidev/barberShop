@@ -34,8 +34,23 @@ export const updateServiceActiveSchema = z.object({
   isActive: z.boolean(),
 });
 
+const WEEKDAY_VALUES = [
+  "SATURDAY",
+  "SUNDAY",
+  "MONDAY",
+  "TUESDAY",
+  "WEDNESDAY",
+  "THURSDAY",
+  "FRIDAY",
+] as const;
+
+export const updateWorkingDaysSchema = z.object({
+  workingDays: z.array(z.enum(WEEKDAY_VALUES)),
+});
+
 export type CreateBarberInput = z.infer<typeof createBarberSchema>;
 export type UpdateBarberInput = z.infer<typeof updateBarberSchema>;
 export type UpdatePermissionsInput = z.infer<typeof updatePermissionsSchema>;
 export type UpdateServicePriceInput = z.infer<typeof updateServicePriceSchema>;
 export type UpdateServiceActiveInput = z.infer<typeof updateServiceActiveSchema>;
+export type UpdateWorkingDaysInput = z.infer<typeof updateWorkingDaysSchema>;

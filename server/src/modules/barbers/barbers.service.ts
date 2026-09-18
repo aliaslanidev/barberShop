@@ -6,6 +6,7 @@ import type {
   UpdateBarberInput,
   UpdatePermissionsInput,
 } from "@/modules/barbers/barbers.schema";
+import type { Weekday } from "@prisma/client";
 
 const barberInclude = {
   user: { select: { id: true, name: true, mobile: true } },
@@ -138,6 +139,24 @@ export async function updateOwnServiceActive(
   await prisma.barberService.update({
     where: { barberId_serviceId: { barberId: barberProfile.id, serviceId } },
     data: { isActive },
+  });
+
+  return getBarberById(barberProfile.id);
+}
+
+// آرایشگر با پرمیشن manageSchedule، روزهای کاری هفتگی خودش رو تعیین می‌کنه.
+// آرایه‌ی خالی یعنی برگرد به پیروی از روزهای بازِ سالن.
+export async function updateOwnWorkingDays(userId: string, workingDays: Weekday[]) {
+  const barberProfile = await prisma.barberProfile.findUnique({ where: { userId } });
+  if (!barberProfile) throw new AppError("پروفایل آرایشگر پیدا نشد", 404);
+
+  if (!barberProfile.manageSchedule) {
+    throw new AppError("شما اجازه‌ی تعیین زمان‌بندی را ندارید", 403);
+  }
+
+  await prisma.barberProfile.update({
+    where: { id: barberProfile.id },
+    data: { workingDays },
   });
 
   return getBarberById(barberProfile.id);

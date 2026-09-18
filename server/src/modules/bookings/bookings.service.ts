@@ -45,12 +45,20 @@ function generateSlotsInRange(openTime: string, closeTime: string): string[] {
   return slots;
 }
 
+// آرایه‌ی خالی workingDays یعنی آرایشگر محدودیت خاصی نداره و از روزهای
+// بازِ سالن پیروی می‌کنه؛ غیرخالی یعنی فقط همین روزها رو کار می‌کنه
+function barberWorksOnWeekday(workingDays: Weekday[], weekday: Weekday): boolean {
+  return workingDays.length === 0 || workingDays.includes(weekday);
+}
+
 export async function getAvailableSlots(barberId: string, dateStr: string): Promise<string[]> {
   const barber = await prisma.barberProfile.findUnique({ where: { id: barberId } });
   if (!barber || !barber.isActive) return [];
 
   const dateOnly = parseDateOnly(dateStr);
   const weekday = WEEKDAY_BY_JS_DAY[dateOnly.getUTCDay()];
+
+  if (!barberWorksOnWeekday(barber.workingDays, weekday)) return [];
 
   const workingHours = await prisma.workingHours.findUnique({ where: { day: weekday } });
   if (!workingHours || !workingHours.isOpen) return [];
@@ -130,8 +138,9 @@ export async function getAvailableDatesInRange(
     const dateStr = cursor.toISOString().slice(0, 10);
     const weekday = WEEKDAY_BY_JS_DAY[cursor.getUTCDay()];
     const wh = hoursByDay.get(weekday);
+    const barberWorksThisDay = barberWorksOnWeekday(barber.workingDays, weekday);
 
-    if (wh?.isOpen && !holidaySet.has(dateStr) && !timeOffSet.has(dateStr)) {
+    if (wh?.isOpen && barberWorksThisDay && !holidaySet.has(dateStr) && !timeOffSet.has(dateStr)) {
       const totalSlots = generateSlotsInRange(wh.openTime, wh.closeTime).length;
       const occupied = occupiedCountByDate.get(dateStr) ?? 0;
       if (occupied < totalSlots) result.push(dateStr);

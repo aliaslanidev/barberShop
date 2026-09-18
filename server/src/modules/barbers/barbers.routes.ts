@@ -9,6 +9,7 @@ import {
   updateBarberHandler,
   updateOwnServiceActiveHandler,
   updateOwnServicePriceHandler,
+  updateOwnWorkingDaysHandler,
   updatePermissionsHandler,
 } from "@/modules/barbers/barbers.controller";
 
@@ -29,6 +30,13 @@ barbersRouter.patch(
   requireAuth,
   requireRole("BARBER"),
   asyncHandler(updateOwnServiceActiveHandler)
+);
+
+barbersRouter.patch(
+  "/me/working-days",
+  requireAuth,
+  requireRole("BARBER"),
+  asyncHandler(updateOwnWorkingDaysHandler)
 );
 
 barbersRouter.post("/", requireAuth, requireRole("ADMIN"), asyncHandler(createBarberHandler));

@@ -6,6 +6,7 @@ import {
   updatePermissionsSchema,
   updateServicePriceSchema,
   updateServiceActiveSchema,
+  updateWorkingDaysSchema,
 } from "@/modules/barbers/barbers.schema";
 
 export async function listBarbersHandler(_req: Request, res: Response) {
@@ -53,5 +54,11 @@ export async function updateOwnServiceActiveHandler(req: Request, res: Response)
     req.params.serviceId,
     input.isActive
   );
+  res.json(barber);
+}
+
+export async function updateOwnWorkingDaysHandler(req: Request, res: Response) {
+  const input = updateWorkingDaysSchema.parse(req.body);
+  const barber = await barbersService.updateOwnWorkingDays(req.user!.userId, input.workingDays);
   res.json(barber);
 }
