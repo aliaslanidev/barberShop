@@ -72,6 +72,7 @@ model BarberProfile {
   timeOffs      TimeOff[]
   leaveRequests LeaveRequest[]
   blockedSlots  BlockedSlot[]
+  slotHolds     SlotHold[]
 
   @@map("barber_profiles")
 }
@@ -170,6 +171,25 @@ model BlockedSlot {
 
   @@unique([barberId, date, time])
   @@map("blocked_slots")
+}
+
+// نگه‌داری موقت یه اسلات، از لحظه‌ای که مشتری ساعتی رو انتخاب می‌کنه تا
+// لحظه‌ی ثبت نهایی نوبت (یا انصراف/رهاکردن). با انقضای expiresAt (پیش‌فرض
+// ۵ دقیقه)، خودکار در همه‌ی کوئری‌های availability نادیده گرفته می‌شه —
+// نیازی به job/cron جداگانه برای پاک‌سازی نیست.
+model SlotHold {
+  id        String   @id @default(cuid())
+  barberId  String
+  date      DateTime
+  time      String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  barber BarberProfile @relation(fields: [barberId], references: [id], onDelete: Cascade)
+
+  @@unique([barberId, date, time])
+  @@index([expiresAt])
+  @@map("slot_holds")
 }
 
 model SalonHoliday {

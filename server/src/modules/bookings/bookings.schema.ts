@@ -9,6 +9,10 @@ export const createBookingSchema = z.object({
   date: z.string().regex(dateRegex, "فرمت تاریخ باید YYYY-MM-DD باشد"),
   time: z.string().regex(timeRegex, "فرمت ساعت باید HH:mm باشد"),
   notes: z.string().optional(),
+  // اختیاری: id هولدی که تو مرحله‌ی انتخاب ساعت ساخته شده. اگه بفرستی،
+  // سرور می‌فهمه این خودِ همون مشتریه که این ساعت رو نگه داشته بود، پس
+  // هولدِ خودش مانع ثبت نوبتش نمی‌شه.
+  holdId: z.string().optional(),
 });
 export type CreateBookingInput = z.infer<typeof createBookingSchema>;
 
@@ -41,3 +45,12 @@ export const listBookingsQuerySchema = z.object({
   dateTo: z.string().regex(dateRegex).optional(),
 });
 export type ListBookingsQuery = z.infer<typeof listBookingsQuerySchema>;
+
+// ==================== Slot Hold ====================
+
+export const createHoldSchema = z.object({
+  barberId: z.string().min(1, "آرایشگر مشخص نشده"),
+  date: z.string().regex(dateRegex, "فرمت تاریخ باید YYYY-MM-DD باشد"),
+  time: z.string().regex(timeRegex, "فرمت ساعت باید HH:mm باشد"),
+});
+export type CreateHoldInput = z.infer<typeof createHoldSchema>;

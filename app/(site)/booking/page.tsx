@@ -21,6 +21,9 @@ import {
   getAvailability,
   getAvailabilityRange,
   createBookingApi,
+  createSlotHoldApi,
+  extendSlotHoldApi,
+  releaseSlotHoldApi,
   ApiError,
   type ApiService,
   type ApiBarber,
@@ -97,6 +100,37 @@ export default function BookingPage() {
   const [availableSlots, setAvailableSlots] = useState<ApiSlotStatus[]>([]);
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
 
+  // ---------- Slot Hold: نگه‌داری موقت اسلات از لحظه‌ی انتخاب تا تایید نهایی ----------
+  const [holdId, setHoldId] = useState<string | null>(null);
+  const [holdExpiresAt, setHoldExpiresAt] = useState<number | null>(null); // timestamp (ms)
+  const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
+
+  // هر بار holdId عوض می‌شه (یا کامپوننت آنماونت می‌شه)، هولدِ قبلی آزاد
+  // می‌شه. این cleanup هم مسیر «برگشتن به مرحله‌ی قبل»، هم «ترک صفحه» رو
+  // پوشش می‌ده. اگه کاربر کلاً تب رو ببنده، ۵ دقیقه‌ی expiresAt سمت سرور
+  // خط دفاع نهاییه.
+  useEffect(() => {
+    if (!holdId) return;
+    const idToRelease = holdId;
+    return () => {
+      releaseSlotHoldApi(idToRelease).catch(() => {});
+    };
+  }, [holdId]);
+
+  // شمارش معکوس نمایشی برای مشتری
+  useEffect(() => {
+    if (!holdExpiresAt) {
+      setRemainingSeconds(null);
+      return;
+    }
+    function tick() {
+      setRemainingSeconds(Math.max(0, Math.round((holdExpiresAt! - Date.now()) / 1000)));
+    }
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [holdExpiresAt]);
+
   // روزهایی که تو ۳۰ روز آینده حداقل یه اسلات خالی دارن — برای رنگ‌کردن تقویم
   const [availableDates, setAvailableDates] = useState<Set<string>>(new Set());
   const [isLoadingDates, setIsLoadingDates] = useState(false);
@@ -156,14 +190,72 @@ export default function BookingPage() {
 
   const stepIndex = stepOrder.indexOf(step);
 
-  function goNext() {
+  function refreshSlots() {
+    if (selectedBarberId && dateKey) {
+      getAvailability(selectedBarberId, dateKey).then(setAvailableSlots).catch(() => {});
+    }
+  }
+
+  // انتخاب ساعت: به‌جای فقط setTime، یه هولد ۵ دقیقه‌ای روی سرور می‌سازه
+  async function handleSelectTime(slot: string) {
+    if (!selectedBarberId || !dateKey || time === slot) return;
+
+    const previousHoldId = holdId;
+    setTime(null);
+    setHoldId(null);
+    setHoldExpiresAt(null);
+
+    try {
+      const hold = await createSlotHoldApi({ barberId: selectedBarberId, date: dateKey, time: slot });
+      setTime(slot);
+      setHoldId(hold.id);
+      setHoldExpiresAt(new Date(hold.expiresAt).getTime());
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "این ساعت دیگر در دسترس نیست");
+      refreshSlots();
+    } finally {
+      // هولدِ ساعت قبلی (اگه داشتیم) رو آزاد کن — چون useEffect بالا فقط
+      // وقتی این اجرا می‌شه که state واقعاً به مقدار جدید ست بشه
+      if (previousHoldId) releaseSlotHoldApi(previousHoldId).catch(() => {});
+    }
+  }
+
+  async function goNext() {
     const idx = stepOrder.indexOf(step);
+
+    // اگه هولدی داریم (یعنی از مرحله‌ی ساعت به بعدیم)، قبل از رفتن به
+    // مرحله‌ی بعد، تمدیدش می‌کنیم تا در طول پر کردن فرم از دستش ندیم
+    if (holdId && step !== "confirm") {
+      try {
+        const hold = await extendSlotHoldApi(holdId);
+        setHoldExpiresAt(new Date(hold.expiresAt).getTime());
+      } catch {
+        toast.error("زمان نگه‌داری این ساعت تمام شد، لطفاً دوباره انتخاب کنید");
+        setHoldId(null);
+        setHoldExpiresAt(null);
+        setTime(null);
+        setStep("time");
+        refreshSlots();
+        return;
+      }
+    }
+
     if (idx < stepOrder.length - 1) setStep(stepOrder[idx + 1]);
   }
 
   function goBack() {
     const idx = stepOrder.indexOf(step);
-    if (idx > 0) setStep(stepOrder[idx - 1]);
+    if (idx <= 0) return;
+
+    // برگشتن از مرحله‌ی ساعت یعنی کاربر می‌خواد ساعت رو عوض کنه —
+    // هولد فعلی رو آزاد می‌کنیم
+    if (step === "time" && holdId) {
+      setHoldId(null);
+      setHoldExpiresAt(null);
+      setTime(null);
+    }
+
+    setStep(stepOrder[idx - 1]);
   }
 
   function canProceed() {
@@ -229,6 +321,7 @@ export default function BookingPage() {
           date: dateKey,
           time,
           notes: notes || undefined,
+          holdId: holdId ?? undefined,
         },
         token
       );
@@ -242,8 +335,19 @@ export default function BookingPage() {
       setDate(null);
       setTime(null);
       setNotes("");
+      setHoldId(null);
+      setHoldExpiresAt(null);
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "خطا در ثبت نوبت، دوباره تلاش کنید");
+      // اسلات از دست رفته (هولد منقضی شده یا کس دیگه‌ای زودتر گرفتتش) —
+      // برش‌گردون به مرحله‌ی انتخاب ساعت با لیست به‌روز
+      if (err instanceof ApiError && err.status === 409) {
+        setHoldId(null);
+        setHoldExpiresAt(null);
+        setTime(null);
+        setStep("time");
+        refreshSlots();
+      }
     } finally {
       setIsFinalSubmitting(false);
     }
@@ -275,6 +379,16 @@ export default function BookingPage() {
             />
           ))}
         </div>
+
+        {holdId && remainingSeconds !== null && step !== "entry" && step !== "pick" && step !== "date" && (
+          <p className="mt-3 text-xs text-primary">
+            این ساعت تا{" "}
+            {toPersianDigits(
+              `${Math.floor(remainingSeconds / 60)}:${String(remainingSeconds % 60).padStart(2, "0")}`,
+            )}{" "}
+            دیگر برای شما نگه داشته شده
+          </p>
+        )}
       </div>
 
       {step === "entry" && (
@@ -434,6 +548,12 @@ export default function BookingPage() {
           <JalaliDatePicker
             value={date}
             onChange={(newDate) => {
+              // تغییر تاریخ یعنی مشتری داره از اول انتخاب می‌کنه — اگه
+              // هولدی از قبل داشت (بعید ولی برای اطمینان) آزادش کن
+              if (holdId) {
+                setHoldId(null);
+                setHoldExpiresAt(null);
+              }
               setDate(newDate);
               setTime(null);
             }}
@@ -458,48 +578,49 @@ export default function BookingPage() {
         </div>
       )}
 
-{step === "time" && (
-  <div className="space-y-3">
-    <Label>ساعت نوبت</Label>
-    {isLoadingSlots ? (
-      <p className="text-sm text-muted-foreground">در حال بررسی ساعات خالی...</p>
-    ) : availableSlots.length === 0 ? (
-      <p className="rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground">
-        برای این تاریخ ساعت خالی برای این آرایشگر وجود ندارد. لطفاً تاریخ
-        دیگری انتخاب کنید.
-      </p>
-    ) : (
-      <>
-        <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">
-          {availableSlots.map(({ time: slot, available }) => {
-            const isSelected = time === slot;
-            return (
-              <button
-                key={slot}
-                type="button"
-                disabled={!available}
-                onClick={() => available && setTime(slot)}
-                className={cn(
-                  "rounded-lg border py-2.5 text-xs font-medium transition-colors",
-                  !available
-                    ? "cursor-not-allowed border-red-500/40 bg-red-500/10 text-red-400 line-through"
-                    : isSelected
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-border bg-card text-muted-foreground hover:border-primary/40",
-                )}
-              >
-                {toPersianDigits(slot)}
-              </button>
-            );
-          })}
+      {step === "time" && (
+        <div className="space-y-3">
+          <Label>ساعت نوبت</Label>
+          {isLoadingSlots ? (
+            <p className="text-sm text-muted-foreground">در حال بررسی ساعات خالی...</p>
+          ) : availableSlots.length === 0 ? (
+            <p className="rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground">
+              برای این تاریخ ساعت خالی برای این آرایشگر وجود ندارد. لطفاً تاریخ
+              دیگری انتخاب کنید.
+            </p>
+          ) : (
+            <>
+              <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">
+                {availableSlots.map(({ time: slot, available }) => {
+                  const isSelected = time === slot;
+                  return (
+                    <button
+                      key={slot}
+                      type="button"
+                      disabled={!available}
+                      onClick={() => available && handleSelectTime(slot)}
+                      className={cn(
+                        "rounded-lg border py-2.5 text-xs font-medium transition-colors",
+                        !available
+                          ? "cursor-not-allowed border-red-500/40 bg-red-500/10 text-red-400 line-through"
+                          : isSelected
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border bg-card text-muted-foreground hover:border-primary/40",
+                      )}
+                    >
+                      {toPersianDigits(slot)}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                ساعت‌های قرمز/خط‌خورده یعنی قبلاً رزرو شدن، بلاک‌شدن یا همین الان
+                توسط یک مشتری دیگر در حال رزرو هستن.
+              </p>
+            </>
+          )}
         </div>
-        <p className="text-xs text-muted-foreground">
-          ساعت‌های قرمز/خط‌خورده یعنی قبلاً رزرو شدن یا بلاک‌شدن.
-        </p>
-      </>
-    )}
-  </div>
-)}
+      )}
 
       {step === "notes" && (
         <div className="space-y-2">

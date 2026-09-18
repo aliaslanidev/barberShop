@@ -433,6 +433,32 @@ export function getAvailabilityRange(
   );
 }
 
+// ==================== Slot Hold ====================
+
+export interface ApiSlotHold {
+  id: string;
+  expiresAt: string;
+}
+
+export function createSlotHoldApi(data: { barberId: string; date: string; time: string }) {
+  return apiFetch<ApiSlotHold>("/bookings/hold", {
+    method: "POST",
+    body: data,
+  });
+}
+
+export function extendSlotHoldApi(holdId: string) {
+  return apiFetch<ApiSlotHold>(`/bookings/hold/${holdId}/extend`, {
+    method: "PATCH",
+  });
+}
+
+export function releaseSlotHoldApi(holdId: string) {
+  return apiFetch<void>(`/bookings/hold/${holdId}`, {
+    method: "DELETE",
+  });
+}
+
 export function createBookingApi(
   data: {
     barberId: string;
@@ -440,6 +466,7 @@ export function createBookingApi(
     date: string;
     time: string;
     notes?: string;
+    holdId?: string;
   },
   token: string,
 ) {

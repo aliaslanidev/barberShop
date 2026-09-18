@@ -7,6 +7,7 @@ import {
   availabilityQuerySchema,
   availabilityRangeQuerySchema,
   listBookingsQuerySchema,
+  createHoldSchema,
 } from "@/modules/bookings/bookings.schema";
 import { AppError } from "@/utils/AppError";
 
@@ -20,6 +21,22 @@ export async function availabilityRangeHandler(req: Request, res: Response) {
   const { barberId, from, to } = availabilityRangeQuerySchema.parse(req.query);
   const dates = await bookingsService.getAvailableDatesInRange(barberId, from, to);
   res.json(dates);
+}
+
+export async function createHoldHandler(req: Request, res: Response) {
+  const input = createHoldSchema.parse(req.body);
+  const hold = await bookingsService.createOrExtendHold(input.barberId, input.date, input.time);
+  res.status(201).json({ id: hold.id, expiresAt: hold.expiresAt });
+}
+
+export async function extendHoldHandler(req: Request, res: Response) {
+  const hold = await bookingsService.extendHold(req.params.id);
+  res.json({ id: hold.id, expiresAt: hold.expiresAt });
+}
+
+export async function releaseHoldHandler(req: Request, res: Response) {
+  await bookingsService.releaseHold(req.params.id);
+  res.status(204).send();
 }
 
 export async function createBookingHandler(req: Request, res: Response) {
