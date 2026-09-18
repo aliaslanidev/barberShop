@@ -4,6 +4,7 @@ import { servicesRouter } from "@/modules/services/services.routes";
 import { barbersRouter } from "@/modules/barbers/barbers.routes";
 import { bookingsRouter } from "@/modules/bookings/bookings.routes";
 import { blockedSlotsRouter } from "@/modules/blocked-slots/blocked-slots.routes";
+import { timeOffRouter } from "@/modules/time-off/time-off.routes";
 
 export const apiRouter = Router();
 
@@ -12,9 +13,9 @@ apiRouter.use("/services", servicesRouter);
 apiRouter.use("/barbers", barbersRouter);
 apiRouter.use("/bookings", bookingsRouter);
 apiRouter.use("/blocked-slots", blockedSlotsRouter);
+apiRouter.use("/time-off", timeOffRouter);
 
 // TODO (فازهای بعدی، به همین الگو):
-// apiRouter.use("/time-off", timeOffRouter);
 // apiRouter.use("/holidays", holidaysRouter);
 // apiRouter.use("/settings", settingsRouter);       -> SalonSettings + WorkingHours
 // apiRouter.use("/reports", reportsRouter);         -> aggregate query روی Booking

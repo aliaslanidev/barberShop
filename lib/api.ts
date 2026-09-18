@@ -1,4 +1,5 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4010/api";
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4010/api";
 
 export class ApiError extends Error {
   status: number;
@@ -11,10 +12,12 @@ export class ApiError extends Error {
 
 async function apiFetch<T>(
   path: string,
-  options: { method?: string; body?: unknown; token?: string | null } = {}
+  options: { method?: string; body?: unknown; token?: string | null } = {},
 ): Promise<T> {
   const { method = "GET", body, token } = options;
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
   const res = await fetch(`${API_BASE_URL}${path}`, {
@@ -85,18 +88,38 @@ export function listServices() {
 }
 
 export function createServiceApi(
-  data: { title: string; desc: string; priceValue: number; icon: string; featured?: boolean },
-  token: string
+  data: {
+    title: string;
+    desc: string;
+    priceValue: number;
+    icon: string;
+    featured?: boolean;
+  },
+  token: string,
 ) {
-  return apiFetch<ApiService>("/services", { method: "POST", body: data, token });
+  return apiFetch<ApiService>("/services", {
+    method: "POST",
+    body: data,
+    token,
+  });
 }
 
 export function updateServiceApi(
   id: string,
-  data: Partial<{ title: string; desc: string; priceValue: number; icon: string; featured: boolean }>,
-  token: string
+  data: Partial<{
+    title: string;
+    desc: string;
+    priceValue: number;
+    icon: string;
+    featured: boolean;
+  }>,
+  token: string,
 ) {
-  return apiFetch<ApiService>(`/services/${id}`, { method: "PATCH", body: data, token });
+  return apiFetch<ApiService>(`/services/${id}`, {
+    method: "PATCH",
+    body: data,
+    token,
+  });
 }
 
 export function deleteServiceApi(id: string, token: string) {
@@ -161,7 +184,7 @@ export function createBarberApi(
     initials?: string;
     serviceIds?: string[];
   },
-  token: string
+  token: string,
 ) {
   return apiFetch<ApiBarber>("/barbers", { method: "POST", body: data, token });
 }
@@ -177,15 +200,19 @@ export function updateBarberApi(
     isActive: boolean;
     serviceIds: string[];
   }>,
-  token: string
+  token: string,
 ) {
-  return apiFetch<ApiBarber>(`/barbers/${id}`, { method: "PATCH", body: data, token });
+  return apiFetch<ApiBarber>(`/barbers/${id}`, {
+    method: "PATCH",
+    body: data,
+    token,
+  });
 }
 
 export function updateBarberPermissionsApi(
   id: string,
   data: Partial<ApiBarberPermissions>,
-  token: string
+  token: string,
 ) {
   return apiFetch<ApiBarber>(`/barbers/${id}/permissions`, {
     method: "PATCH",
@@ -201,7 +228,7 @@ export function deleteBarberApi(id: string, token: string) {
 export function updateMyServicePriceApi(
   serviceId: string,
   customPrice: number | null,
-  token: string
+  token: string,
 ) {
   return apiFetch<ApiBarber>(`/barbers/me/services/${serviceId}/price`, {
     method: "PATCH",
@@ -213,7 +240,7 @@ export function updateMyServicePriceApi(
 export function updateMyServiceActiveApi(
   serviceId: string,
   isActive: boolean,
-  token: string
+  token: string,
 ) {
   return apiFetch<ApiBarber>(`/barbers/me/services/${serviceId}/active`, {
     method: "PATCH",
@@ -222,10 +249,92 @@ export function updateMyServiceActiveApi(
   });
 }
 
-export function updateMyWorkingDaysApi(workingDays: ApiWeekday[], token: string) {
+export function updateMyWorkingDaysApi(
+  workingDays: ApiWeekday[],
+  token: string,
+) {
   return apiFetch<ApiBarber>("/barbers/me/working-days", {
     method: "PATCH",
     body: { workingDays },
+    token,
+  });
+}
+
+// ==================== Time Off ====================
+
+export interface ApiTimeOff {
+  id: string;
+  barberId: string;
+  date: string;
+}
+
+export type LeaveRequestStatus = "PENDING" | "APPROVED" | "REJECTED";
+
+export interface ApiLeaveRequest {
+  id: string;
+  barberId: string;
+  date: string;
+  reason: string | null;
+  status: LeaveRequestStatus;
+  reviewedBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ApiLeaveRequestWithBarber extends ApiLeaveRequest {
+  barber: { id: string; user: { id: string; name: string; mobile: string } };
+}
+
+export function listMyTimeOffApi(token: string) {
+  return apiFetch<{ timeOffs: ApiTimeOff[]; leaveRequests: ApiLeaveRequest[] }>(
+    "/time-off/me",
+    {
+      token,
+    },
+  );
+}
+
+export function createMyTimeOffApi(
+  data: { date: string; reason?: string },
+  token: string,
+) {
+  return apiFetch<
+    | { type: "TIME_OFF"; timeOff: ApiTimeOff }
+    | { type: "LEAVE_REQUEST"; leaveRequest: ApiLeaveRequest }
+  >("/time-off/me", { method: "POST", body: data, token });
+}
+
+export function deleteMyTimeOffApi(id: string, token: string) {
+  return apiFetch<void>(`/time-off/me/${id}`, { method: "DELETE", token });
+}
+
+export function cancelMyLeaveRequestApi(id: string, token: string) {
+  return apiFetch<void>(`/time-off/me/requests/${id}`, {
+    method: "DELETE",
+    token,
+  });
+}
+
+export function listLeaveRequestsApi(
+  token: string,
+  status?: LeaveRequestStatus,
+) {
+  const qs = status ? `?status=${status}` : "";
+  return apiFetch<ApiLeaveRequestWithBarber[]>(`/time-off/requests${qs}`, {
+    token,
+  });
+}
+
+export function approveLeaveRequestApi(id: string, token: string) {
+  return apiFetch<ApiLeaveRequest>(`/time-off/requests/${id}/approve`, {
+    method: "PATCH",
+    token,
+  });
+}
+
+export function rejectLeaveRequestApi(id: string, token: string) {
+  return apiFetch<ApiLeaveRequest>(`/time-off/requests/${id}/reject`, {
+    method: "PATCH",
     token,
   });
 }
@@ -240,16 +349,29 @@ export interface ApiBlockedSlot {
   createdAt: string;
 }
 
-export function listMyBlockedSlotsApi(token: string, from?: string, to?: string) {
+export function listMyBlockedSlotsApi(
+  token: string,
+  from?: string,
+  to?: string,
+) {
   const params = new URLSearchParams();
   if (from) params.set("from", from);
   if (to) params.set("to", to);
   const qs = params.toString();
-  return apiFetch<ApiBlockedSlot[]>(`/blocked-slots/me${qs ? `?${qs}` : ""}`, { token });
+  return apiFetch<ApiBlockedSlot[]>(`/blocked-slots/me${qs ? `?${qs}` : ""}`, {
+    token,
+  });
 }
 
-export function createMyBlockedSlotApi(data: { date: string; time: string }, token: string) {
-  return apiFetch<ApiBlockedSlot>("/blocked-slots/me", { method: "POST", body: data, token });
+export function createMyBlockedSlotApi(
+  data: { date: string; time: string },
+  token: string,
+) {
+  return apiFetch<ApiBlockedSlot>("/blocked-slots/me", {
+    method: "POST",
+    body: data,
+    token,
+  });
 }
 
 export function deleteMyBlockedSlotApi(id: string, token: string) {
@@ -258,7 +380,11 @@ export function deleteMyBlockedSlotApi(id: string, token: string) {
 
 // ==================== Bookings ====================
 
-export type BookingStatus = "CONFIRMED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
+export type BookingStatus =
+  | "CONFIRMED"
+  | "IN_PROGRESS"
+  | "COMPLETED"
+  | "CANCELLED";
 
 export interface ApiBookingBarber extends ApiBarberPermissions {
   id: string;
@@ -288,21 +414,35 @@ export interface ApiBooking {
 
 export function getAvailability(barberId: string, date: string) {
   return apiFetch<string[]>(
-    `/bookings/availability?barberId=${encodeURIComponent(barberId)}&date=${encodeURIComponent(date)}`
+    `/bookings/availability?barberId=${encodeURIComponent(barberId)}&date=${encodeURIComponent(date)}`,
   );
 }
 
-export function getAvailabilityRange(barberId: string, from: string, to: string) {
+export function getAvailabilityRange(
+  barberId: string,
+  from: string,
+  to: string,
+) {
   return apiFetch<string[]>(
-    `/bookings/availability-range?barberId=${encodeURIComponent(barberId)}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`
+    `/bookings/availability-range?barberId=${encodeURIComponent(barberId)}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`,
   );
 }
 
 export function createBookingApi(
-  data: { barberId: string; serviceId: string; date: string; time: string; notes?: string },
-  token: string
+  data: {
+    barberId: string;
+    serviceId: string;
+    date: string;
+    time: string;
+    notes?: string;
+  },
+  token: string,
 ) {
-  return apiFetch<ApiBooking>("/bookings", { method: "POST", body: data, token });
+  return apiFetch<ApiBooking>("/bookings", {
+    method: "POST",
+    body: data,
+    token,
+  });
 }
 
 export interface ListBookingsFilter {
@@ -314,7 +454,10 @@ export interface ListBookingsFilter {
   dateTo?: string;
 }
 
-export function listBookingsApi(token: string, filter: ListBookingsFilter = {}) {
+export function listBookingsApi(
+  token: string,
+  filter: ListBookingsFilter = {},
+) {
   const params = new URLSearchParams();
   Object.entries(filter).forEach(([key, value]) => {
     if (value) params.set(key, value);
@@ -327,7 +470,11 @@ export function getBookingApi(id: string, token: string) {
   return apiFetch<ApiBooking>(`/bookings/${id}`, { token });
 }
 
-export function updateBookingStatusApi(id: string, status: BookingStatus, token: string) {
+export function updateBookingStatusApi(
+  id: string,
+  status: BookingStatus,
+  token: string,
+) {
   return apiFetch<ApiBooking>(`/bookings/${id}/status`, {
     method: "PATCH",
     body: { status },
@@ -336,5 +483,7 @@ export function updateBookingStatusApi(id: string, status: BookingStatus, token:
 }
 
 export function getMyCustomersApi(token: string) {
-  return apiFetch<{ name: string; phone: string }[]>("/bookings/my-customers", { token });
+  return apiFetch<{ name: string; phone: string }[]>("/bookings/my-customers", {
+    token,
+  });
 }

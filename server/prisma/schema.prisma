@@ -138,6 +138,7 @@ model TimeOff {
 
   barber BarberProfile @relation(fields: [barberId], references: [id], onDelete: Cascade)
 
+  @@unique([barberId, date])
   @@map("time_offs")
 }
 
