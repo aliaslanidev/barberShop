@@ -45,12 +45,11 @@ function generateSlotsInRange(openTime: string, closeTime: string): string[] {
   return slots;
 }
 
-// آرایه‌ی خالی workingDays یعنی آرایشگر محدودیت خاصی نداره و از روزهای
-// بازِ سالن پیروی می‌کنه؛ غیرخالی یعنی فقط همین روزها رو کار می‌کنه
 function barberWorksOnWeekday(workingDays: Weekday[], weekday: Weekday): boolean {
   return workingDays.length === 0 || workingDays.includes(weekday);
 }
 
+// نسخه‌ی «فقط آزادها» — برای منطق داخلی (ساخت نوبت، شمارش ظرفیت روزها)
 export async function getAvailableSlots(barberId: string, dateStr: string): Promise<string[]> {
   const barber = await prisma.barberProfile.findUnique({ where: { id: barberId } });
   if (!barber || !barber.isActive) return [];
@@ -90,6 +89,55 @@ export async function getAvailableSlots(barberId: string, dateStr: string): Prom
   ]);
   const allSlots = generateSlotsInRange(workingHours.openTime, workingHours.closeTime);
   return allSlots.filter((slot) => !unavailableTimes.has(slot));
+}
+
+// نسخه‌ی «همه‌ی اسلات‌ها + وضعیت» — برای UI مشتری، تا اسلات‌های پر هم
+// دیده بشن (قرمز/غیرفعال) نه اینکه از لیست کلاً حذف بشن
+export interface SlotStatus {
+  time: string;
+  available: boolean;
+}
+
+export async function getSlotsWithStatus(
+  barberId: string,
+  dateStr: string
+): Promise<SlotStatus[]> {
+  const barber = await prisma.barberProfile.findUnique({ where: { id: barberId } });
+  if (!barber || !barber.isActive) return [];
+
+  const dateOnly = parseDateOnly(dateStr);
+  const weekday = WEEKDAY_BY_JS_DAY[dateOnly.getUTCDay()];
+
+  // اگه روزِ کاری آرایشگر نیست، اصلاً هیچ اسلاتی (حتی قرمز) نمایش نمی‌دیم
+  if (!barberWorksOnWeekday(barber.workingDays, weekday)) return [];
+
+  const workingHours = await prisma.workingHours.findUnique({ where: { day: weekday } });
+  if (!workingHours || !workingHours.isOpen) return [];
+
+  const { gte, lt } = dateRangeForDay(dateStr);
+
+  const [holiday, timeOff, bookings, blockedSlots] = await Promise.all([
+    prisma.salonHoliday.findFirst({ where: { date: { gte, lt } } }),
+    prisma.timeOff.findFirst({ where: { barberId, date: { gte, lt } } }),
+    prisma.booking.findMany({
+      where: { barberId, date: { gte, lt }, status: { not: "CANCELLED" } },
+      select: { time: true },
+    }),
+    prisma.blockedSlot.findMany({
+      where: { barberId, date: { gte, lt } },
+      select: { time: true },
+    }),
+  ]);
+
+  // مرخصی/تعطیلی یعنی کل روز بسته‌ست — بازم چیزی نشون نمی‌دیم
+  if (holiday || timeOff) return [];
+
+  const unavailableTimes = new Set([
+    ...bookings.map((b) => b.time),
+    ...blockedSlots.map((s) => s.time),
+  ]);
+  const allSlots = generateSlotsInRange(workingHours.openTime, workingHours.closeTime);
+  return allSlots.map((time) => ({ time, available: !unavailableTimes.has(time) }));
 }
 
 export async function getAvailableDatesInRange(

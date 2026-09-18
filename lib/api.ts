@@ -412,8 +412,13 @@ export interface ApiBooking {
   customer: { id: string; name: string; mobile: string };
 }
 
+export interface ApiSlotStatus {
+  time: string;
+  available: boolean;
+}
+
 export function getAvailability(barberId: string, date: string) {
-  return apiFetch<string[]>(
+  return apiFetch<ApiSlotStatus[]>(
     `/bookings/availability?barberId=${encodeURIComponent(barberId)}&date=${encodeURIComponent(date)}`,
   );
 }

@@ -24,6 +24,7 @@ import {
   ApiError,
   type ApiService,
   type ApiBarber,
+  type ApiSlotStatus,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { getAuthToken } from "@/lib/data/mock-session";
@@ -93,7 +94,7 @@ export default function BookingPage() {
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
   const [isFinalSubmitting, setIsFinalSubmitting] = useState(false);
 
-  const [availableSlots, setAvailableSlots] = useState<string[]>([]);
+  const [availableSlots, setAvailableSlots] = useState<ApiSlotStatus[]>([]);
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
 
   // روزهایی که تو ۳۰ روز آینده حداقل یه اسلات خالی دارن — برای رنگ‌کردن تقویم
@@ -457,40 +458,48 @@ export default function BookingPage() {
         </div>
       )}
 
-      {step === "time" && (
-        <div className="space-y-3">
-          <Label>ساعت نوبت</Label>
-          {isLoadingSlots ? (
-            <p className="text-sm text-muted-foreground">در حال بررسی ساعات خالی...</p>
-          ) : availableSlots.length === 0 ? (
-            <p className="rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground">
-              برای این تاریخ ساعت خالی برای این آرایشگر وجود ندارد. لطفاً تاریخ
-              دیگری انتخاب کنید.
-            </p>
-          ) : (
-            <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">
-              {availableSlots.map((slot) => {
-                const isSelected = time === slot;
-                return (
-                  <button
-                    key={slot}
-                    type="button"
-                    onClick={() => setTime(slot)}
-                    className={cn(
-                      "rounded-lg border py-2.5 text-xs font-medium transition-colors",
-                      isSelected
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : "border-border bg-card text-muted-foreground hover:border-primary/40",
-                    )}
-                  >
-                    {toPersianDigits(slot)}
-                  </button>
-                );
-              })}
-            </div>
-          )}
+{step === "time" && (
+  <div className="space-y-3">
+    <Label>ساعت نوبت</Label>
+    {isLoadingSlots ? (
+      <p className="text-sm text-muted-foreground">در حال بررسی ساعات خالی...</p>
+    ) : availableSlots.length === 0 ? (
+      <p className="rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground">
+        برای این تاریخ ساعت خالی برای این آرایشگر وجود ندارد. لطفاً تاریخ
+        دیگری انتخاب کنید.
+      </p>
+    ) : (
+      <>
+        <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">
+          {availableSlots.map(({ time: slot, available }) => {
+            const isSelected = time === slot;
+            return (
+              <button
+                key={slot}
+                type="button"
+                disabled={!available}
+                onClick={() => available && setTime(slot)}
+                className={cn(
+                  "rounded-lg border py-2.5 text-xs font-medium transition-colors",
+                  !available
+                    ? "cursor-not-allowed border-red-500/40 bg-red-500/10 text-red-400 line-through"
+                    : isSelected
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border bg-card text-muted-foreground hover:border-primary/40",
+                )}
+              >
+                {toPersianDigits(slot)}
+              </button>
+            );
+          })}
         </div>
-      )}
+        <p className="text-xs text-muted-foreground">
+          ساعت‌های قرمز/خط‌خورده یعنی قبلاً رزرو شدن یا بلاک‌شدن.
+        </p>
+      </>
+    )}
+  </div>
+)}
 
       {step === "notes" && (
         <div className="space-y-2">

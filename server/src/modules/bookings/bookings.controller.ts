@@ -12,7 +12,7 @@ import { AppError } from "@/utils/AppError";
 
 export async function availabilityHandler(req: Request, res: Response) {
   const { barberId, date } = availabilityQuerySchema.parse(req.query);
-  const slots = await bookingsService.getAvailableSlots(barberId, date);
+  const slots = await bookingsService.getSlotsWithStatus(barberId, date);
   res.json(slots);
 }
 
@@ -67,7 +67,6 @@ export async function updateBookingStatusHandler(req: Request, res: Response) {
   res.json(booking);
 }
 
-// فقط اگه پرمیشن viewCustomers رو داشته باشه
 export async function myCustomersHandler(req: Request, res: Response) {
   const barberId = await bookingsService.getBarberProfileIdForUser(req.user!.userId);
   if (!barberId) throw new AppError("پروفایل آرایشگری برای این حساب پیدا نشد", 404);
