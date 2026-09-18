@@ -63,6 +63,10 @@ model BarberProfile {
   cancelOwnBookings  Boolean @default(false)
   viewCustomers      Boolean @default(false)
 
+  // آرایه خالی = پیرو روزهای بازِ سالن (WorkingHours)؛ آرایه‌ی غیرخالی =
+  // فقط همین روزها کار می‌کنه، حتی اگه سالن اون روز بازتر باشه
+  workingDays Weekday[] @default([])
+
   services      BarberService[]
   bookings      Booking[]
   timeOffs      TimeOff[]
