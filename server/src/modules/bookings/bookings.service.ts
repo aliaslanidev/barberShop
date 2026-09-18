@@ -57,7 +57,7 @@ export async function getAvailableSlots(barberId: string, dateStr: string): Prom
 
   const { gte, lt } = dateRangeForDay(dateStr);
 
-  const [holiday, timeOff, bookings] = await Promise.all([
+  const [holiday, timeOff, bookings, blockedSlots] = await Promise.all([
     prisma.salonHoliday.findFirst({ where: { date: { gte, lt } } }),
     prisma.timeOff.findFirst({ where: { barberId, date: { gte, lt } } }),
     prisma.booking.findMany({
@@ -68,13 +68,20 @@ export async function getAvailableSlots(barberId: string, dateStr: string): Prom
       },
       select: { time: true },
     }),
+    prisma.blockedSlot.findMany({
+      where: { barberId, date: { gte, lt } },
+      select: { time: true },
+    }),
   ]);
 
   if (holiday || timeOff) return [];
 
-  const bookedTimes = new Set(bookings.map((b) => b.time));
+  const unavailableTimes = new Set([
+    ...bookings.map((b) => b.time),
+    ...blockedSlots.map((s) => s.time),
+  ]);
   const allSlots = generateSlotsInRange(workingHours.openTime, workingHours.closeTime);
-  return allSlots.filter((slot) => !bookedTimes.has(slot));
+  return allSlots.filter((slot) => !unavailableTimes.has(slot));
 }
 
 export async function getAvailableDatesInRange(
@@ -91,11 +98,15 @@ export async function getAvailableDatesInRange(
   const from = parseDateOnly(fromStr);
   const toExclusive = dateRangeForDay(toStr).lt;
 
-  const [holidays, timeOffs, bookings] = await Promise.all([
+  const [holidays, timeOffs, bookings, blockedSlots] = await Promise.all([
     prisma.salonHoliday.findMany({ where: { date: { gte: from, lt: toExclusive } } }),
     prisma.timeOff.findMany({ where: { barberId, date: { gte: from, lt: toExclusive } } }),
     prisma.booking.findMany({
       where: { barberId, date: { gte: from, lt: toExclusive }, status: { not: "CANCELLED" } },
+      select: { date: true, time: true },
+    }),
+    prisma.blockedSlot.findMany({
+      where: { barberId, date: { gte: from, lt: toExclusive } },
       select: { date: true, time: true },
     }),
   ]);
@@ -103,10 +114,14 @@ export async function getAvailableDatesInRange(
   const holidaySet = new Set(holidays.map((h) => h.date.toISOString().slice(0, 10)));
   const timeOffSet = new Set(timeOffs.map((t) => t.date.toISOString().slice(0, 10)));
 
-  const bookingCountByDate = new Map<string, number>();
+  const occupiedCountByDate = new Map<string, number>();
   for (const b of bookings) {
     const key = b.date.toISOString().slice(0, 10);
-    bookingCountByDate.set(key, (bookingCountByDate.get(key) ?? 0) + 1);
+    occupiedCountByDate.set(key, (occupiedCountByDate.get(key) ?? 0) + 1);
+  }
+  for (const s of blockedSlots) {
+    const key = s.date.toISOString().slice(0, 10);
+    occupiedCountByDate.set(key, (occupiedCountByDate.get(key) ?? 0) + 1);
   }
 
   const result: string[] = [];
@@ -118,8 +133,8 @@ export async function getAvailableDatesInRange(
 
     if (wh?.isOpen && !holidaySet.has(dateStr) && !timeOffSet.has(dateStr)) {
       const totalSlots = generateSlotsInRange(wh.openTime, wh.closeTime).length;
-      const booked = bookingCountByDate.get(dateStr) ?? 0;
-      if (booked < totalSlots) result.push(dateStr);
+      const occupied = occupiedCountByDate.get(dateStr) ?? 0;
+      if (occupied < totalSlots) result.push(dateStr);
     }
 
     cursor.setUTCDate(cursor.getUTCDate() + 1);
@@ -140,8 +155,6 @@ export async function createBooking(customerId: string, input: CreateBookingInpu
     throw new AppError("این اسلات زمانی دیگه در دسترس نیست، لطفاً زمان دیگری انتخاب کنید", 409);
   }
 
-  // سرویس باید هم به این آرایشگر assign شده باشه، هم توسط خودش (اگه پرمیشن
-  // manageServices داره) غیرفعال نشده باشه
   const barberService = await prisma.barberService.findUnique({
     where: { barberId_serviceId: { barberId: input.barberId, serviceId: input.serviceId } },
   });

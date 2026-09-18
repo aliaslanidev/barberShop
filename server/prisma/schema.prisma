@@ -63,10 +63,11 @@ model BarberProfile {
   cancelOwnBookings  Boolean @default(false)
   viewCustomers      Boolean @default(false)
 
-  services  BarberService[]
-  bookings  Booking[]
-  timeOffs  TimeOff[]
+  services      BarberService[]
+  bookings      Booking[]
+  timeOffs      TimeOff[]
   leaveRequests LeaveRequest[]
+  blockedSlots  BlockedSlot[]
 
   @@map("barber_profiles")
 }
@@ -149,6 +150,21 @@ model LeaveRequest {
   barber BarberProfile @relation(fields: [barberId], references: [id], onDelete: Cascade)
 
   @@map("leave_requests")
+}
+
+// بلاک‌کردن یه اسلات ساعتیِ خاص از یه روز عادی، بدون اینکه کل روز مرخصی بشه
+// (برخلاف TimeOff که کل روز رو غیرفعال می‌کنه)
+model BlockedSlot {
+  id        String   @id @default(cuid())
+  barberId  String
+  date      DateTime
+  time      String
+  createdAt DateTime @default(now())
+
+  barber BarberProfile @relation(fields: [barberId], references: [id], onDelete: Cascade)
+
+  @@unique([barberId, date, time])
+  @@map("blocked_slots")
 }
 
 model SalonHoliday {

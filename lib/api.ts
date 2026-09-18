@@ -212,6 +212,32 @@ export function updateMyServiceActiveApi(
   });
 }
 
+// ==================== Blocked Slots ====================
+
+export interface ApiBlockedSlot {
+  id: string;
+  barberId: string;
+  date: string;
+  time: string;
+  createdAt: string;
+}
+
+export function listMyBlockedSlotsApi(token: string, from?: string, to?: string) {
+  const params = new URLSearchParams();
+  if (from) params.set("from", from);
+  if (to) params.set("to", to);
+  const qs = params.toString();
+  return apiFetch<ApiBlockedSlot[]>(`/blocked-slots/me${qs ? `?${qs}` : ""}`, { token });
+}
+
+export function createMyBlockedSlotApi(data: { date: string; time: string }, token: string) {
+  return apiFetch<ApiBlockedSlot>("/blocked-slots/me", { method: "POST", body: data, token });
+}
+
+export function deleteMyBlockedSlotApi(id: string, token: string) {
+  return apiFetch<void>(`/blocked-slots/me/${id}`, { method: "DELETE", token });
+}
+
 // ==================== Bookings ====================
 
 export type BookingStatus = "CONFIRMED" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
