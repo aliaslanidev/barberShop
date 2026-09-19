@@ -61,7 +61,7 @@ export function UserMenu({
         >
           <Avatar className="h-10 w-10">
             {avatarUrl && <AvatarImage src={avatarUrl} alt={name} />}
-            <AvatarFallback className="bg-primary text-sm font-bold text-[#02100d]">
+            <AvatarFallback className="bg-rust text-sm font-bold text-white">
               {initial}
             </AvatarFallback>
           </Avatar>

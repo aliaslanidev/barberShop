@@ -126,7 +126,7 @@ export function BarberProfileModal({
           <>
             <DialogHeader>
               <div className="flex items-center gap-3">
-                <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary/10 text-base font-medium text-primary">
+                <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-rust text-base font-bold text-white">
                   {barber.initials}
                 </span>
 

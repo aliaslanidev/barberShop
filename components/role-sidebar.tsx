@@ -43,7 +43,7 @@ export function RoleSidebar({ name, role, items, onLogout }: RoleSidebarProps) {
       {/* پروفایل */}
       <div className="flex flex-col items-center gap-3 border-b border-border px-4 py-6">
         <Avatar className="h-14 w-14">
-          <AvatarFallback className="bg-primary text-lg font-bold text-[#02100d]">
+          <AvatarFallback className="bg-rust text-lg font-bold text-white">
             {initial}
           </AvatarFallback>
         </Avatar>
