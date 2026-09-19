@@ -405,6 +405,8 @@ export interface ApiBooking {
   time: string;
   status: BookingStatus;
   notes: string | null;
+  // قیمت نهایی ثبت‌شده موقع رزرو؛ برای نوبت‌های قدیمی null (از service.priceValue استفاده کن)
+  price: number | null;
   createdAt: string;
   updatedAt: string;
   barber: ApiBookingBarber;

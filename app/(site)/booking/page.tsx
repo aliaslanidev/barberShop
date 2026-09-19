@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Check, CheckCircle2, User, Scissors, ChevronRight, ChevronLeft } from "lucide-react";
+import { Check, CheckCircle2, Info, User, Scissors, ChevronRight, ChevronLeft } from "lucide-react";
 import type { DateObject } from "react-multi-date-picker";
 
 import { Button } from "@/components/ui/button";
@@ -60,17 +60,33 @@ type BarberServiceLike = {
 
 // خلاصه‌ی نوبتِ ثبت‌شده برای صفحه‌ی تاییدیه
 type ConfirmedBooking = {
+  code: string;
+  customerName: string;
   barberName: string;
   serviceTitle: string;
-  dateLabel: string;
+  dateKey: string; // میلادی YYYY-MM-DD
   time: string;
   price: number | null;
   notes: string;
 };
 
+// چند دقیقه زودتر باید حاضر بشه (تو اطلاعیه‌ی بعد از رزرو نمایش داده می‌شه)
+const ARRIVAL_EARLY_MINUTES = 10;
+
 function toPersianDigits(input: string) {
   const persianDigits = ["۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹"];
   return input.replace(/[0-9]/g, (d) => persianDigits[Number(d)]);
+}
+
+// نمایش تاریخ شمسی با نام روز هفته از روی تاریخ میلادی ISO
+function formatDateFa(key: string) {
+  const [y, m, d] = key.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("fa-IR", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
 }
 
 function formatPrice(value: number) {
@@ -218,7 +234,9 @@ export default function BookingPage() {
     if (prices.length === 0) return formatPrice(service.priceValue);
     const min = Math.min(...prices);
     const max = Math.max(...prices);
-    return min === max ? formatPrice(min) : `از ${formatPrice(min)}`;
+    return min === max
+      ? formatPrice(min)
+      : `${min.toLocaleString("fa-IR")} تا ${max.toLocaleString("fa-IR")} تومان`;
   }
 
   const servicesToShow = useMemo(() => {
@@ -386,7 +404,7 @@ export default function BookingPage() {
     if (!token || !selectedBarberId || !selectedServiceId || !dateKey || !time) return;
     setIsFinalSubmitting(true);
     try {
-      await createBookingApi(
+      const booking = await createBookingApi(
         {
           barberId: selectedBarberId,
           serviceId: selectedServiceId,
@@ -398,13 +416,17 @@ export default function BookingPage() {
         token
       );
 
-      // خلاصه‌ی نوبت رو قبل از پاک‌شدن stateها نگه می‌داریم تا صفحه‌ی تاییدیه نشونش بده
+      // خلاصه‌ی نوبت رو قبل از پاک‌شدن stateها نگه می‌داریم تا صفحه‌ی پیش‌فاکتور نشونش بده
+      toast.success("نوبت شما ثبت شد");
       setConfirmedBooking({
+        code: booking.id.slice(-8).toUpperCase(),
+        customerName: user?.name ?? "",
         barberName: selectedBarber?.user.name ?? "",
         serviceTitle: selectedService?.title ?? "",
-        dateLabel: date?.format("YYYY/MM/DD") ?? "",
+        dateKey,
         time,
-        price: selectedPrice,
+        // قیمتی که سرور تو نوبت ذخیره کرده، مرجع اصلیه؛ محاسبه‌ی فرانت فقط جایگزینه
+        price: booking.price ?? selectedPrice,
         notes,
       });
       // هولد سمت سرور بعد از ثبت موفق پاک شده
@@ -434,8 +456,16 @@ export default function BookingPage() {
     );
   }
 
-  // ---------- صفحه‌ی تاییدیه بعد از ثبت موفق ----------
+  // ---------- صفحه‌ی پیش‌فاکتور و اطلاعیه بعد از ثبت موفق ----------
   if (confirmedBooking) {
+    const c = confirmedBooking;
+    const notices = [
+      `لطفاً ${toPersianDigits(String(ARRIVAL_EARLY_MINUTES))} دقیقه قبل از ساعت ${toPersianDigits(c.time)} در سالن حضور داشته باشید.`,
+      "مبلغ سرویس به‌صورت حضوری و پس از انجام کار دریافت می‌شود.",
+      "اگر نمی‌توانید در زمان مقرر حاضر شوید، از بخش «نوبت‌های من» نوبت را لغو کنید تا ساعت برای دیگران آزاد شود.",
+      "لطفاً کد پیگیری را تا زمان مراجعه نزد خود نگه دارید.",
+    ];
+
     return (
       <main className="container max-w-xl py-14 md:py-20">
         <div className="flex flex-col items-center text-center">
@@ -444,39 +474,72 @@ export default function BookingPage() {
           </span>
           <h1 className="mt-5 text-2xl font-bold md:text-3xl">رزرو شما با موفقیت انجام شد</h1>
           <p className="mt-2 text-sm leading-7 text-muted-foreground">
-            نوبت شما ثبت و تایید شد. منتظر دیدنتون هستیم.
+            پیش‌فاکتور و اطلاعیه‌ی نوبت شما در ادامه آمده است.
           </p>
         </div>
 
-        <div className="mt-8 space-y-3 rounded-xl border border-border bg-card p-5 text-sm">
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">آرایشگر</span>
-            <span className="font-medium">{confirmedBooking.barberName}</span>
+        {/* پیش‌فاکتور */}
+        <div className="mt-8 overflow-hidden rounded-xl border border-border bg-card text-sm">
+          <div className="flex items-center justify-between border-b border-border bg-primary/5 px-5 py-3">
+            <span className="font-medium">پیش‌فاکتور نوبت</span>
+            <span className="text-xs text-muted-foreground">
+              کد پیگیری:{" "}
+              <span dir="ltr" className="inline-block font-mono font-medium text-foreground">
+                {c.code}
+              </span>
+            </span>
           </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">سرویس</span>
-            <span className="font-medium">{confirmedBooking.serviceTitle}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">تاریخ</span>
-            <span className="font-medium">{confirmedBooking.dateLabel}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">ساعت</span>
-            <span className="font-medium">{toPersianDigits(confirmedBooking.time)}</span>
-          </div>
-          {confirmedBooking.notes && (
+
+          <div className="space-y-3 p-5">
+            {c.customerName && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">مشتری</span>
+                <span className="font-medium">{c.customerName}</span>
+              </div>
+            )}
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">آرایشگر</span>
+              <span className="font-medium">{c.barberName}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">سرویس</span>
+              <span className="font-medium">{c.serviceTitle}</span>
+            </div>
             <div className="flex justify-between gap-4">
-              <span className="shrink-0 text-muted-foreground">توضیحات</span>
-              <span className="font-medium">{confirmedBooking.notes}</span>
+              <span className="shrink-0 text-muted-foreground">تاریخ</span>
+              <span className="font-medium">{formatDateFa(c.dateKey)}</span>
             </div>
-          )}
-          {confirmedBooking.price !== null && (
-            <div className="flex justify-between border-t border-border pt-3">
-              <span className="text-muted-foreground">هزینه‌ی سرویس</span>
-              <span className="font-bold text-primary">{formatPrice(confirmedBooking.price)}</span>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">ساعت</span>
+              <span className="font-medium">{toPersianDigits(c.time)}</span>
             </div>
-          )}
+            {c.notes && (
+              <div className="flex justify-between gap-4">
+                <span className="shrink-0 text-muted-foreground">توضیحات</span>
+                <span className="font-medium">{c.notes}</span>
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center justify-between border-t border-border bg-primary/5 px-5 py-4">
+            <span className="font-medium">مبلغ قابل پرداخت</span>
+            <span className="text-base font-bold text-primary">
+              {c.price !== null ? formatPrice(c.price) : "—"}
+            </span>
+          </div>
+        </div>
+
+        {/* اطلاعیه */}
+        <div className="mt-6 rounded-xl border border-primary/30 bg-primary/5 p-5">
+          <p className="mb-3 flex items-center gap-2 text-sm font-medium">
+            <Info className="h-4 w-4 text-primary" />
+            اطلاعیه و نکات مهم
+          </p>
+          <ul className="list-disc space-y-2 pr-5 text-xs leading-6 text-muted-foreground">
+            {notices.map((n) => (
+              <li key={n}>{n}</li>
+            ))}
+          </ul>
         </div>
 
         <div className="mt-8 flex flex-col gap-3 sm:flex-row">
@@ -651,6 +714,9 @@ export default function BookingPage() {
           {selectedServiceId && (
             <div className="mt-6 space-y-3">
               <Label>انتخاب آرایشگر</Label>
+              <p className="text-xs text-muted-foreground">
+                قیمت این سرویس ممکن است نزد هر آرایشگر متفاوت باشد؛ قیمت هر کدام کنار نامش آمده.
+              </p>
               <div className="grid gap-3 sm:grid-cols-2">
                 {barbersToShow.map((b) => {
                   const isSelected = selectedBarberId === b.id;

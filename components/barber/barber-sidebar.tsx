@@ -14,7 +14,7 @@ import type { ApiBarber } from "@/lib/api";
 
 const baseItems: RoleNavItem[] = [
   { href: "/barber/dashboard", label: "داشبورد", icon: LayoutDashboard },
-  { href: "/barber/bookings", label: "نوبت‌های امروز", icon: CalendarClock },
+  { href: "/barber/bookings", label: "نوبت‌ها", icon: CalendarClock },
 ];
 
 // نگاشت فیلدهای flat بک‌اند به آیتم‌های منو. بعضی آیتم‌ها به بیش از یه

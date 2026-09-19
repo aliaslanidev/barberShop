@@ -338,6 +338,7 @@ export async function createBooking(customerId: string, input: CreateBookingInpu
 
   const barberService = await prisma.barberService.findUnique({
     where: { barberId_serviceId: { barberId: input.barberId, serviceId: input.serviceId } },
+    include: { service: true },
   });
   if (!barberService || !barberService.isActive) {
     throw new AppError("این سرویس در حال حاضر توسط این آرایشگر ارائه نمی‌شود", 400);
@@ -351,6 +352,8 @@ export async function createBooking(customerId: string, input: CreateBookingInpu
       date: parseDateOnly(input.date),
       time: input.time,
       notes: input.notes,
+      // قیمت نهایی همین لحظه ثبت می‌شه؛ تغییر بعدیِ قیمت آرایشگر/سرویس روی این نوبت اثری نداره
+      price: barberService.customPrice ?? barberService.service.priceValue,
       status: "CONFIRMED",
     },
     include: bookingIncludes,

@@ -44,6 +44,10 @@ function toISODate(d: Date) {
   return `${y}-${m}-${day}`;
 }
 
+function formatPrice(value: number) {
+  return `${value.toLocaleString("fa-IR")} تومان`;
+}
+
 function toPersianDigits(input: string) {
   const persianDigits = ["۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹"];
   return input.replace(/[0-9]/g, (d) => persianDigits[Number(d)]);
@@ -201,7 +205,8 @@ export default function BarberBookingsPage() {
                     <div>
                       <p className="text-sm font-medium">{a.customer.name}</p>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        {a.service.title} — ساعت {toPersianDigits(a.time)} · {statusLabel[a.status]}
+                        {a.service.title} — ساعت {toPersianDigits(a.time)} · {statusLabel[a.status]} ·{" "}
+                        {formatPrice(a.price ?? a.service.priceValue)}
                       </p>
                       {a.notes && (
                         <p className="mt-1 text-xs text-muted-foreground">توضیحات: {a.notes}</p>

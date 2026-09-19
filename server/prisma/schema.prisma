@@ -114,6 +114,9 @@ model Booking {
   time       String
   status     BookingStatus @default(CONFIRMED)
   notes      String?
+  // قیمت نهاییِ ثبت‌شده موقع رزرو (customPrice آرایشگر یا قیمت پیش‌فرض سرویس).
+  // nullable چون نوبت‌های قدیمی قیمت ندارن؛ فرانت برای اون‌ها از قیمت سرویس استفاده می‌کنه.
+  price      Int?
   createdAt  DateTime      @default(now())
   updatedAt  DateTime      @updatedAt
 
