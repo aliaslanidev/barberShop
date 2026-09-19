@@ -815,3 +815,39 @@ export interface ApiBookingsSummary {
 export function getBookingsSummaryApi(token: string) {
   return apiFetch<ApiBookingsSummary>("/reports/bookings-summary", { token });
 }
+
+// ==================== Managers (مدیر سالن) ====================
+// مدیر سالن برخلاف آرایشگر، پروفایل جدا (BarberProfile) نداره؛ فقط یه
+// User ساده با role=MANAGER هست. حساب مدیر سالن فقط توسط ادمین اصلی ساخته
+// می‌شه (دقیقاً مثل آرایشگر) — همه‌ی endpointهای زیر فقط ADMIN.
+
+export interface ApiManager {
+  id: string;
+  name: string;
+  mobile: string;
+  role: "MANAGER";
+  createdAt: string;
+}
+
+export function listManagersApi(token: string) {
+  return apiFetch<ApiManager[]>("/managers", { token });
+}
+
+export function createManagerApi(
+  data: { name: string; mobile: string; password: string },
+  token: string,
+) {
+  return apiFetch<ApiManager>("/managers", { method: "POST", body: data, token });
+}
+
+export function updateManagerApi(
+  id: string,
+  data: Partial<{ name: string; mobile: string; password: string }>,
+  token: string,
+) {
+  return apiFetch<ApiManager>(`/managers/${id}`, { method: "PATCH", body: data, token });
+}
+
+export function deleteManagerApi(id: string, token: string) {
+  return apiFetch<void>(`/managers/${id}`, { method: "DELETE", token });
+}
