@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Check, CheckCircle2, Info, User, Scissors, ChevronRight, ChevronLeft } from "lucide-react";
+import { Check, CheckCircle2, Info, Star, User, Scissors, ChevronRight, ChevronLeft } from "lucide-react";
 import type { DateObject } from "react-multi-date-picker";
 
 import { Button } from "@/components/ui/button";
@@ -76,6 +76,22 @@ const ARRIVAL_EARLY_MINUTES = 10;
 function toPersianDigits(input: string) {
   const persianDigits = ["۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹"];
   return input.replace(/[0-9]/g, (d) => persianDigits[Number(d)]);
+}
+
+// معدل امتیاز و تعداد نظرات آرایشگر (عمومی) — مثلاً «★ ۴٫۵ (۱۲ نظر)»
+function RatingBadge({ rating }: { rating: ApiBarber["rating"] | undefined }) {
+  if (!rating || rating.count === 0 || rating.average === null) {
+    return <span className="mt-1 block text-xs text-muted-foreground">هنوز امتیازی ثبت نشده</span>;
+  }
+  return (
+    <span className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+      <Star className="h-3.5 w-3.5 fill-primary text-primary" />
+      <span className="font-medium text-foreground">
+        {toPersianDigits(rating.average.toFixed(1)).replace(".", "٫")}
+      </span>
+      <span>({toPersianDigits(String(rating.count))} نظر)</span>
+    </span>
+  );
 }
 
 // نمایش تاریخ شمسی با نام روز هفته از روی تاریخ میلادی ISO
@@ -647,6 +663,7 @@ export default function BookingPage() {
                     <span className="block text-xs text-muted-foreground">
                       {toPersianDigits(String(activeRows(b).length))} سرویس
                     </span>
+                    <RatingBadge rating={b.rating} />
                   </span>
                   {isSelected && <Check className="h-4 w-4 text-primary" />}
                 </button>
@@ -739,6 +756,7 @@ export default function BookingPage() {
                         {price !== null && (
                           <span className="block text-xs font-medium text-primary">{formatPrice(price)}</span>
                         )}
+                        <RatingBadge rating={b.rating} />
                       </span>
                       {isSelected && <Check className="h-4 w-4 text-primary" />}
                     </button>

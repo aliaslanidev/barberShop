@@ -4,7 +4,12 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { BookingCard } from "@/components/customer/booking-card";
-import { listBookingsApi, ApiError, type ApiBooking } from "@/lib/api";
+import {
+  listBookingsApi,
+  createRatingApi,
+  ApiError,
+  type ApiBooking,
+} from "@/lib/api";
 import { getAuthToken } from "@/lib/data/mock-session";
 
 export default function CustomerHistoryPage() {
@@ -24,6 +29,24 @@ export default function CustomerHistoryPage() {
       .catch((err) => toast.error(err instanceof ApiError ? err.message : "خطا در دریافت تاریخچه"))
       .finally(() => setIsLoading(false));
   }, []);
+
+  // ثبت امتیاز. اگه خطا بده، پیام رو نشون می‌دیم و دوباره throw می‌کنیم تا
+  // BookingCard بدونه ثبت انجام نشده و فرم رو باز نگه داره.
+  async function handleRate(bookingId: string, score: number, comment: string) {
+    const token = getAuthToken();
+    if (!token) return;
+    try {
+      const rating = await createRatingApi(
+        { bookingId, score, comment: comment.trim() || undefined },
+        token,
+      );
+      setHistory((prev) => prev.map((b) => (b.id === bookingId ? { ...b, rating } : b)));
+      toast.success("امتیاز شما ثبت شد. ممنون از نظرتان");
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "خطا در ثبت امتیاز");
+      throw err;
+    }
+  }
 
   if (isLoading) {
     return (
@@ -46,7 +69,7 @@ export default function CustomerHistoryPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
           {history.map((booking) => (
-            <BookingCard key={booking.id} booking={booking} />
+            <BookingCard key={booking.id} booking={booking} onRate={handleRate} />
           ))}
         </div>
       )}
