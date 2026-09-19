@@ -802,3 +802,16 @@ export function changePasswordApi(
     token,
   });
 }
+
+// ==================== Reports ====================
+
+export interface ApiBookingsSummary {
+  totalCount: number;
+  byStatus: Record<BookingStatus, number>;
+  byBarber: { barberId: string; barberName: string; count: number }[];
+}
+
+// فقط ادمین/مدیر
+export function getBookingsSummaryApi(token: string) {
+  return apiFetch<ApiBookingsSummary>("/reports/bookings-summary", { token });
+}

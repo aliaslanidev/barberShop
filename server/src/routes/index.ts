@@ -9,6 +9,7 @@ import { ratingsRouter } from "@/modules/ratings/ratings.routes";
 import { notificationsRouter } from "@/modules/notifications/notifications.routes";
 import { holidaysRouter } from "@/modules/holidays/holidays.routes";
 import { settingsRouter } from "@/modules/settings/settings.routes";
+import { reportsRouter } from "@/modules/reports/reports.routes";
 
 export const apiRouter = Router();
 
@@ -22,6 +23,4 @@ apiRouter.use("/ratings", ratingsRouter);
 apiRouter.use("/notifications", notificationsRouter);
 apiRouter.use("/holidays", holidaysRouter);
 apiRouter.use("/settings", settingsRouter);
-
-// TODO (فازهای بعدی، به همین الگو):
-// apiRouter.use("/reports", reportsRouter);         -> aggregate query روی Booking
+apiRouter.use("/reports", reportsRouter);
