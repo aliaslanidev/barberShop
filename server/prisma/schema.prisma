@@ -73,6 +73,7 @@ model BarberProfile {
   leaveRequests LeaveRequest[]
   blockedSlots  BlockedSlot[]
   slotHolds     SlotHold[]
+  ratings       Rating[]
 
   @@map("barber_profiles")
 }
@@ -123,10 +124,31 @@ model Booking {
   customer User          @relation("CustomerBookings", fields: [customerId], references: [id])
   barber   BarberProfile @relation(fields: [barberId], references: [id])
   service  Service       @relation(fields: [serviceId], references: [id])
+  rating   Rating?
 
   @@index([barberId, date])
   @@index([customerId])
   @@map("bookings")
+}
+
+// امتیاز و نظر مشتری برای یه نوبتِ تمام‌شده (COMPLETED).
+// هر نوبت حداکثر یک امتیاز داره (bookingId یونیکه). فقط مشتریِ همون نوبت
+// می‌تونه ثبت کنه (کنترلش تو سرویس انجام می‌شه). barberId برای محاسبه‌ی سریع
+// معدل هر آرایشگر از روی خود نوبت کپی می‌شه. متن comment فقط برای خودِ
+// آرایشگر و ادمین قابل مشاهده‌ست؛ معدل و تعداد آرا عمومیه.
+model Rating {
+  id        String   @id @default(cuid())
+  bookingId String   @unique
+  barberId  String
+  score     Int
+  comment   String?
+  createdAt DateTime @default(now())
+
+  booking Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  barber  BarberProfile @relation(fields: [barberId], references: [id], onDelete: Cascade)
+
+  @@index([barberId])
+  @@map("ratings")
 }
 
 enum LeaveRequestStatus {

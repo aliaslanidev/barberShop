@@ -7,17 +7,28 @@ import type {
   UpdatePermissionsInput,
 } from "@/modules/barbers/barbers.schema";
 import type { Weekday } from "@prisma/client";
+import {
+  getRatingSummaries,
+  EMPTY_RATING_SUMMARY,
+} from "@/modules/ratings/ratings.service";
 
 const barberInclude = {
   user: { select: { id: true, name: true, mobile: true } },
   services: { include: { service: true } },
 };
 
-export function getAllBarbers() {
-  return prisma.barberProfile.findMany({
+export async function getAllBarbers() {
+  const barbers = await prisma.barberProfile.findMany({
     include: barberInclude,
     orderBy: { createdAt: "asc" },
   });
+
+  // معدل امتیاز و تعداد آرا (عمومی) — با یک کوئری برای همه‌ی آرایشگرها
+  const summaries = await getRatingSummaries(barbers.map((b) => b.id));
+  return barbers.map((b) => ({
+    ...b,
+    rating: summaries.get(b.id) ?? EMPTY_RATING_SUMMARY,
+  }));
 }
 
 export async function getBarberById(id: string) {
@@ -26,7 +37,9 @@ export async function getBarberById(id: string) {
     include: barberInclude,
   });
   if (!barber) throw new AppError("آرایشگر پیدا نشد", 404);
-  return barber;
+
+  const summaries = await getRatingSummaries([id]);
+  return { ...barber, rating: summaries.get(id) ?? EMPTY_RATING_SUMMARY };
 }
 
 export async function createBarber(input: CreateBarberInput) {

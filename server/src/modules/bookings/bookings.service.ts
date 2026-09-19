@@ -312,6 +312,9 @@ const bookingIncludes = {
   barber: { include: { user: true } },
   service: true,
   customer: true,
+  // امتیازِ ثبت‌شده برای این نوبت (یا null) — تا UI مشتری بدونه کدوم نوبت‌های
+  // تمام‌شده هنوز امتیاز نگرفتن
+  rating: true,
 } satisfies Prisma.BookingInclude;
 
 export async function createBooking(customerId: string, input: CreateBookingInput) {

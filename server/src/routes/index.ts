@@ -5,6 +5,7 @@ import { barbersRouter } from "@/modules/barbers/barbers.routes";
 import { bookingsRouter } from "@/modules/bookings/bookings.routes";
 import { blockedSlotsRouter } from "@/modules/blocked-slots/blocked-slots.routes";
 import { timeOffRouter } from "@/modules/time-off/time-off.routes";
+import { ratingsRouter } from "@/modules/ratings/ratings.routes";
 
 export const apiRouter = Router();
 
@@ -14,6 +15,7 @@ apiRouter.use("/barbers", barbersRouter);
 apiRouter.use("/bookings", bookingsRouter);
 apiRouter.use("/blocked-slots", blockedSlotsRouter);
 apiRouter.use("/time-off", timeOffRouter);
+apiRouter.use("/ratings", ratingsRouter);
 
 // TODO (فازهای بعدی، به همین الگو):
 // apiRouter.use("/holidays", holidaysRouter);

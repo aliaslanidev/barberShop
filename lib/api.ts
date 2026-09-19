@@ -155,6 +155,22 @@ export interface ApiBarberService {
   service: ApiService;
 }
 
+// ==================== Ratings (تعریف تایپ‌ها؛ توابع API پایین‌تر) ====================
+
+export interface ApiRatingSummary {
+  average: number | null; // یک رقم اعشار؛ null یعنی هنوز امتیازی نداره
+  count: number;
+}
+
+export interface ApiRating {
+  id: string;
+  bookingId: string;
+  barberId: string;
+  score: number;
+  comment: string | null;
+  createdAt: string;
+}
+
 export interface ApiBarber extends ApiBarberPermissions {
   id: string;
   userId: string;
@@ -165,6 +181,7 @@ export interface ApiBarber extends ApiBarberPermissions {
   workingDays: ApiWeekday[];
   user: { id: string; name: string; mobile: string };
   services: ApiBarberService[];
+  rating: ApiRatingSummary;
 }
 
 export function listBarbers() {
@@ -409,6 +426,7 @@ export interface ApiBooking {
   price: number | null;
   createdAt: string;
   updatedAt: string;
+  rating: ApiRating | null;
   barber: ApiBookingBarber;
   service: ApiService;
   customer: { id: string; name: string; mobile: string };
@@ -520,4 +538,42 @@ export function getMyCustomersApi(token: string) {
   return apiFetch<{ name: string; phone: string }[]>("/bookings/my-customers", {
     token,
   });
+}
+
+// ==================== Ratings API ====================
+
+export function createRatingApi(
+  data: { bookingId: string; score: number; comment?: string },
+  token: string,
+) {
+  return apiFetch<ApiRating>("/ratings", { method: "POST", body: data, token });
+}
+
+export interface ApiBarberReview {
+  id: string;
+  score: number;
+  comment: string | null;
+  createdAt: string;
+  date: string;
+  time: string;
+  serviceTitle: string;
+  customerName: string;
+}
+
+export interface ApiBarberReviewsResponse {
+  summary: ApiRatingSummary;
+  ratings: ApiBarberReview[];
+}
+
+// نظرهای خودِ آرایشگر لاگین‌شده
+export function listMyRatingsApi(token: string) {
+  return apiFetch<ApiBarberReviewsResponse>("/ratings/me", { token });
+}
+
+// نظرهای یه آرایشگر مشخص — فقط ادمین/مدیر
+export function listBarberRatingsApi(barberId: string, token: string) {
+  return apiFetch<ApiBarberReviewsResponse>(
+    `/ratings?barberId=${encodeURIComponent(barberId)}`,
+    { token },
+  );
 }
