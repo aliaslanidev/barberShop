@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 
 import { getAuthToken } from "@/lib/data/mock-session";
+import { getCurrentAdmin } from "@/lib/data/admin-session";
 import {
   getSettingsApi,
   updateSalonInfoApi,
@@ -34,6 +35,12 @@ const WEEKDAY_LABELS: Record<ApiWeekday, string> = {
 };
 
 export default function AdminSettingsPage() {
+  // تنظیمات کلی سالن فقط در اختیار ادمین اصلیه؛ مدیر سالن حتی با زدن
+  // مستقیم URL هم نباید ببینتش (تصمیم پروژه — لینکش هم از سایدبار/بات‌نو
+  // برای مدیر سالن مخفیه، این یه لایه‌ی محافظتی دومه)
+  const admin = getCurrentAdmin();
+  const isAdmin = admin?.role === "admin";
+
   const [isLoading, setIsLoading] = useState(true);
   const [isSavingSalon, setIsSavingSalon] = useState(false);
   const [savingDay, setSavingDay] = useState<ApiWeekday | null>(null);
@@ -45,6 +52,10 @@ export default function AdminSettingsPage() {
   const [hours, setHours] = useState<ApiWorkingHours[]>([]);
 
   useEffect(() => {
+    if (!isAdmin) {
+      setIsLoading(false);
+      return;
+    }
     getSettingsApi()
       .then((data) => {
         setSalon(data.salon);
@@ -54,6 +65,7 @@ export default function AdminSettingsPage() {
         toast.error(err instanceof ApiError ? err.message : "خطا در دریافت تنظیمات");
       })
       .finally(() => setIsLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function handleSaveSalon() {
@@ -72,7 +84,7 @@ export default function AdminSettingsPage() {
   }
 
   // هر تغییر (روشن/خاموش یا ساعت) بلافاصله ذخیره می‌شه — نیازی به دکمه‌ی
-  // «ذخیره» جدا نیست، چون endpoint بک‌اند به‌ازای هر روز جداگانه‌ست
+  // «ذخیره» جدا نیست، چون endpoint به‌ازای هر روز جداگانه‌ست
   async function handleHourChange(
     day: ApiWeekday,
     data: Partial<{ isOpen: boolean; openTime: string; closeTime: string }>,
@@ -127,6 +139,16 @@ export default function AdminSettingsPage() {
     } finally {
       setIsChangingPassword(false);
     }
+  }
+
+  // مدیر سالن اصلاً اجازه‌ی دیدن این صفحه رو نداره — حتی اگه مستقیم URL بزنه
+  if (admin && !isAdmin) {
+    return (
+      <div className="flex items-center justify-center p-10 text-center text-sm text-muted-foreground">
+        شما اجازه‌ی دسترسی به این بخش را ندارید. تنظیمات کلی سالن فقط در
+        اختیار ادمین اصلی است.
+      </div>
+    );
   }
 
   if (isLoading) {
