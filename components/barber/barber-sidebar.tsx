@@ -8,6 +8,7 @@ import {
   CalendarX,
   Clock,
   Ban,
+  MessageSquare,
 } from "lucide-react";
 import { RoleSidebar, type RoleNavItem } from "@/components/role-sidebar";
 import type { ApiBarber } from "@/lib/api";
@@ -15,6 +16,7 @@ import type { ApiBarber } from "@/lib/api";
 const baseItems: RoleNavItem[] = [
   { href: "/barber/dashboard", label: "داشبورد", icon: LayoutDashboard },
   { href: "/barber/bookings", label: "نوبت‌ها", icon: CalendarClock },
+  { href: "/barber/reviews", label: "نظرات من", icon: MessageSquare },
 ];
 
 // نگاشت فیلدهای flat بک‌اند به آیتم‌های منو. بعضی آیتم‌ها به بیش از یه

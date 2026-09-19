@@ -7,6 +7,7 @@ import {
   CalendarClock,
   CalendarX,
   Clock,
+  MessageSquare,
 } from "lucide-react";
 import { RoleBottomNav, type RoleNavItem } from "@/components/role-bottom-nav";
 import { useCurrentBarberProfile } from "@/lib/hooks/use-current-barber";
@@ -15,6 +16,7 @@ import type { ApiBarber } from "@/lib/api";
 const baseItems: RoleNavItem[] = [
   { href: "/barber/dashboard", label: "داشبورد", icon: LayoutDashboard },
   { href: "/barber/bookings", label: "نوبت‌های امروز", icon: CalendarClock },
+  { href: "/barber/reviews", label: "نظرات من", icon: MessageSquare },
   { href: "/barber/customers", label: "مشتریان من", icon: Users },
 ];
 

@@ -6,6 +6,7 @@ import {
   Scissors,
   CalendarClock,
   CalendarX,
+  MessageSquare,
   BarChart3,
   Settings,
 } from "lucide-react";
@@ -16,6 +17,7 @@ const adminNavItems: RoleNavItem[] = [
   { label: "باربرها", href: "/admin/barbers", icon: Users },
   { label: "خدمات و قیمت", href: "/admin/services", icon: Scissors },
   { label: "نوبت‌ها", href: "/admin/bookings", icon: CalendarClock },
+  { label: "نظرات", href: "/admin/ratings", icon: MessageSquare },
   { label: "تعطیلات", href: "/admin/holidays", icon: CalendarX },
   { label: "گزارش‌ها", href: "/admin/reports", icon: BarChart3 },
   { label: "تنظیمات", href: "/admin/settings", icon: Settings },
