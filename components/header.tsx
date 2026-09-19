@@ -1,8 +1,8 @@
 ﻿"use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   Home,
@@ -16,7 +16,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { UserMenu } from "@/components/user-menu";
 import { useAuth } from "@/lib/auth-context";
-import { getMockSession } from "@/lib/data/mock-session";
 
 const navLinks = [
   { label: "خدمات", href: "#services" },
@@ -27,7 +26,7 @@ const navLinks = [
 
 // برچسب فارسی نقش‌ها (زیر اسم کاربر تو منو نمایش داده می‌شه)
 const ROLE_LABELS: Record<string, string> = {
-  admin: "ادمین",
+  admin: "مدیر سیستم",
   manager: "مدیر",
   barber: "آرایشگر",
   customer: "مشتری",
@@ -38,23 +37,13 @@ const PANEL_HREF: Record<string, string> = {
   admin: "/admin/dashboard",
   manager: "/admin/dashboard",
   barber: "/barber/dashboard",
-  customer: "/customer/bookings",
+  customer: "/customer/dashboard",
 };
 
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const router = useRouter();
-  const pathname = usePathname();
   const { user, isLoading, logout } = useAuth();
-
-  // اگه از داخل پنل (که هنوز مستقیم clearMockSession صدا می‌زنه) خارج شده باشه،
-  // state داخل AuthContext کهنه می‌مونه. با هر تغییر مسیر چک می‌کنیم که سشن
-  // واقعاً هنوز وجود داره، وگرنه کاربر رو از context هم خارج می‌کنیم.
-  useEffect(() => {
-    if (user && !getMockSession()?.token) {
-      logout();
-    }
-  }, [pathname, user, logout]);
 
   const panelHref = user ? PANEL_HREF[user.role] ?? "/" : "/";
   const roleLabel = user ? ROLE_LABELS[user.role] : undefined;
@@ -105,6 +94,14 @@ export function Header() {
 
         {/* اکشن‌های هدر */}
         <div className="flex items-center gap-3">
+          {/* رزرو نوبت */}
+          <Link
+            href="/booking"
+            className="hidden rounded-full bg-gradient-to-r from-emerald-300 to-emerald-400 px-6 py-2.5 text-xs font-bold text-[#02100d] transition hover:scale-[1.03] hover:shadow-[0_0_30px_rgba(52,211,153,0.2)] sm:inline-flex"
+          >
+            رزرو نوبت
+          </Link>
+
           {/* در حال بررسی سشن: جای خالی می‌ذاریم تا دکمه‌ی «ورود» لحظه‌ای نپره */}
           {isLoading ? (
             <div className="hidden h-10 w-24 sm:block" aria-hidden="true" />
@@ -134,14 +131,6 @@ export function Header() {
               </Link>
             </Button>
           )}
-
-          {/* رزرو نوبت */}
-          <Link
-            href="/booking"
-            className="hidden rounded-full bg-gradient-to-r from-emerald-300 to-emerald-400 px-6 py-2.5 text-xs font-bold text-[#02100d] transition hover:scale-[1.03] hover:shadow-[0_0_30px_rgba(52,211,153,0.2)] sm:inline-flex"
-          >
-            رزرو نوبت
-          </Link>
 
           {/* همبرگر موبایل */}
           <button

@@ -13,7 +13,12 @@ export type MockSession = {
   token: string;
 };
 
-const STORAGE_KEY = "mock_session";
+export const STORAGE_KEY = "mock_session";
+
+// وقتی سشن پاک می‌شه (از هر جای پروژه: سایدبار، layoutها، AuthContext) این
+// event روی window پخش می‌شه تا AuthProvider هم state خودش رو خالی کنه و
+// هدر سایت و بقیه‌ی جاها همون لحظه «خارج‌شده» رو نشون بدن.
+export const SESSION_CLEARED_EVENT = "mock-session-cleared";
 
 export function setMockSession(session: MockSession) {
   if (typeof window === "undefined") return;
@@ -34,6 +39,7 @@ export function getMockSession(): MockSession | null {
 export function clearMockSession() {
   if (typeof window === "undefined") return;
   window.localStorage.removeItem(STORAGE_KEY);
+  window.dispatchEvent(new Event(SESSION_CLEARED_EVENT));
 }
 
 // برای استفاده‌ی lib/api.ts هنگام ارسال درخواست‌های احراز هویت‌دار

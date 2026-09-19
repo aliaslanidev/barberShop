@@ -18,6 +18,8 @@ import {
   setMockSession,
   getMockSession,
   clearMockSession,
+  STORAGE_KEY,
+  SESSION_CLEARED_EVENT,
   type MockRole,
 } from "@/lib/data/mock-session";
 
@@ -79,6 +81,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null);
       })
       .finally(() => setIsLoading(false));
+  }, []);
+
+  // هر جای پروژه که مستقیم clearMockSession() صدا زده بشه (سایدبار، layoutها، ...)
+  // یا تو یه تب دیگه از حساب خارج بشه، state این‌جا هم خالی می‌شه.
+  useEffect(() => {
+    function handleCleared() {
+      setUser(null);
+    }
+    function handleStorage(e: StorageEvent) {
+      // key === null یعنی کل localStorage پاک شده
+      if ((e.key === STORAGE_KEY || e.key === null) && !e.newValue) {
+        setUser(null);
+      }
+    }
+    window.addEventListener(SESSION_CLEARED_EVENT, handleCleared);
+    window.addEventListener("storage", handleStorage);
+    return () => {
+      window.removeEventListener(SESSION_CLEARED_EVENT, handleCleared);
+      window.removeEventListener("storage", handleStorage);
+    };
   }, []);
 
   async function login(mobile: string, password: string) {
