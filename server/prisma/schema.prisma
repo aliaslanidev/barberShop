@@ -131,23 +131,32 @@ model Booking {
   @@map("bookings")
 }
 
+enum RatingStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 // امتیاز و نظر مشتری برای یه نوبتِ تمام‌شده (COMPLETED).
 // هر نوبت حداکثر یک امتیاز داره (bookingId یونیکه). فقط مشتریِ همون نوبت
 // می‌تونه ثبت کنه (کنترلش تو سرویس انجام می‌شه). barberId برای محاسبه‌ی سریع
-// معدل هر آرایشگر از روی خود نوبت کپی می‌شه. متن comment فقط برای خودِ
-// آرایشگر و ادمین قابل مشاهده‌ست؛ معدل و تعداد آرا عمومیه.
+// معدل هر آرایشگر از روی خود نوبت کپی می‌شه.
+// معدل و تعداد آرا همیشه عمومیه. متن comment همیشه برای خودِ آرایشگر و ادمین
+// دیده می‌شه؛ برای بقیه‌ی مشتری‌ها فقط وقتی status=APPROVED عمومی می‌شه.
 model Rating {
-  id        String   @id @default(cuid())
-  bookingId String   @unique
+  id        String       @id @default(cuid())
+  bookingId String       @unique
   barberId  String
   score     Int
   comment   String?
-  createdAt DateTime @default(now())
+  status    RatingStatus @default(PENDING)
+  createdAt DateTime     @default(now())
 
   booking Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
   barber  BarberProfile @relation(fields: [barberId], references: [id], onDelete: Cascade)
 
   @@index([barberId])
+  @@index([status])
   @@map("ratings")
 }
 

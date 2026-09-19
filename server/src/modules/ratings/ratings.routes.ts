@@ -4,15 +4,21 @@ import { requireAuth } from "@/middleware/auth";
 import {
   createRatingHandler,
   myRatingsHandler,
-  barberRatingsHandler,
+  listRatingsHandler,
+  updateRatingStatusHandler,
+  publicBarberReviewsHandler,
 } from "@/modules/ratings/ratings.controller";
 
 export const ratingsRouter = Router();
 
-// همه‌ی endpointهای امتیاز نیاز به لاگین دارن. (معدل و تعداد آرا عمومیه و
-// از طریق GET /barbers میاد؛ متن نظرها فقط برای خودِ آرایشگر و ادمینه.)
+// عمومی، بدون نیاز به لاگین (برای مودال «مشاهده بیشتر» قبل از ورود مشتری) —
+// باید قبل از ratingsRouter.use(requireAuth) رجیستر بشه
+ratingsRouter.get("/public/:barberId", asyncHandler(publicBarberReviewsHandler));
+
+// از اینجا به بعد، همه‌ی endpointها نیاز به لاگین دارن.
 ratingsRouter.use(requireAuth);
 
 ratingsRouter.post("/", asyncHandler(createRatingHandler));
 ratingsRouter.get("/me", asyncHandler(myRatingsHandler));
-ratingsRouter.get("/", asyncHandler(barberRatingsHandler));
+ratingsRouter.get("/", asyncHandler(listRatingsHandler));
+ratingsRouter.patch("/:id/status", asyncHandler(updateRatingStatusHandler));

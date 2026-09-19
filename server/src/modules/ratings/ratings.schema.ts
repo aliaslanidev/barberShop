@@ -11,8 +11,15 @@ export const createRatingSchema = z.object({
 });
 export type CreateRatingInput = z.infer<typeof createRatingSchema>;
 
-// فقط برای ادمین/مدیر: دیدن نظرهای یه آرایشگر خاص
-export const listBarberRatingsQuerySchema = z.object({
-  barberId: z.string().min(1, "آرایشگر مشخص نشده"),
+// ادمین/مدیر: لیست نظرها با فیلتر اختیاری آرایشگر و وضعیت (صفحه‌ی تایید نظرها)
+export const listRatingsQuerySchema = z.object({
+  barberId: z.string().optional(),
+  status: z.enum(["PENDING", "APPROVED", "REJECTED"]).optional(),
 });
-export type ListBarberRatingsQuery = z.infer<typeof listBarberRatingsQuerySchema>;
+export type ListRatingsQuery = z.infer<typeof listRatingsQuerySchema>;
+
+// ادمین/مدیر: تایید یا رد نمایش عمومیِ متن یه نظر
+export const updateRatingStatusSchema = z.object({
+  status: z.enum(["APPROVED", "REJECTED"]),
+});
+export type UpdateRatingStatusInput = z.infer<typeof updateRatingStatusSchema>;
