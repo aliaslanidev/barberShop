@@ -149,9 +149,9 @@ function BarberCard({
         </div>
       </div>
 
-      {barber.bio && (
+      {/* {barber.bio && (
         <p className="mt-3 line-clamp-2 text-xs leading-6 text-muted-foreground">{barber.bio}</p>
-      )}
+      )} */}
 
       <div className="mt-4 flex items-center justify-between gap-2 border-t border-dashed border-border pt-3">
         <div className="min-w-0">
