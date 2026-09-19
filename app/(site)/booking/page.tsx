@@ -79,19 +79,112 @@ function toPersianDigits(input: string) {
   return input.replace(/[0-9]/g, (d) => persianDigits[Number(d)]);
 }
 
-// معدل امتیاز و تعداد نظرات آرایشگر (عمومی) — مثلاً «★ ۴٫۵ (۱۲ نظر)»
+// معدل امتیاز و تعداد نظرات آرایشگر (عمومی) — ستاره‌ها + عدد + «(۱۲ نظر)»
 function RatingBadge({ rating }: { rating: ApiBarber["rating"] | undefined }) {
   if (!rating || rating.count === 0 || rating.average === null) {
-    return <span className="mt-1 block text-xs text-muted-foreground">هنوز امتیازی ثبت نشده</span>;
+    return <span className="text-xs text-muted-foreground">هنوز نظری ثبت نشده</span>;
   }
+
+  const filled = Math.round(rating.average);
+
   return (
-    <span className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-      <Star className="h-3.5 w-3.5 fill-primary text-primary" />
-      <span className="font-medium text-foreground">
+    <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+      <span className="flex items-center gap-0.5">
+        {Array.from({ length: 5 }, (_, i) => (
+          <Star
+            key={i}
+            className={cn(
+              "h-3 w-3",
+              i < filled ? "fill-primary text-primary" : "fill-none text-border",
+            )}
+          />
+        ))}
+      </span>
+      <span className="font-semibold text-foreground">
         {toPersianDigits(rating.average.toFixed(1)).replace(".", "٫")}
       </span>
       <span>({toPersianDigits(String(rating.count))} نظر)</span>
     </span>
+  );
+}
+
+// کارت آرایشگر (هر دو مسیر رزرو): آواتار گرادیانی، نام، امتیاز، توضیح کوتاه،
+// و پایین کارت قیمت/تعداد سرویس + دکمه‌ی انتخاب
+function BarberCard({
+  barber,
+  selected,
+  footerLabel,
+  onSelect,
+  onOpenProfile,
+}: {
+  barber: ApiBarber;
+  selected: boolean;
+  footerLabel: string;
+  onSelect: () => void;
+  onOpenProfile: () => void;
+}) {
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onSelect}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onSelect();
+        }
+      }}
+      className={cn(
+        "flex cursor-pointer flex-col rounded-2xl border p-4 text-right transition-colors",
+        selected ? "border-primary bg-primary/10" : "border-border bg-card hover:border-primary/40",
+      )}
+    >
+      <div className="flex items-center gap-3">
+<span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-rust text-sm font-bold text-white">
+          {barber.initials}
+        </span>
+        <div className="min-w-0 flex-1 space-y-1">
+          <span className="block truncate text-sm font-bold">{barber.user.name}</span>
+          <RatingBadge rating={barber.rating} />
+        </div>
+      </div>
+
+      {barber.bio && (
+        <p className="mt-3 line-clamp-2 text-xs leading-6 text-muted-foreground">{barber.bio}</p>
+      )}
+
+      <div className="mt-4 flex items-center justify-between gap-2 border-t border-dashed border-border pt-3">
+        <div className="min-w-0">
+          <span className="block truncate text-sm font-bold">{footerLabel}</span>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenProfile();
+            }}
+            className="mt-0.5 text-xs font-medium text-primary underline-offset-2 hover:underline"
+          >
+            مشاهده بیشتر
+          </button>
+        </div>
+
+        <span
+          className={cn(
+            "flex shrink-0 items-center gap-1 rounded-lg px-3.5 py-1.5 text-xs font-bold transition-colors",
+            selected ? "bg-primary/20 text-primary" : "bg-primary text-primary-foreground",
+          )}
+        >
+          {selected ? (
+            <>
+              <Check className="h-3.5 w-3.5" />
+              انتخاب شد
+            </>
+          ) : (
+            "انتخاب"
+          )}
+        </span>
+      </div>
+    </div>
   );
 }
 
@@ -288,6 +381,13 @@ export default function BookingPage() {
     if (selectedBarberId && dateKey) {
       getAvailability(selectedBarberId, dateKey).then(setAvailableSlots).catch(() => {});
     }
+  }
+
+  // انتخاب آرایشگر تو مسیر «اول آرایشگر»: سرویس قبلی ممکنه دیگه توسط
+  // این آرایشگر ارائه نشه، پس پاک می‌شه
+  function pickBarberFirst(barberId: string) {
+    if (selectedBarberId !== barberId) setSelectedServiceId(null);
+    setSelectedBarberId(barberId);
   }
 
   // انتخاب ساعت: به‌جای فقط setTime، یه هولد ۵ دقیقه‌ای روی سرور می‌سازه
@@ -643,60 +743,21 @@ export default function BookingPage() {
         <div className="space-y-3">
           <Label>انتخاب آرایشگر</Label>
           <div className="grid gap-3 sm:grid-cols-2">
-            {barbersToShow.map((b) => {
-              const isSelected = selectedBarberId === b.id;
-              return (
-                <div
-                  key={b.id}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => {
-                    // عوض‌کردن آرایشگر: سرویس قبلی ممکنه دیگه توسط این آرایشگر ارائه نشه
-                    if (selectedBarberId !== b.id) setSelectedServiceId(null);
-                    setSelectedBarberId(b.id);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      if (selectedBarberId !== b.id) setSelectedServiceId(null);
-                      setSelectedBarberId(b.id);
-                    }
-                  }}
-                  className={cn(
-                    "flex cursor-pointer items-center gap-3 rounded-xl border p-4 text-right transition-colors",
-                    isSelected ? "border-primary bg-primary/10" : "border-border bg-card hover:border-primary/40",
-                  )}
-                >
-                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-medium text-primary">
-                    {b.initials}
-                  </span>
-                  <span className="flex-1">
-                    <span className="block text-sm font-medium">{b.user.name}</span>
-                    <span className="block text-xs text-muted-foreground">
-                      {toPersianDigits(String(activeRows(b).length))} سرویس
-                    </span>
-                    <RatingBadge rating={b.rating} />
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setProfileModal({
-                          barber: b,
-                          onSelect: () => {
-                            if (selectedBarberId !== b.id) setSelectedServiceId(null);
-                            setSelectedBarberId(b.id);
-                          },
-                        });
-                      }}
-                      className="mt-1 text-xs font-medium text-primary underline-offset-2 hover:underline"
-                    >
-                      مشاهده بیشتر
-                    </button>
-                  </span>
-                  {isSelected && <Check className="h-4 w-4 shrink-0 text-primary" />}
-                </div>
-              );
-            })}
+            {barbersToShow.map((b) => (
+              <BarberCard
+                key={b.id}
+                barber={b}
+                selected={selectedBarberId === b.id}
+                footerLabel={`${toPersianDigits(String(activeRows(b).length))} سرویس`}
+                onSelect={() => pickBarberFirst(b.id)}
+                onOpenProfile={() =>
+                  setProfileModal({
+                    barber: b,
+                    onSelect: () => pickBarberFirst(b.id),
+                  })
+                }
+              />
+            ))}
           </div>
 
           {selectedBarberId && (
@@ -760,54 +821,25 @@ export default function BookingPage() {
             <div className="mt-6 space-y-3">
               <Label>انتخاب آرایشگر</Label>
               <p className="text-xs text-muted-foreground">
-                قیمت این سرویس ممکن است نزد هر آرایشگر متفاوت باشد؛ قیمت هر کدام کنار نامش آمده.
+                قیمت این سرویس ممکن است نزد هر آرایشگر متفاوت باشد؛ قیمت هر کدام پایین کارتش آمده.
               </p>
               <div className="grid gap-3 sm:grid-cols-2">
                 {barbersToShow.map((b) => {
-                  const isSelected = selectedBarberId === b.id;
                   const price = getPrice(b.id, selectedServiceId);
                   return (
-                    <div
+                    <BarberCard
                       key={b.id}
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => setSelectedBarberId(b.id)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          setSelectedBarberId(b.id);
-                        }
-                      }}
-                      className={cn(
-                        "flex cursor-pointer items-center gap-3 rounded-xl border p-4 text-right transition-colors",
-                        isSelected ? "border-primary bg-primary/10" : "border-border bg-card hover:border-primary/40",
-                      )}
-                    >
-                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-medium text-primary">
-                        {b.initials}
-                      </span>
-                      <span className="flex-1">
-                        <span className="block text-sm font-medium">{b.user.name}</span>
-                        {price !== null && (
-                          <span className="block text-xs font-medium text-primary">{formatPrice(price)}</span>
-                        )}
-                        <RatingBadge rating={b.rating} />
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setProfileModal({
-                              barber: b,
-                              onSelect: () => setSelectedBarberId(b.id),
-                            });
-                          }}
-                          className="mt-1 text-xs font-medium text-primary underline-offset-2 hover:underline"
-                        >
-                          مشاهده بیشتر
-                        </button>
-                      </span>
-                      {isSelected && <Check className="h-4 w-4 shrink-0 text-primary" />}
-                    </div>
+                      barber={b}
+                      selected={selectedBarberId === b.id}
+                      footerLabel={price !== null ? formatPrice(price) : ""}
+                      onSelect={() => setSelectedBarberId(b.id)}
+                      onOpenProfile={() =>
+                        setProfileModal({
+                          barber: b,
+                          onSelect: () => setSelectedBarberId(b.id),
+                        })
+                      }
+                    />
                   );
                 })}
               </div>
