@@ -31,6 +31,13 @@ enum Weekday {
   FRIDAY
 }
 
+enum NotificationType {
+  BOOKING_CREATED
+  BOOKING_STATUS_CHANGED
+  LEAVE_REQUEST_STATUS
+  RATING_STATUS
+}
+
 model User {
   id           String   @id @default(cuid())
   name         String
@@ -40,8 +47,10 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  barberProfile BarberProfile?
-  bookings      Booking[]       @relation("CustomerBookings")
+  barberProfile     BarberProfile?
+  bookings          Booking[]          @relation("CustomerBookings")
+  notifications     Notification[]
+  pushSubscriptions PushSubscription[]
 
   @@map("users")
 }
@@ -251,4 +260,39 @@ model WorkingHours {
   closeTime String  @default("20:00")
 
   @@map("working_hours")
+}
+
+// اینباکسِ نوتیف داخل پنل هر کاربر (همه‌ی نقش‌ها). link اختیاریه، مثلاً
+// مسیر همون نوبت/درخواستی که نوتیف بابتشه، برای کلیک و رفتن به صفحه‌ش.
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  body      String
+  link      String?
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@index([userId, createdAt])
+  @@map("notifications")
+}
+
+// اشتراکِ Web Push مرورگر کاربر. هر کاربر می‌تونه چند دستگاه/مرورگر داشته
+// باشه (endpoint یونیکه، پس چند ردیف برای یه userId طبیعیه).
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("push_subscriptions")
 }
