@@ -1,6 +1,6 @@
 "use client";
 
-import { LogOut, Settings, User as UserIcon } from "lucide-react";
+import { LogOut, User as UserIcon } from "lucide-react";
 import {
   Avatar,
   AvatarFallback,
@@ -44,28 +44,22 @@ export function UserMenu({
       <DropdownMenuTrigger asChild>
         <button
           type="button"
+          aria-label={name}
+          title={name}
           className="
             flex
             items-center
-            gap-2
+            justify-center
             rounded-full
-            bg-white/[0.03]
-            p-1
-            pl-3
+            p-0.5
             transition-colors
             hover:bg-primary/[0.08]
+            focus-visible:outline-none
+            focus-visible:ring-2
+            focus-visible:ring-primary/50
           "
         >
-          <div className="flex flex-col items-end leading-tight">
-            <span className="text-sm font-medium text-foreground">
-              {name}
-            </span>
-            {role && (
-              <span className="text-xs text-muted-foreground">{role}</span>
-            )}
-          </div>
-
-          <Avatar className="h-9 w-9">
+          <Avatar className="h-10 w-10">
             {avatarUrl && <AvatarImage src={avatarUrl} alt={name} />}
             <AvatarFallback className="bg-primary text-sm font-bold text-[#02100d]">
               {initial}

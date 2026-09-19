@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { JalaliDatePicker } from "@/components/ui/jalali-date-picker";
 import { cn } from "@/lib/utils";
+import { BarberProfileModal, type BarberProfileModalState } from "@/components/barber-profile-modal";
 
 import {
   listServices,
@@ -151,6 +152,9 @@ export default function BookingPage() {
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
   const [isFinalSubmitting, setIsFinalSubmitting] = useState(false);
   const [confirmedBooking, setConfirmedBooking] = useState<ConfirmedBooking | null>(null);
+
+  // مودال «مشاهده بیشتر» پروفایل عمومی آرایشگر (امتیاز + نظرهای تاییدشده)
+  const [profileModal, setProfileModal] = useState<BarberProfileModalState | null>(null);
 
   const [availableSlots, setAvailableSlots] = useState<ApiSlotStatus[]>([]);
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
@@ -642,16 +646,24 @@ export default function BookingPage() {
             {barbersToShow.map((b) => {
               const isSelected = selectedBarberId === b.id;
               return (
-                <button
+                <div
                   key={b.id}
-                  type="button"
+                  role="button"
+                  tabIndex={0}
                   onClick={() => {
                     // عوض‌کردن آرایشگر: سرویس قبلی ممکنه دیگه توسط این آرایشگر ارائه نشه
                     if (selectedBarberId !== b.id) setSelectedServiceId(null);
                     setSelectedBarberId(b.id);
                   }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      if (selectedBarberId !== b.id) setSelectedServiceId(null);
+                      setSelectedBarberId(b.id);
+                    }
+                  }}
                   className={cn(
-                    "flex items-center gap-3 rounded-xl border p-4 text-right transition-colors",
+                    "flex cursor-pointer items-center gap-3 rounded-xl border p-4 text-right transition-colors",
                     isSelected ? "border-primary bg-primary/10" : "border-border bg-card hover:border-primary/40",
                   )}
                 >
@@ -664,9 +676,25 @@ export default function BookingPage() {
                       {toPersianDigits(String(activeRows(b).length))} سرویس
                     </span>
                     <RatingBadge rating={b.rating} />
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setProfileModal({
+                          barber: b,
+                          onSelect: () => {
+                            if (selectedBarberId !== b.id) setSelectedServiceId(null);
+                            setSelectedBarberId(b.id);
+                          },
+                        });
+                      }}
+                      className="mt-1 text-xs font-medium text-primary underline-offset-2 hover:underline"
+                    >
+                      مشاهده بیشتر
+                    </button>
                   </span>
-                  {isSelected && <Check className="h-4 w-4 text-primary" />}
-                </button>
+                  {isSelected && <Check className="h-4 w-4 shrink-0 text-primary" />}
+                </div>
               );
             })}
           </div>
@@ -739,12 +767,19 @@ export default function BookingPage() {
                   const isSelected = selectedBarberId === b.id;
                   const price = getPrice(b.id, selectedServiceId);
                   return (
-                    <button
+                    <div
                       key={b.id}
-                      type="button"
+                      role="button"
+                      tabIndex={0}
                       onClick={() => setSelectedBarberId(b.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          setSelectedBarberId(b.id);
+                        }
+                      }}
                       className={cn(
-                        "flex items-center gap-3 rounded-xl border p-4 text-right transition-colors",
+                        "flex cursor-pointer items-center gap-3 rounded-xl border p-4 text-right transition-colors",
                         isSelected ? "border-primary bg-primary/10" : "border-border bg-card hover:border-primary/40",
                       )}
                     >
@@ -757,9 +792,22 @@ export default function BookingPage() {
                           <span className="block text-xs font-medium text-primary">{formatPrice(price)}</span>
                         )}
                         <RatingBadge rating={b.rating} />
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setProfileModal({
+                              barber: b,
+                              onSelect: () => setSelectedBarberId(b.id),
+                            });
+                          }}
+                          className="mt-1 text-xs font-medium text-primary underline-offset-2 hover:underline"
+                        >
+                          مشاهده بیشتر
+                        </button>
                       </span>
-                      {isSelected && <Check className="h-4 w-4 text-primary" />}
-                    </button>
+                      {isSelected && <Check className="h-4 w-4 shrink-0 text-primary" />}
+                    </div>
                   );
                 })}
               </div>
@@ -999,6 +1047,8 @@ export default function BookingPage() {
           </Button>
         </div>
       )}
+
+      <BarberProfileModal state={profileModal} onClose={() => setProfileModal(null)} />
     </main>
   );
 }

@@ -157,6 +157,8 @@ export interface ApiBarberService {
 
 // ==================== Ratings (تعریف تایپ‌ها؛ توابع API پایین‌تر) ====================
 
+export type RatingStatus = "PENDING" | "APPROVED" | "REJECTED";
+
 export interface ApiRatingSummary {
   average: number | null; // یک رقم اعشار؛ null یعنی هنوز امتیازی نداره
   count: number;
@@ -168,6 +170,7 @@ export interface ApiRating {
   barberId: string;
   score: number;
   comment: string | null;
+  status: RatingStatus;
   createdAt: string;
 }
 
@@ -460,7 +463,11 @@ export interface ApiSlotHold {
   expiresAt: string;
 }
 
-export function createSlotHoldApi(data: { barberId: string; date: string; time: string }) {
+export function createSlotHoldApi(data: {
+  barberId: string;
+  date: string;
+  time: string;
+}) {
   return apiFetch<ApiSlotHold>("/bookings/hold", {
     method: "POST",
     body: data,
@@ -553,6 +560,7 @@ export interface ApiBarberReview {
   id: string;
   score: number;
   comment: string | null;
+  status: RatingStatus;
   createdAt: string;
   date: string;
   time: string;
@@ -565,15 +573,68 @@ export interface ApiBarberReviewsResponse {
   ratings: ApiBarberReview[];
 }
 
-// نظرهای خودِ آرایشگر لاگین‌شده
+// نظرهای خودِ آرایشگر لاگین‌شده (همه‌ی وضعیت‌ها)
 export function listMyRatingsApi(token: string) {
   return apiFetch<ApiBarberReviewsResponse>("/ratings/me", { token });
 }
 
-// نظرهای یه آرایشگر مشخص — فقط ادمین/مدیر
-export function listBarberRatingsApi(barberId: string, token: string) {
-  return apiFetch<ApiBarberReviewsResponse>(
-    `/ratings?barberId=${encodeURIComponent(barberId)}`,
-    { token },
+// ادمین/مدیر: لیست نظرها با فیلتر اختیاری آرایشگر/وضعیت — برای صفحه‌ی تایید نظرها
+export interface ApiAdminRating {
+  id: string;
+  barberId: string;
+  barberName: string;
+  score: number;
+  comment: string | null;
+  status: RatingStatus;
+  createdAt: string;
+  date: string;
+  time: string;
+  serviceTitle: string;
+  customerName: string;
+}
+
+export function listRatingsApi(
+  token: string,
+  filter: { barberId?: string; status?: RatingStatus } = {},
+) {
+  const params = new URLSearchParams();
+  if (filter.barberId) params.set("barberId", filter.barberId);
+  if (filter.status) params.set("status", filter.status);
+  const qs = params.toString();
+  return apiFetch<ApiAdminRating[]>(`/ratings${qs ? `?${qs}` : ""}`, { token });
+}
+
+// ادمین/مدیر: تایید یا رد نمایش عمومیِ متن یه نظر
+export function updateRatingStatusApi(
+  id: string,
+  status: "APPROVED" | "REJECTED",
+  token: string,
+) {
+  return apiFetch<ApiRating>(`/ratings/${id}/status`, {
+    method: "PATCH",
+    body: { status },
+    token,
+  });
+}
+
+// ==================== Public Barber Reviews (بدون نیاز به لاگین) ====================
+
+export interface ApiPublicReview {
+  id: string;
+  score: number;
+  comment: string | null;
+  createdAt: string;
+  customerName: string; // نام + حرف اول نام‌خانوادگی، برای حریم خصوصی
+}
+
+export interface ApiPublicBarberReviews {
+  summary: ApiRatingSummary;
+  reviews: ApiPublicReview[];
+}
+
+// برای مودال «مشاهده بیشتر» تو فلوی رزرو — معدل + فقط نظرهای تاییدشده
+export function getPublicBarberReviews(barberId: string) {
+  return apiFetch<ApiPublicBarberReviews>(
+    `/ratings/public/${encodeURIComponent(barberId)}`,
   );
 }
