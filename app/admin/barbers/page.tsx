@@ -20,6 +20,7 @@ import {
   type ApiService,
 } from "@/lib/api";
 import { getAuthToken } from "@/lib/data/mock-session";
+import { getCurrentAdmin } from "@/lib/data/admin-session";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -81,6 +82,11 @@ function sameIdSet(a: string[], b: string[]) {
 }
 
 export default function AdminBarbersPage() {
+  // مدیر سالن (manager) فقط اجازه‌ی مشاهده داره؛ ساخت/ویرایش/حذف/تغییر
+  // پرمیشن/فعال‌سازی فقط برای ادمین اصلی (تصمیم پروژه — بخش ۶ فایل کانتکست)
+  const admin = getCurrentAdmin();
+  const isAdmin = admin?.role === "admin";
+
   const [barbers, setBarbers] = useState<ApiBarber[]>([]);
   const [services, setServices] = useState<ApiService[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -134,11 +140,13 @@ export default function AdminBarbersPage() {
   }, [selectedBarberId, barbers]);
 
   const isPermissionsDirty =
+    isAdmin &&
     !!selectedBarber &&
     !!draftPermissions &&
     OPTIONAL_PERMISSIONS.some((perm) => draftPermissions[perm.key] !== selectedBarber[perm.key]);
 
   const isServicesDirty =
+    isAdmin &&
     !!selectedBarber &&
     !!draftServiceIds &&
     !sameIdSet(draftServiceIds, selectedBarber.services.map((s) => s.serviceId));
@@ -192,7 +200,7 @@ export default function AdminBarbersPage() {
   }, [editDialogOpen, selectedBarber, resetEdit]);
 
   async function onEditBarber(values: EditBarberValues) {
-    if (!selectedBarber) return;
+    if (!selectedBarber || !isAdmin) return;
     const token = getAuthToken();
     if (!token) return;
     try {
@@ -212,6 +220,7 @@ export default function AdminBarbersPage() {
   }
 
   async function onCreateBarber(values: CreateBarberValues) {
+    if (!isAdmin) return;
     const token = getAuthToken();
     if (!token) return;
     try {
@@ -230,11 +239,12 @@ export default function AdminBarbersPage() {
   }
 
   function handlePermissionDraftChange(key: keyof ApiBarberPermissions, value: boolean) {
+    if (!isAdmin) return;
     setDraftPermissions((prev) => (prev ? { ...prev, [key]: value } : prev));
   }
 
   async function handleSavePermissions() {
-    if (!selectedBarber || !draftPermissions) return;
+    if (!selectedBarber || !draftPermissions || !isAdmin) return;
     const token = getAuthToken();
     if (!token) return;
     try {
@@ -260,6 +270,7 @@ export default function AdminBarbersPage() {
   }
 
   function handleServiceDraftToggle(serviceId: string, checked: boolean) {
+    if (!isAdmin) return;
     setDraftServiceIds((prev) => {
       if (!prev) return prev;
       return checked ? [...prev, serviceId] : prev.filter((id) => id !== serviceId);
@@ -267,7 +278,7 @@ export default function AdminBarbersPage() {
   }
 
   async function handleSaveServices() {
-    if (!selectedBarber || !draftServiceIds) return;
+    if (!selectedBarber || !draftServiceIds || !isAdmin) return;
     const token = getAuthToken();
     if (!token) return;
     setIsSavingServices(true);
@@ -288,6 +299,7 @@ export default function AdminBarbersPage() {
   }
 
   async function handleActiveChange(barberId: string, value: boolean) {
+    if (!isAdmin) return;
     const token = getAuthToken();
     if (!token) return;
     try {
@@ -300,6 +312,7 @@ export default function AdminBarbersPage() {
   }
 
   async function handleDelete(barberId: string, name: string) {
+    if (!isAdmin) return;
     const confirmed = window.confirm(`آرایشگر «${name}» حذف شود؟ این عمل قابل بازگشت نیست.`);
     if (!confirmed) return;
     const token = getAuthToken();
@@ -328,7 +341,9 @@ export default function AdminBarbersPage() {
         <div>
           <h1 className="text-xl font-bold">مدیریت آرایشگرها</h1>
           <p className="text-sm text-muted-foreground">
-            یک آرایشگر را انتخاب کنید تا پرمیشن‌هایش را تنظیم کنید
+            {isAdmin
+              ? "یک آرایشگر را انتخاب کنید تا پرمیشن‌هایش را تنظیم کنید"
+              : "لیست آرایشگرها (فقط مشاهده)"}
           </p>
         </div>
 
@@ -398,57 +413,59 @@ export default function AdminBarbersPage() {
             </PopoverPortal>
           </Popover>
 
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button size="sm" className="shrink-0 gap-2">
-                <Plus className="h-4 w-4" />
-                افزودن آرایشگر
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>آرایشگر جدید</DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleSubmit(onCreateBarber)} className="flex flex-col gap-4" noValidate>
-                <div className="flex flex-col gap-2">
-                  <Label htmlFor="name">نام</Label>
-                  <Input id="name" {...register("name")} />
-                  {errors.name && (
-                    <span className="text-xs text-destructive">{errors.name.message}</span>
-                  )}
-                </div>
-                <div className="flex flex-col gap-2">
-                  <Label htmlFor="mobile">شماره موبایل</Label>
-                  <Input
-                    id="mobile"
-                    dir="ltr"
-                    className="text-left"
-                    placeholder="09123456789"
-                    {...register("mobile")}
-                  />
-                  {errors.mobile && (
-                    <span className="text-xs text-destructive">{errors.mobile.message}</span>
-                  )}
-                </div>
-                <div className="flex flex-col gap-2">
-                  <Label htmlFor="password">رمز عبور اولیه</Label>
-                  <Input id="password" type="text" dir="ltr" className="text-left" {...register("password")} />
-                  {errors.password && (
-                    <span className="text-xs text-destructive">{errors.password.message}</span>
-                  )}
-                </div>
-                <div className="flex flex-col gap-2">
-                  <Label htmlFor="bio">بیوگرافی (اختیاری)</Label>
-                  <Input id="bio" {...register("bio")} />
-                </div>
-                <DialogFooter>
-                  <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? "در حال ثبت..." : "ثبت آرایشگر"}
-                  </Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
+          {isAdmin && (
+            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm" className="shrink-0 gap-2">
+                  <Plus className="h-4 w-4" />
+                  افزودن آرایشگر
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>آرایشگر جدید</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleSubmit(onCreateBarber)} className="flex flex-col gap-4" noValidate>
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="name">نام</Label>
+                    <Input id="name" {...register("name")} />
+                    {errors.name && (
+                      <span className="text-xs text-destructive">{errors.name.message}</span>
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="mobile">شماره موبایل</Label>
+                    <Input
+                      id="mobile"
+                      dir="ltr"
+                      className="text-left"
+                      placeholder="09123456789"
+                      {...register("mobile")}
+                    />
+                    {errors.mobile && (
+                      <span className="text-xs text-destructive">{errors.mobile.message}</span>
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="password">رمز عبور اولیه</Label>
+                    <Input id="password" type="text" dir="ltr" className="text-left" {...register("password")} />
+                    {errors.password && (
+                      <span className="text-xs text-destructive">{errors.password.message}</span>
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="bio">بیوگرافی (اختیاری)</Label>
+                    <Input id="bio" {...register("bio")} />
+                  </div>
+                  <DialogFooter>
+                    <Button type="submit" disabled={isSubmitting}>
+                      {isSubmitting ? "در حال ثبت..." : "ثبت آرایشگر"}
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
       </div>
 
@@ -476,76 +493,81 @@ export default function AdminBarbersPage() {
                   <Switch
                     checked={selectedBarber.isActive}
                     onCheckedChange={(v) => handleActiveChange(selectedBarber.id, v)}
+                    disabled={!isAdmin}
                     aria-label="فعال/غیرفعال"
                   />
                 </div>
-                <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button type="button" variant="ghost" aria-label="ویرایش آرایشگر">
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>ویرایش آرایشگر</DialogTitle>
-                    </DialogHeader>
-                    <form onSubmit={handleEditSubmit(onEditBarber)} className="flex flex-col gap-4" noValidate>
-                      <div className="flex flex-col gap-2">
-                        <Label htmlFor="edit-name">نام</Label>
-                        <Input id="edit-name" {...registerEdit("name")} />
-                        {editErrors.name && (
-                          <span className="text-xs text-destructive">{editErrors.name.message}</span>
-                        )}
-                      </div>
-                      <div className="flex flex-col gap-2">
-                        <Label htmlFor="edit-mobile">شماره موبایل</Label>
-                        <Input
-                          id="edit-mobile"
-                          dir="ltr"
-                          className="text-left"
-                          placeholder="09123456789"
-                          {...registerEdit("mobile")}
-                        />
-                        {editErrors.mobile && (
-                          <span className="text-xs text-destructive">{editErrors.mobile.message}</span>
-                        )}
-                      </div>
-                      <div className="flex flex-col gap-2">
-                        <Label htmlFor="edit-bio">بیوگرافی (اختیاری)</Label>
-                        <Input id="edit-bio" {...registerEdit("bio")} />
-                      </div>
-                      <div className="flex flex-col gap-2">
-                        <Label htmlFor="edit-password">رمز جدید (اختیاری)</Label>
-                        <Input
-                          id="edit-password"
-                          dir="ltr"
-                          className="text-left"
-                          placeholder="خالی بذار تا تغییر نکنه"
-                          {...registerEdit("newPassword")}
-                        />
-                        {editErrors.newPassword && (
-                          <span className="text-xs text-destructive">
-                            {editErrors.newPassword.message}
-                          </span>
-                        )}
-                      </div>
-                      <DialogFooter>
-                        <Button type="submit" disabled={isEditSubmitting}>
-                          {isEditSubmitting ? "در حال ذخیره..." : "ذخیره تغییرات"}
+                {isAdmin && (
+                  <>
+                    <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button type="button" variant="ghost" aria-label="ویرایش آرایشگر">
+                          <Pencil className="h-4 w-4" />
                         </Button>
-                      </DialogFooter>
-                    </form>
-                  </DialogContent>
-                </Dialog>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className="text-destructive hover:text-destructive"
-                  onClick={() => handleDelete(selectedBarber.id, selectedBarber.user.name)}
-                  aria-label="حذف آرایشگر"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>ویرایش آرایشگر</DialogTitle>
+                        </DialogHeader>
+                        <form onSubmit={handleEditSubmit(onEditBarber)} className="flex flex-col gap-4" noValidate>
+                          <div className="flex flex-col gap-2">
+                            <Label htmlFor="edit-name">نام</Label>
+                            <Input id="edit-name" {...registerEdit("name")} />
+                            {editErrors.name && (
+                              <span className="text-xs text-destructive">{editErrors.name.message}</span>
+                            )}
+                          </div>
+                          <div className="flex flex-col gap-2">
+                            <Label htmlFor="edit-mobile">شماره موبایل</Label>
+                            <Input
+                              id="edit-mobile"
+                              dir="ltr"
+                              className="text-left"
+                              placeholder="09123456789"
+                              {...registerEdit("mobile")}
+                            />
+                            {editErrors.mobile && (
+                              <span className="text-xs text-destructive">{editErrors.mobile.message}</span>
+                            )}
+                          </div>
+                          <div className="flex flex-col gap-2">
+                            <Label htmlFor="edit-bio">بیوگرافی (اختیاری)</Label>
+                            <Input id="edit-bio" {...registerEdit("bio")} />
+                          </div>
+                          <div className="flex flex-col gap-2">
+                            <Label htmlFor="edit-password">رمز جدید (اختیاری)</Label>
+                            <Input
+                              id="edit-password"
+                              dir="ltr"
+                              className="text-left"
+                              placeholder="خالی بذار تا تغییر نکنه"
+                              {...registerEdit("newPassword")}
+                            />
+                            {editErrors.newPassword && (
+                              <span className="text-xs text-destructive">
+                                {editErrors.newPassword.message}
+                              </span>
+                            )}
+                          </div>
+                          <DialogFooter>
+                            <Button type="submit" disabled={isEditSubmitting}>
+                              {isEditSubmitting ? "در حال ذخیره..." : "ذخیره تغییرات"}
+                            </Button>
+                          </DialogFooter>
+                        </form>
+                      </DialogContent>
+                    </Dialog>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => handleDelete(selectedBarber.id, selectedBarber.user.name)}
+                      aria-label="حذف آرایشگر"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </>
+                )}
               </div>
             </div>
 
@@ -559,31 +581,34 @@ export default function AdminBarbersPage() {
                   <Switch
                     checked={draftPermissions?.[perm.key] ?? false}
                     onCheckedChange={(v) => handlePermissionDraftChange(perm.key, v)}
+                    disabled={!isAdmin}
                     aria-label={perm.label}
                   />
                 </div>
               ))}
             </div>
 
-            <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={!isPermissionsDirty}
-                onClick={handleCancelPermissions}
-              >
-                لغو
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                disabled={!isPermissionsDirty}
-                onClick={handleSavePermissions}
-              >
-                ذخیره تغییرات
-              </Button>
-            </div>
+            {isAdmin && (
+              <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={!isPermissionsDirty}
+                  onClick={handleCancelPermissions}
+                >
+                  لغو
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={!isPermissionsDirty}
+                  onClick={handleSavePermissions}
+                >
+                  ذخیره تغییرات
+                </Button>
+              </div>
+            )}
 
             <div className="flex flex-col gap-3 border-t border-border pt-4">
               <p className="text-sm font-medium">خدماتی که این آرایشگر انجام می‌دهد</p>
@@ -602,6 +627,7 @@ export default function AdminBarbersPage() {
                       <Switch
                         checked={draftServiceIds?.includes(service.id) ?? false}
                         onCheckedChange={(v) => handleServiceDraftToggle(service.id, v)}
+                        disabled={!isAdmin}
                         aria-label={service.title}
                       />
                     </div>
@@ -609,25 +635,27 @@ export default function AdminBarbersPage() {
                 </div>
               )}
 
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={!isServicesDirty}
-                  onClick={handleCancelServices}
-                >
-                  لغو
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  disabled={!isServicesDirty || isSavingServices}
-                  onClick={handleSaveServices}
-                >
-                  {isSavingServices ? "..." : "ذخیره خدمات"}
-                </Button>
-              </div>
+              {isAdmin && (
+                <div className="flex items-center justify-end gap-2 pt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={!isServicesDirty}
+                    onClick={handleCancelServices}
+                  >
+                    لغو
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={!isServicesDirty || isSavingServices}
+                    onClick={handleSaveServices}
+                  >
+                    {isSavingServices ? "..." : "ذخیره خدمات"}
+                  </Button>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -637,8 +665,10 @@ export default function AdminBarbersPage() {
             <Users className="h-8 w-8" />
             <p className="text-sm">
               {barbers.length === 0
-                ? "هنوز آرایشگری ثبت نشده. از دکمه‌ی «افزودن آرایشگر» شروع کنید."
-                : "برای مشاهده و تنظیم پرمیشن‌ها، یک آرایشگر را از کادر جستجو انتخاب کنید."}
+                ? isAdmin
+                  ? "هنوز آرایشگری ثبت نشده. از دکمه‌ی «افزودن آرایشگر» شروع کنید."
+                  : "هنوز آرایشگری ثبت نشده."
+                : "برای مشاهده، یک آرایشگر را از کادر جستجو انتخاب کنید."}
             </p>
           </CardContent>
         </Card>

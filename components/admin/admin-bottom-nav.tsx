@@ -3,6 +3,7 @@
 import {
   LayoutDashboard,
   Users,
+  UserCog,
   Scissors,
   CalendarClock,
   CalendarX,
@@ -12,8 +13,10 @@ import {
   Settings,
 } from "lucide-react";
 import { RoleBottomNav, type RoleNavItem } from "@/components/role-bottom-nav";
+import { getCurrentAdmin } from "@/lib/data/admin-session";
 
-const adminNavItems: RoleNavItem[] = [
+// آیتم‌هایی که هم ادمین هم مدیر سالن می‌بینن
+const sharedNavItems: RoleNavItem[] = [
   { label: "داشبورد", href: "/admin/dashboard", icon: LayoutDashboard },
   { label: "باربرها", href: "/admin/barbers", icon: Users },
   { label: "خدمات و قیمت", href: "/admin/services", icon: Scissors },
@@ -22,9 +25,18 @@ const adminNavItems: RoleNavItem[] = [
   { label: "تعطیلات", href: "/admin/holidays", icon: CalendarX },
   { label: "درخواست‌های مرخصی", href: "/admin/leave-requests", icon: CalendarCheck },
   { label: "گزارش‌ها", href: "/admin/reports", icon: BarChart3 },
+];
+
+// آیتم‌هایی که فقط ادمین اصلی می‌بینه — دقیقاً هم‌الگوی admin-sidebar.tsx
+const adminOnlyNavItems: RoleNavItem[] = [
+  { label: "مدیران سالن", href: "/admin/managers", icon: UserCog },
   { label: "تنظیمات", href: "/admin/settings", icon: Settings },
 ];
 
 export function AdminBottomNav() {
-  return <RoleBottomNav items={adminNavItems} />;
+  const admin = getCurrentAdmin();
+  const items =
+    admin?.role === "admin" ? [...sharedNavItems, ...adminOnlyNavItems] : sharedNavItems;
+
+  return <RoleBottomNav items={items} />;
 }
