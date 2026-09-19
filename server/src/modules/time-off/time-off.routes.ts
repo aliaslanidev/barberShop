@@ -6,6 +6,7 @@ import {
   cancelOwnLeaveRequestHandler,
   createOwnTimeOffHandler,
   deleteOwnTimeOffHandler,
+  listAllTimeOffHandler,
   listLeaveRequestsHandler,
   listOwnTimeOffHandler,
   rejectLeaveRequestHandler,
@@ -28,6 +29,12 @@ timeOffRouter.delete(
   asyncHandler(cancelOwnLeaveRequestHandler)
 );
 
+timeOffRouter.get(
+  "/",
+  requireAuth,
+  requireRole("ADMIN", "MANAGER"),
+  asyncHandler(listAllTimeOffHandler)
+);
 timeOffRouter.get(
   "/requests",
   requireAuth,

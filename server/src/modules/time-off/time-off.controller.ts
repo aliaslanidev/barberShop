@@ -26,6 +26,11 @@ export async function cancelOwnLeaveRequestHandler(req: Request, res: Response) 
   res.status(204).send();
 }
 
+export async function listAllTimeOffHandler(_req: Request, res: Response) {
+  const entries = await timeOffService.listAllTimeOff();
+  res.json(entries);
+}
+
 export async function listLeaveRequestsHandler(req: Request, res: Response) {
   const query = leaveRequestStatusQuerySchema.parse(req.query);
   const requests = await timeOffService.listLeaveRequests(query);

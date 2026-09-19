@@ -1,44 +1,112 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import DateObject from "react-date-object";
+import persian from "react-date-object/calendars/persian";
+import persian_fa from "react-date-object/locales/persian_fa";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { JalaliDatePicker } from "@/components/ui/jalali-date-picker";
-import type { DateObject } from "react-multi-date-picker";
-
+import { getAuthToken } from "@/lib/data/mock-session";
 import {
-  getAllSalonHolidays,
-  addSalonHoliday,
-  removeSalonHoliday,
-} from "@/lib/data/holidays";
-import { getAllTimeOff } from "@/lib/data/time-off";
-import { getAllBarbers } from "@/lib/data/barbers";
+  listSalonHolidaysApi,
+  createSalonHolidayApi,
+  deleteSalonHolidayApi,
+  listAllTimeOffApi,
+  ApiError,
+  type ApiSalonHoliday,
+  type ApiTimeOffWithBarber,
+} from "@/lib/api";
+
+function toISODate(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function formatJalali(isoDate: string): string {
+  return new DateObject({
+    date: new Date(`${isoDate.slice(0, 10)}T00:00:00`),
+    calendar: persian,
+    locale: persian_fa,
+  }).format("YYYY/MM/DD");
+}
 
 export default function AdminHolidaysPage() {
-  const barbers = getAllBarbers();
-  const barberNameById = new Map(barbers.map((b) => [b.id, b.name]));
-
   const [date, setDate] = useState<DateObject | null>(null);
   const [reason, setReason] = useState("");
-  const [holidays, setHolidays] = useState(getAllSalonHolidays());
-  const timeOffEntries = getAllTimeOff();
+  const [holidays, setHolidays] = useState<ApiSalonHoliday[]>([]);
+  const [timeOffEntries, setTimeOffEntries] = useState<ApiTimeOffWithBarber[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  function handleAdd() {
-    if (!date) return;
-    addSalonHoliday(date.format("YYYY/MM/DD"), reason.trim() || undefined);
-    setHolidays(getAllSalonHolidays());
-    setDate(null);
-    setReason("");
-    toast.success("تعطیلی ثبت شد");
+  async function refresh() {
+    const token = getAuthToken();
+    if (!token) {
+      setIsLoading(false);
+      return;
+    }
+    try {
+      const [holidaysResult, timeOffResult] = await Promise.all([
+        listSalonHolidaysApi(token),
+        listAllTimeOffApi(token),
+      ]);
+      setHolidays(holidaysResult);
+      setTimeOffEntries(timeOffResult);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "خطا در دریافت اطلاعات");
+    } finally {
+      setIsLoading(false);
+    }
   }
 
-  function handleRemove(id: string) {
-    removeSalonHoliday(id);
-    setHolidays(getAllSalonHolidays());
+  useEffect(() => {
+    refresh();
+  }, []);
+
+  async function handleAdd() {
+    const token = getAuthToken();
+    if (!token || !date) return;
+    setIsSubmitting(true);
+    try {
+      await createSalonHolidayApi(
+        { date: toISODate(date.toDate()), reason: reason.trim() || undefined },
+        token
+      );
+      toast.success("تعطیلی ثبت شد");
+      setDate(null);
+      setReason("");
+      await refresh();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "خطا در ثبت تعطیلی");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleRemove(id: string) {
+    const token = getAuthToken();
+    if (!token) return;
+    try {
+      await deleteSalonHolidayApi(id, token);
+      toast.success("تعطیلی حذف شد");
+      await refresh();
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "خطا در حذف تعطیلی");
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-10 text-sm text-muted-foreground">
+        در حال دریافت اطلاعات...
+      </div>
+    );
   }
 
   return (
@@ -67,8 +135,8 @@ export default function AdminHolidaysPage() {
                 placeholder="مثلا: عید نوروز"
               />
             </div>
-            <Button onClick={handleAdd} disabled={!date}>
-              افزودن تعطیلی
+            <Button onClick={handleAdd} disabled={!date || isSubmitting}>
+              {isSubmitting ? "..." : "افزودن تعطیلی"}
             </Button>
           </div>
 
@@ -84,7 +152,7 @@ export default function AdminHolidaysPage() {
                 className="flex items-center justify-between rounded-lg border border-border bg-card px-4 py-2 text-sm"
               >
                 <span>
-                  {h.dateDisplay}
+                  {formatJalali(h.date)}
                   {h.reason && (
                     <span className="text-muted-foreground"> — {h.reason}</span>
                   )}
@@ -118,10 +186,8 @@ export default function AdminHolidaysPage() {
               <tbody>
                 {timeOffEntries.map((e) => (
                   <tr key={e.id} className="border-b last:border-0">
-                    <td className="p-2">
-                      {barberNameById.get(e.barberId) ?? e.barberId}
-                    </td>
-                    <td className="p-2">{e.dateDisplay}</td>
+                    <td className="p-2">{e.barber.user.name}</td>
+                    <td className="p-2">{formatJalali(e.date)}</td>
                   </tr>
                 ))}
 

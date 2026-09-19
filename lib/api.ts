@@ -359,6 +359,42 @@ export function rejectLeaveRequestApi(id: string, token: string) {
   });
 }
 
+// ادمین/مدیر: مرخصی ثبت‌شده‌ی همه‌ی آرایشگرها (برای صفحه‌ی تعطیلات)
+export interface ApiTimeOffWithBarber extends ApiTimeOff {
+  barber: { id: string; user: { id: string; name: string; mobile: string } };
+}
+
+export function listAllTimeOffApi(token: string) {
+  return apiFetch<ApiTimeOffWithBarber[]>("/time-off", { token });
+}
+
+// ==================== Salon Holidays ====================
+
+export interface ApiSalonHoliday {
+  id: string;
+  date: string; // YYYY-MM-DD میلادی
+  reason: string | null;
+}
+
+export function listSalonHolidaysApi(token: string) {
+  return apiFetch<ApiSalonHoliday[]>("/holidays", { token });
+}
+
+export function createSalonHolidayApi(
+  data: { date: string; reason?: string },
+  token: string,
+) {
+  return apiFetch<ApiSalonHoliday>("/holidays", {
+    method: "POST",
+    body: data,
+    token,
+  });
+}
+
+export function deleteSalonHolidayApi(id: string, token: string) {
+  return apiFetch<void>(`/holidays/${id}`, { method: "DELETE", token });
+}
+
 // ==================== Blocked Slots ====================
 
 export interface ApiBlockedSlot {

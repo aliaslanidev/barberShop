@@ -85,7 +85,7 @@ export async function createOwnTimeOff(userId: string, input: CreateTimeOffInput
         type: "LEAVE_REQUEST_STATUS",
         title: "درخواست مرخصی جدید",
         body: `${barberProfile.user.name} یک درخواست مرخصی برای ${input.date} ثبت کرد`,
-        link: "/admin/time-off",
+        link: "/admin/leave-requests",
       }).catch(() => {})
     )
   );
@@ -122,6 +122,16 @@ export async function cancelOwnLeaveRequest(userId: string, id: string) {
 }
 
 // ==================== سمت ادمین ====================
+
+// مرخصی‌های ثبت‌شده‌ی همه‌ی آرایشگرها (برای صفحه‌ی تعطیلات ادمین)
+export async function listAllTimeOff() {
+  return prisma.timeOff.findMany({
+    include: {
+      barber: { include: { user: { select: { id: true, name: true, mobile: true } } } },
+    },
+    orderBy: { date: "asc" },
+  });
+}
 
 export async function listLeaveRequests(query: LeaveRequestStatusQuery) {
   return prisma.leaveRequest.findMany({
