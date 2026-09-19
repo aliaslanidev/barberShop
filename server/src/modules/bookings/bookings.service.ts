@@ -1,6 +1,7 @@
 import type { Prisma, Role, Weekday } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { AppError } from "@/utils/AppError";
+import { notifyUser } from "@/modules/notifications/notifications.service";
 import type {
   CreateBookingInput,
   ListBookingsQuery,
@@ -366,6 +367,14 @@ export async function createBooking(customerId: string, input: CreateBookingInpu
     await prisma.slotHold.deleteMany({ where: { id: ownHoldId } }).catch(() => {});
   }
 
+  // نوتیف برای آرایشگر: نوبت جدید ثبت شد
+  notifyUser(booking.barber.user.id, {
+    type: "BOOKING_CREATED",
+    title: "نوبت جدید",
+    body: `${booking.customer.name} یک نوبت برای ${booking.date.toISOString().slice(0, 10)} ساعت ${booking.time} ثبت کرد`,
+    link: "/barber/bookings",
+  }).catch(() => {});
+
   return booking;
 }
 
@@ -463,9 +472,46 @@ export async function updateBookingStatus(
     }
   }
 
-  return prisma.booking.update({
+  const updated = await prisma.booking.update({
     where: { id: bookingId },
     data: { status: newStatus },
     include: bookingIncludes,
   });
+
+  // نوتیف‌های تغییر وضعیت نوبت
+  if (newStatus === "IN_PROGRESS") {
+    notifyUser(updated.customer.id, {
+      type: "BOOKING_STATUS_CHANGED",
+      title: "شروع سرویس",
+      body: `سرویس شما نزد ${updated.barber.user.name} شروع شد`,
+      link: "/customer/bookings",
+    }).catch(() => {});
+  } else if (newStatus === "COMPLETED") {
+    notifyUser(updated.customer.id, {
+      type: "BOOKING_STATUS_CHANGED",
+      title: "سرویس تمام شد",
+      body: `سرویس شما نزد ${updated.barber.user.name} تمام شد — می‌تونید امتیاز بدید`,
+      link: "/customer/bookings",
+    }).catch(() => {});
+  } else if (newStatus === "CANCELLED") {
+    if (isOwnerCustomer) {
+      // مشتری خودش لغو کرد -> به آرایشگر اطلاع بده
+      notifyUser(updated.barber.user.id, {
+        type: "BOOKING_STATUS_CHANGED",
+        title: "لغو نوبت",
+        body: `نوبت ${updated.date.toISOString().slice(0, 10)} ساعت ${updated.time} توسط مشتری لغو شد`,
+        link: "/barber/bookings",
+      }).catch(() => {});
+    } else {
+      // آرایشگر یا ادمین لغو کرد -> به مشتری اطلاع بده
+      notifyUser(updated.customer.id, {
+        type: "BOOKING_STATUS_CHANGED",
+        title: "لغو نوبت",
+        body: `نوبت شما برای ${updated.date.toISOString().slice(0, 10)} ساعت ${updated.time} لغو شد`,
+        link: "/customer/bookings",
+      }).catch(() => {});
+    }
+  }
+
+  return updated;
 }

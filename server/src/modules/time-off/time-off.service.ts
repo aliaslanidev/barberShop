@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { AppError } from "@/utils/AppError";
+import { notifyUser } from "@/modules/notifications/notifications.service";
 import type {
   CreateTimeOffInput,
   LeaveRequestStatusQuery,
@@ -47,7 +48,10 @@ export async function listOwnTimeOff(userId: string) {
 // اگه پرمیشن manageTimeOff داشته باشه: مستقیم TimeOff می‌سازه.
 // وگرنه: یه LeaveRequest با وضعیت PENDING می‌سازه که باید ادمین تاییدش کنه.
 export async function createOwnTimeOff(userId: string, input: CreateTimeOffInput) {
-  const barberProfile = await prisma.barberProfile.findUnique({ where: { userId } });
+  const barberProfile = await prisma.barberProfile.findUnique({
+    where: { userId },
+    include: { user: { select: { name: true } } },
+  });
   if (!barberProfile) throw new AppError("پروفایل آرایشگر پیدا نشد", 404);
 
   if (barberProfile.manageTimeOff) {
@@ -69,6 +73,23 @@ export async function createOwnTimeOff(userId: string, input: CreateTimeOffInput
       status: "PENDING",
     },
   });
+
+  // نوتیف برای همه‌ی ادمین/مدیرها: درخواست مرخصی جدید برای تایید
+  const admins = await prisma.user.findMany({
+    where: { role: { in: ["ADMIN", "MANAGER"] } },
+    select: { id: true },
+  });
+  await Promise.all(
+    admins.map((a) =>
+      notifyUser(a.id, {
+        type: "LEAVE_REQUEST_STATUS",
+        title: "درخواست مرخصی جدید",
+        body: `${barberProfile.user.name} یک درخواست مرخصی برای ${input.date} ثبت کرد`,
+        link: "/admin/time-off",
+      }).catch(() => {})
+    )
+  );
+
   return { type: "LEAVE_REQUEST" as const, leaveRequest };
 }
 
@@ -131,6 +152,19 @@ export async function approveLeaveRequest(id: string, adminUserId: string) {
     }),
   ]);
 
+  const barberProfile = await prisma.barberProfile.findUnique({
+    where: { id: request.barberId },
+    select: { userId: true },
+  });
+  if (barberProfile) {
+    notifyUser(barberProfile.userId, {
+      type: "LEAVE_REQUEST_STATUS",
+      title: "مرخصی تایید شد",
+      body: `درخواست مرخصی شما برای ${request.date.toISOString().slice(0, 10)} تایید شد`,
+      link: "/barber/time-off",
+    }).catch(() => {});
+  }
+
   return updated;
 }
 
@@ -141,8 +175,23 @@ export async function rejectLeaveRequest(id: string, adminUserId: string) {
     throw new AppError("این درخواست قبلاً بررسی شده است", 400);
   }
 
-  return prisma.leaveRequest.update({
+  const updated = await prisma.leaveRequest.update({
     where: { id },
     data: { status: "REJECTED", reviewedBy: adminUserId },
   });
+
+  const barberProfile = await prisma.barberProfile.findUnique({
+    where: { id: request.barberId },
+    select: { userId: true },
+  });
+  if (barberProfile) {
+    notifyUser(barberProfile.userId, {
+      type: "LEAVE_REQUEST_STATUS",
+      title: "مرخصی رد شد",
+      body: `درخواست مرخصی شما برای ${request.date.toISOString().slice(0, 10)} رد شد`,
+      link: "/barber/time-off",
+    }).catch(() => {});
+  }
+
+  return updated;
 }
