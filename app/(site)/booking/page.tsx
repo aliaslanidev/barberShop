@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Check, User, Scissors, ChevronRight, ChevronLeft } from "lucide-react";
+import { Check, CheckCircle2, User, Scissors, ChevronRight, ChevronLeft } from "lucide-react";
 import type { DateObject } from "react-multi-date-picker";
 
 import { Button } from "@/components/ui/button";
@@ -50,9 +51,30 @@ const quickRegisterSchema = z.object({
 });
 type QuickRegisterValues = z.infer<typeof quickRegisterSchema>;
 
+// ردیف BarberService با فیلدهای فاز ۵ (customPrice / isActive)
+type BarberServiceLike = {
+  serviceId: string;
+  customPrice?: number | null;
+  isActive?: boolean;
+};
+
+// خلاصه‌ی نوبتِ ثبت‌شده برای صفحه‌ی تاییدیه
+type ConfirmedBooking = {
+  barberName: string;
+  serviceTitle: string;
+  dateLabel: string;
+  time: string;
+  price: number | null;
+  notes: string;
+};
+
 function toPersianDigits(input: string) {
   const persianDigits = ["۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹"];
   return input.replace(/[0-9]/g, (d) => persianDigits[Number(d)]);
+}
+
+function formatPrice(value: number) {
+  return `${value.toLocaleString("fa-IR")} تومان`;
 }
 
 // ⚠️ نکته‌ی مهم: date.format("YYYY-MM-DD") روی یه DateObject شمسی، تاریخ
@@ -96,6 +118,7 @@ export default function BookingPage() {
   const [notes, setNotes] = useState("");
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
   const [isFinalSubmitting, setIsFinalSubmitting] = useState(false);
+  const [confirmedBooking, setConfirmedBooking] = useState<ConfirmedBooking | null>(null);
 
   const [availableSlots, setAvailableSlots] = useState<ApiSlotStatus[]>([]);
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
@@ -169,24 +192,57 @@ export default function BookingPage() {
       .finally(() => setIsLoadingSlots(false));
   }, [selectedBarberId, dateKey]);
 
+  // ---------- قیمت‌ها ----------
+  // ردیف‌های فعالِ خدماتِ یک آرایشگر (سرویس‌های غیرفعال‌شده توسط خودش حذف می‌شن)
+  function activeRows(barber: ApiBarber): BarberServiceLike[] {
+    return (barber.services as unknown as BarberServiceLike[]).filter((r) => r.isActive !== false);
+  }
+
+  // قیمت نهایی = قیمت اختصاصی آرایشگر، وگرنه قیمت پیش‌فرض سرویس
+  function getPrice(barberId: string, serviceId: string): number | null {
+    const service = services.find((s) => s.id === serviceId);
+    if (!service) return null;
+    const barber = barbers.find((b) => b.id === barberId);
+    const row = barber ? activeRows(barber).find((r) => r.serviceId === serviceId) : undefined;
+    return row?.customPrice ?? service.priceValue;
+  }
+
+  // برای مسیر «اول سرویس»: چون قیمت هر آرایشگر می‌تونه فرق کنه، بازه‌ی قیمت رو نشون می‌دیم
+  function getServicePriceLabel(serviceId: string): string {
+    const service = services.find((s) => s.id === serviceId);
+    if (!service) return "";
+    const prices = barbers
+      .filter((b) => activeRows(b).some((r) => r.serviceId === serviceId))
+      .map((b) => getPrice(b.id, serviceId))
+      .filter((p): p is number => p !== null);
+    if (prices.length === 0) return formatPrice(service.priceValue);
+    const min = Math.min(...prices);
+    const max = Math.max(...prices);
+    return min === max ? formatPrice(min) : `از ${formatPrice(min)}`;
+  }
+
   const servicesToShow = useMemo(() => {
     if (entryPath === "barber" && selectedBarberId) {
       const barber = barbers.find((b) => b.id === selectedBarberId);
-      const ids = new Set(barber?.services.map((s) => s.serviceId) ?? []);
+      const ids = new Set(barber ? activeRows(barber).map((r) => r.serviceId) : []);
       return services.filter((s) => ids.has(s.id));
     }
     return services;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entryPath, selectedBarberId, barbers, services]);
 
   const barbersToShow = useMemo(() => {
     if (entryPath === "service" && selectedServiceId) {
-      return barbers.filter((b) => b.services.some((s) => s.serviceId === selectedServiceId));
+      return barbers.filter((b) => activeRows(b).some((r) => r.serviceId === selectedServiceId));
     }
     return barbers;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entryPath, selectedServiceId, barbers]);
 
   const selectedService = selectedServiceId ? services.find((s) => s.id === selectedServiceId) ?? null : null;
   const selectedBarber = selectedBarberId ? barbers.find((b) => b.id === selectedBarberId) ?? null : null;
+  const selectedPrice =
+    selectedBarberId && selectedServiceId ? getPrice(selectedBarberId, selectedServiceId) : null;
 
   const stepIndex = stepOrder.indexOf(step);
 
@@ -261,10 +317,26 @@ export default function BookingPage() {
   function canProceed() {
     if (step === "entry") return entryPath !== null;
     if (step === "pick")
-      return entryPath === "barber" ? selectedServiceId !== null : selectedBarberId !== null;
+      return entryPath === "barber"
+        ? selectedBarberId !== null && selectedServiceId !== null
+        : selectedServiceId !== null && selectedBarberId !== null;
     if (step === "date") return date !== null;
     if (step === "time") return time !== null;
     return true;
+  }
+
+  // شروع یک رزرو جدید از اول (بعد از صفحه‌ی تاییدیه)
+  function resetFlow() {
+    setConfirmedBooking(null);
+    setStep("entry");
+    setEntryPath(null);
+    setSelectedServiceId(null);
+    setSelectedBarberId(null);
+    setDate(null);
+    setTime(null);
+    setNotes("");
+    setHoldId(null);
+    setHoldExpiresAt(null);
   }
 
   const {
@@ -325,16 +397,17 @@ export default function BookingPage() {
         },
         token
       );
-      toast.success("نوبت شما ثبت شد", {
-        description: `${selectedService?.title} با ${selectedBarber?.user.name} — ${date?.format("YYYY/MM/DD")} ساعت ${toPersianDigits(time)}`,
+
+      // خلاصه‌ی نوبت رو قبل از پاک‌شدن stateها نگه می‌داریم تا صفحه‌ی تاییدیه نشونش بده
+      setConfirmedBooking({
+        barberName: selectedBarber?.user.name ?? "",
+        serviceTitle: selectedService?.title ?? "",
+        dateLabel: date?.format("YYYY/MM/DD") ?? "",
+        time,
+        price: selectedPrice,
+        notes,
       });
-      setStep("entry");
-      setEntryPath(null);
-      setSelectedServiceId(null);
-      setSelectedBarberId(null);
-      setDate(null);
-      setTime(null);
-      setNotes("");
+      // هولد سمت سرور بعد از ثبت موفق پاک شده
       setHoldId(null);
       setHoldExpiresAt(null);
     } catch (err) {
@@ -357,6 +430,66 @@ export default function BookingPage() {
     return (
       <main className="container max-w-xl py-14 text-center text-sm text-muted-foreground md:py-20">
         در حال بارگذاری...
+      </main>
+    );
+  }
+
+  // ---------- صفحه‌ی تاییدیه بعد از ثبت موفق ----------
+  if (confirmedBooking) {
+    return (
+      <main className="container max-w-xl py-14 md:py-20">
+        <div className="flex flex-col items-center text-center">
+          <span className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+            <CheckCircle2 className="h-9 w-9 text-primary" />
+          </span>
+          <h1 className="mt-5 text-2xl font-bold md:text-3xl">رزرو شما با موفقیت انجام شد</h1>
+          <p className="mt-2 text-sm leading-7 text-muted-foreground">
+            نوبت شما ثبت و تایید شد. منتظر دیدنتون هستیم.
+          </p>
+        </div>
+
+        <div className="mt-8 space-y-3 rounded-xl border border-border bg-card p-5 text-sm">
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">آرایشگر</span>
+            <span className="font-medium">{confirmedBooking.barberName}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">سرویس</span>
+            <span className="font-medium">{confirmedBooking.serviceTitle}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">تاریخ</span>
+            <span className="font-medium">{confirmedBooking.dateLabel}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-muted-foreground">ساعت</span>
+            <span className="font-medium">{toPersianDigits(confirmedBooking.time)}</span>
+          </div>
+          {confirmedBooking.notes && (
+            <div className="flex justify-between gap-4">
+              <span className="shrink-0 text-muted-foreground">توضیحات</span>
+              <span className="font-medium">{confirmedBooking.notes}</span>
+            </div>
+          )}
+          {confirmedBooking.price !== null && (
+            <div className="flex justify-between border-t border-border pt-3">
+              <span className="text-muted-foreground">هزینه‌ی سرویس</span>
+              <span className="font-bold text-primary">{formatPrice(confirmedBooking.price)}</span>
+            </div>
+          )}
+        </div>
+
+        <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+          <Button asChild className="flex-1">
+            <Link href="/customer/bookings">مشاهده نوبت‌های من</Link>
+          </Button>
+          <Button type="button" variant="outline" className="flex-1" onClick={resetFlow}>
+            رزرو نوبت جدید
+          </Button>
+          <Button asChild variant="ghost" className="flex-1">
+            <Link href="/">صفحه‌ی اصلی</Link>
+          </Button>
+        </div>
       </main>
     );
   }
@@ -433,7 +566,11 @@ export default function BookingPage() {
                 <button
                   key={b.id}
                   type="button"
-                  onClick={() => setSelectedBarberId(b.id)}
+                  onClick={() => {
+                    // عوض‌کردن آرایشگر: سرویس قبلی ممکنه دیگه توسط این آرایشگر ارائه نشه
+                    if (selectedBarberId !== b.id) setSelectedServiceId(null);
+                    setSelectedBarberId(b.id);
+                  }}
                   className={cn(
                     "flex items-center gap-3 rounded-xl border p-4 text-right transition-colors",
                     isSelected ? "border-primary bg-primary/10" : "border-border bg-card hover:border-primary/40",
@@ -444,7 +581,9 @@ export default function BookingPage() {
                   </span>
                   <span className="flex-1">
                     <span className="block text-sm font-medium">{b.user.name}</span>
-                    <span className="block text-xs text-muted-foreground">{b.services.length} سرویس</span>
+                    <span className="block text-xs text-muted-foreground">
+                      {toPersianDigits(String(activeRows(b).length))} سرویس
+                    </span>
                   </span>
                   {isSelected && <Check className="h-4 w-4 text-primary" />}
                 </button>
@@ -458,6 +597,7 @@ export default function BookingPage() {
               <div className="grid grid-cols-2 gap-3">
                 {servicesToShow.map((s) => {
                   const isSelected = selectedServiceId === s.id;
+                  const price = getPrice(selectedBarberId, s.id);
                   return (
                     <button
                       key={s.id}
@@ -469,9 +609,9 @@ export default function BookingPage() {
                       )}
                     >
                       <span className="text-sm font-medium">{s.title}</span>
-                      <span className="text-xs text-muted-foreground">
-                        از {s.priceValue.toLocaleString("fa-IR")} تومان
-                      </span>
+                      {price !== null && (
+                        <span className="text-xs font-medium text-primary">{formatPrice(price)}</span>
+                      )}
                     </button>
                   );
                 })}
@@ -491,16 +631,18 @@ export default function BookingPage() {
                 <button
                   key={s.id}
                   type="button"
-                  onClick={() => setSelectedServiceId(s.id)}
+                  onClick={() => {
+                    // عوض‌کردن سرویس: آرایشگر قبلی ممکنه این سرویس رو نداشته باشه
+                    if (selectedServiceId !== s.id) setSelectedBarberId(null);
+                    setSelectedServiceId(s.id);
+                  }}
                   className={cn(
                     "flex flex-col items-start gap-2 rounded-xl border p-4 text-right transition-colors",
                     isSelected ? "border-primary bg-primary/10" : "border-border bg-card hover:border-primary/40",
                   )}
                 >
                   <span className="text-sm font-medium">{s.title}</span>
-                  <span className="text-xs text-muted-foreground">
-                    از {s.priceValue.toLocaleString("fa-IR")} تومان
-                  </span>
+                  <span className="text-xs font-medium text-primary">{getServicePriceLabel(s.id)}</span>
                 </button>
               );
             })}
@@ -512,6 +654,7 @@ export default function BookingPage() {
               <div className="grid gap-3 sm:grid-cols-2">
                 {barbersToShow.map((b) => {
                   const isSelected = selectedBarberId === b.id;
+                  const price = getPrice(b.id, selectedServiceId);
                   return (
                     <button
                       key={b.id}
@@ -527,7 +670,9 @@ export default function BookingPage() {
                       </span>
                       <span className="flex-1">
                         <span className="block text-sm font-medium">{b.user.name}</span>
-                        <span className="block text-xs text-muted-foreground">{b.services.length} سرویس</span>
+                        {price !== null && (
+                          <span className="block text-xs font-medium text-primary">{formatPrice(price)}</span>
+                        )}
                       </span>
                       {isSelected && <Check className="h-4 w-4 text-primary" />}
                     </button>
@@ -735,6 +880,12 @@ export default function BookingPage() {
               <div className="flex justify-between gap-4">
                 <span className="shrink-0 text-muted-foreground">توضیحات</span>
                 <span className="font-medium">{notes}</span>
+              </div>
+            )}
+            {selectedPrice !== null && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">هزینه‌ی سرویس</span>
+                <span className="font-bold text-primary">{formatPrice(selectedPrice)}</span>
               </div>
             )}
             {user && (
