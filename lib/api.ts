@@ -674,6 +674,7 @@ export function getPublicBarberReviews(barberId: string) {
     `/ratings/public/${encodeURIComponent(barberId)}`,
   );
 }
+
 // ==================== Notifications ====================
 
 export type NotificationType =
@@ -736,6 +737,68 @@ export function unsubscribePushApi(endpoint: string, token: string) {
   return apiFetch<{ ok: true }>("/notifications/subscribe", {
     method: "DELETE",
     body: { endpoint },
+    token,
+  });
+}
+
+// ==================== Settings (اطلاعات سالن + ساعات کاری + رمز ادمین) ====================
+
+export interface ApiSalonSettings {
+  name: string;
+  address: string;
+  phone: string;
+}
+
+export interface ApiWorkingHours {
+  day: ApiWeekday;
+  isOpen: boolean;
+  openTime: string;
+  closeTime: string;
+}
+
+export interface ApiSettingsResponse {
+  salon: ApiSalonSettings;
+  workingHours: ApiWorkingHours[];
+}
+
+// عمومی (بدون نیاز به لاگین) — اطلاعات سالن و ساعات کاری
+export function getSettingsApi() {
+  return apiFetch<ApiSettingsResponse>("/settings");
+}
+
+// فقط ادمین
+export function updateSalonInfoApi(
+  data: Partial<ApiSalonSettings>,
+  token: string,
+) {
+  return apiFetch<ApiSalonSettings>("/settings/salon", {
+    method: "PATCH",
+    body: data,
+    token,
+  });
+}
+
+// فقط ادمین — به‌ازای هر روز جدا
+export function updateWorkingHoursApi(
+  day: ApiWeekday,
+  data: Partial<{ isOpen: boolean; openTime: string; closeTime: string }>,
+  token: string,
+) {
+  return apiFetch<ApiWorkingHours>(`/settings/working-hours/${day}`, {
+    method: "PATCH",
+    body: data,
+    token,
+  });
+}
+
+// فقط ادمین — تغییر رمز خودِ حساب لاگین‌شده (بر اساس توکن، نه آی‌دی ورودی)
+export function changePasswordApi(
+  data: { currentPassword: string; newPassword: string },
+  token: string,
+) {
+  return apiFetch<void>("/settings/password", {
+    method: "PATCH",
+    body: data,
     token,
   });
 }

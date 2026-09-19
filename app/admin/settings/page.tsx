@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Eye, EyeOff } from "lucide-react";
 
@@ -10,53 +10,99 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 
+import { getAuthToken } from "@/lib/data/mock-session";
 import {
-  getSalonInfo,
-  updateSalonInfo,
-  getWorkingHours,
-  updateWorkingHours,
-  type WeekDay,
-} from "@/lib/data/salon-settings";
-import { getCurrentAdmin } from "@/lib/data/admin-session";
-import { updateAccountPassword } from "@/lib/data/mock-accounts";
+  getSettingsApi,
+  updateSalonInfoApi,
+  updateWorkingHoursApi,
+  changePasswordApi,
+  ApiError,
+  type ApiSalonSettings,
+  type ApiWorkingHours,
+  type ApiWeekday,
+} from "@/lib/api";
+
+// ترتیب و برچسب فارسی روزهای هفته — همون ترتیبی که بک‌اند برمی‌گردونه (شنبه تا جمعه)
+const WEEKDAY_LABELS: Record<ApiWeekday, string> = {
+  SATURDAY: "شنبه",
+  SUNDAY: "یکشنبه",
+  MONDAY: "دوشنبه",
+  TUESDAY: "سه‌شنبه",
+  WEDNESDAY: "چهارشنبه",
+  THURSDAY: "پنجشنبه",
+  FRIDAY: "جمعه",
+};
 
 export default function AdminSettingsPage() {
-  const admin = getCurrentAdmin();
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSavingSalon, setIsSavingSalon] = useState(false);
+  const [savingDay, setSavingDay] = useState<ApiWeekday | null>(null);
 
   // --- اطلاعات سالن ---
-  const [salon, setSalon] = useState(getSalonInfo());
-
-  function handleSaveSalon() {
-    updateSalonInfo(salon);
-    toast.success("اطلاعات سالن ذخیره شد");
-  }
+  const [salon, setSalon] = useState<ApiSalonSettings>({ name: "", address: "", phone: "" });
 
   // --- ساعات کاری ---
-  const [hours, setHours] = useState(getWorkingHours());
+  const [hours, setHours] = useState<ApiWorkingHours[]>([]);
 
-  function handleHourChange(
-    day: WeekDay,
-    data: Partial<{ isOpen: boolean; openTime: string; closeTime: string }>,
-  ) {
-    const updated = updateWorkingHours(day, data);
-    setHours(updated);
+  useEffect(() => {
+    getSettingsApi()
+      .then((data) => {
+        setSalon(data.salon);
+        setHours(data.workingHours);
+      })
+      .catch((err) => {
+        toast.error(err instanceof ApiError ? err.message : "خطا در دریافت تنظیمات");
+      })
+      .finally(() => setIsLoading(false));
+  }, []);
+
+  async function handleSaveSalon() {
+    const token = getAuthToken();
+    if (!token) return;
+    setIsSavingSalon(true);
+    try {
+      const updated = await updateSalonInfoApi(salon, token);
+      setSalon(updated);
+      toast.success("اطلاعات سالن ذخیره شد");
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "خطا در ذخیره‌ی اطلاعات سالن");
+    } finally {
+      setIsSavingSalon(false);
+    }
   }
 
-  function handleSaveHours() {
-    toast.success("ساعات کاری ذخیره شد");
+  // هر تغییر (روشن/خاموش یا ساعت) بلافاصله ذخیره می‌شه — نیازی به دکمه‌ی
+  // «ذخیره» جدا نیست، چون endpoint بک‌اند به‌ازای هر روز جداگانه‌ست
+  async function handleHourChange(
+    day: ApiWeekday,
+    data: Partial<{ isOpen: boolean; openTime: string; closeTime: string }>,
+  ) {
+    const token = getAuthToken();
+    if (!token) return;
+    setSavingDay(day);
+    try {
+      const updated = await updateWorkingHoursApi(day, data, token);
+      setHours((prev) => prev.map((h) => (h.day === day ? updated : h)));
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "خطا در ذخیره‌ی ساعت کاری");
+    } finally {
+      setSavingDay(null);
+    }
   }
 
   // --- تغییر رمز ادمین ---
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
 
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  function handleChangePassword() {
-    if (!admin) {
+  async function handleChangePassword() {
+    const token = getAuthToken();
+    if (!token) {
       toast.error("ابتدا وارد حساب کاربری شوید");
       return;
     }
@@ -69,21 +115,26 @@ export default function AdminSettingsPage() {
       return;
     }
 
-    const result = updateAccountPassword(
-      admin.id,
-      currentPassword,
-      newPassword,
-    );
-
-    if (!result.success) {
-      toast.error(result.error ?? "خطا در تغییر رمز عبور");
-      return;
+    setIsChangingPassword(true);
+    try {
+      await changePasswordApi({ currentPassword, newPassword }, token);
+      toast.success("رمز عبور با موفقیت تغییر کرد");
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "خطا در تغییر رمز عبور");
+    } finally {
+      setIsChangingPassword(false);
     }
+  }
 
-    toast.success("رمز عبور با موفقیت تغییر کرد");
-    setCurrentPassword("");
-    setNewPassword("");
-    setConfirmPassword("");
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-10 text-sm text-muted-foreground">
+        در حال دریافت اطلاعات...
+      </div>
+    );
   }
 
   return (
@@ -105,9 +156,7 @@ export default function AdminSettingsPage() {
               <Input
                 id="salon-name"
                 value={salon.name}
-                onChange={(e) =>
-                  setSalon((s) => ({ ...s, name: e.target.value }))
-                }
+                onChange={(e) => setSalon((s) => ({ ...s, name: e.target.value }))}
               />
             </div>
             <div className="flex flex-col gap-2">
@@ -116,9 +165,7 @@ export default function AdminSettingsPage() {
                 id="salon-phone"
                 dir="ltr"
                 value={salon.phone}
-                onChange={(e) =>
-                  setSalon((s) => ({ ...s, phone: e.target.value }))
-                }
+                onChange={(e) => setSalon((s) => ({ ...s, phone: e.target.value }))}
               />
             </div>
             <div className="flex flex-col gap-2 sm:col-span-2">
@@ -126,15 +173,13 @@ export default function AdminSettingsPage() {
               <Input
                 id="salon-address"
                 value={salon.address}
-                onChange={(e) =>
-                  setSalon((s) => ({ ...s, address: e.target.value }))
-                }
+                onChange={(e) => setSalon((s) => ({ ...s, address: e.target.value }))}
               />
             </div>
           </div>
 
-          <Button onClick={handleSaveSalon} className="self-start">
-            ذخیره اطلاعات سالن
+          <Button onClick={handleSaveSalon} disabled={isSavingSalon} className="self-start">
+            {isSavingSalon ? "..." : "ذخیره اطلاعات سالن"}
           </Button>
         </CardContent>
       </Card>
@@ -143,6 +188,7 @@ export default function AdminSettingsPage() {
         <Card>
           <CardContent className="flex flex-col gap-4 p-4">
             <h2 className="font-semibold">ساعات کاری</h2>
+            <p className="text-xs text-muted-foreground">هر تغییر بلافاصله ذخیره می‌شود.</p>
 
             <div className="flex flex-col gap-3">
               {hours.map((h) => (
@@ -151,15 +197,14 @@ export default function AdminSettingsPage() {
                   className="flex flex-wrap items-center gap-3 rounded-lg border border-border px-3 py-2"
                 >
                   <span className="w-16 shrink-0 text-sm font-medium">
-                    {h.day}
+                    {WEEKDAY_LABELS[h.day]}
                   </span>
 
                   <div className="flex items-center gap-2">
                     <Switch
                       checked={h.isOpen}
-                      onCheckedChange={(checked) =>
-                        handleHourChange(h.day, { isOpen: checked })
-                      }
+                      disabled={savingDay === h.day}
+                      onCheckedChange={(checked) => handleHourChange(h.day, { isOpen: checked })}
                     />
                     <span className="text-sm text-muted-foreground">
                       {h.isOpen ? "باز" : "تعطیل"}
@@ -173,9 +218,8 @@ export default function AdminSettingsPage() {
                         dir="ltr"
                         className="w-28"
                         value={h.openTime}
-                        onChange={(e) =>
-                          handleHourChange(h.day, { openTime: e.target.value })
-                        }
+                        disabled={savingDay === h.day}
+                        onChange={(e) => handleHourChange(h.day, { openTime: e.target.value })}
                       />
                       <span className="text-sm text-muted-foreground">تا</span>
                       <Input
@@ -183,19 +227,14 @@ export default function AdminSettingsPage() {
                         dir="ltr"
                         className="w-28"
                         value={h.closeTime}
-                        onChange={(e) =>
-                          handleHourChange(h.day, { closeTime: e.target.value })
-                        }
+                        disabled={savingDay === h.day}
+                        onChange={(e) => handleHourChange(h.day, { closeTime: e.target.value })}
                       />
                     </div>
                   )}
                 </div>
               ))}
             </div>
-
-            <Button onClick={handleSaveHours} className="self-start">
-              ذخیره ساعات کاری
-            </Button>
           </CardContent>
         </Card>
 
@@ -280,8 +319,12 @@ export default function AdminSettingsPage() {
                 </div>
               </div>
 
-              <Button onClick={handleChangePassword} className="self-start">
-                تغییر رمز عبور
+              <Button
+                onClick={handleChangePassword}
+                disabled={isChangingPassword}
+                className="self-start"
+              >
+                {isChangingPassword ? "..." : "تغییر رمز عبور"}
               </Button>
             </div>
           </CardContent>
