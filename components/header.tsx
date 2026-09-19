@@ -1,9 +1,22 @@
 ﻿"use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Home, LogIn, Menu, Scissors, X } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import {
+  ArrowLeft,
+  Home,
+  LayoutDashboard,
+  LogIn,
+  LogOut,
+  Menu,
+  Scissors,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { UserMenu } from "@/components/user-menu";
+import { useAuth } from "@/lib/auth-context";
+import { getMockSession } from "@/lib/data/mock-session";
 
 const navLinks = [
   { label: "خدمات", href: "#services" },
@@ -12,8 +25,50 @@ const navLinks = [
   { label: "تماس", href: "#contact" },
 ];
 
+// برچسب فارسی نقش‌ها (زیر اسم کاربر تو منو نمایش داده می‌شه)
+const ROLE_LABELS: Record<string, string> = {
+  admin: "ادمین",
+  manager: "مدیر",
+  barber: "آرایشگر",
+  customer: "مشتری",
+};
+
+// ⚠️ مسیر ورودی پنل هر نقش — اگه تو پروژه‌ات فرق داره، فقط همین‌جا عوض کن
+const PANEL_HREF: Record<string, string> = {
+  admin: "/admin/dashboard",
+  manager: "/admin/dashboard",
+  barber: "/barber/dashboard",
+  customer: "/customer/bookings",
+};
+
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const router = useRouter();
+  const pathname = usePathname();
+  const { user, isLoading, logout } = useAuth();
+
+  // اگه از داخل پنل (که هنوز مستقیم clearMockSession صدا می‌زنه) خارج شده باشه،
+  // state داخل AuthContext کهنه می‌مونه. با هر تغییر مسیر چک می‌کنیم که سشن
+  // واقعاً هنوز وجود داره، وگرنه کاربر رو از context هم خارج می‌کنیم.
+  useEffect(() => {
+    if (user && !getMockSession()?.token) {
+      logout();
+    }
+  }, [pathname, user, logout]);
+
+  const panelHref = user ? PANEL_HREF[user.role] ?? "/" : "/";
+  const roleLabel = user ? ROLE_LABELS[user.role] : undefined;
+
+  function goToPanel() {
+    setIsMenuOpen(false);
+    router.push(panelHref);
+  }
+
+  function handleLogout() {
+    setIsMenuOpen(false);
+    logout();
+    router.push("/");
+  }
 
   return (
     <header className="sticky top-0 z-50 border-b border-white/[0.04] bg-[#020b0a]/90 text-white backdrop-blur-md">
@@ -50,18 +105,35 @@ export function Header() {
 
         {/* اکشن‌های هدر */}
         <div className="flex items-center gap-3">
-          {/* ورود */}
-          <Button
-            size="sm"
-            variant="ghost"
-            className="hidden h-10 rounded-full px-4 text-xs text-gray-400 hover:bg-white/[0.04] hover:text-white sm:inline-flex"
-            asChild
-          >
-            <Link href="/login">
-              <LogIn className="h-4 w-4" />
-              <span>ورود</span>
-            </Link>
-          </Button>
+          {/* در حال بررسی سشن: جای خالی می‌ذاریم تا دکمه‌ی «ورود» لحظه‌ای نپره */}
+          {isLoading ? (
+            <div className="hidden h-10 w-24 sm:block" aria-hidden="true" />
+          ) : user ? (
+            <UserMenu
+              name={user.name}
+              role={roleLabel}
+              onLogout={handleLogout}
+              items={[
+                {
+                  label: "پنل کاربری",
+                  icon: <LayoutDashboard className="h-4 w-4" />,
+                  onClick: goToPanel,
+                },
+              ]}
+            />
+          ) : (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="hidden h-10 rounded-full px-4 text-xs text-gray-400 hover:bg-white/[0.04] hover:text-white sm:inline-flex"
+              asChild
+            >
+              <Link href="/login">
+                <LogIn className="h-4 w-4" />
+                <span>ورود</span>
+              </Link>
+            </Button>
+          )}
 
           {/* رزرو نوبت */}
           <Link
@@ -114,14 +186,38 @@ export function Header() {
               صفحه اصلی
             </Link>
 
-            <Link
-              href="/login"
-              onClick={() => setIsMenuOpen(false)}
-              className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm text-gray-400 transition hover:bg-white/[0.03] hover:text-white"
-            >
-              <LogIn className="h-4 w-4 text-emerald-400" />
-              ورود
-            </Link>
+            {!isLoading && user ? (
+              <>
+                <button
+                  type="button"
+                  onClick={goToPanel}
+                  className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm text-gray-400 transition hover:bg-white/[0.03] hover:text-white"
+                >
+                  <LayoutDashboard className="h-4 w-4 text-emerald-400" />
+                  پنل کاربری
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm text-red-400 transition hover:bg-white/[0.03]"
+                >
+                  <LogOut className="h-4 w-4" />
+                  خروج از حساب
+                </button>
+              </>
+            ) : (
+              !isLoading && (
+                <Link
+                  href="/login"
+                  onClick={() => setIsMenuOpen(false)}
+                  className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm text-gray-400 transition hover:bg-white/[0.03] hover:text-white"
+                >
+                  <LogIn className="h-4 w-4 text-emerald-400" />
+                  ورود
+                </Link>
+              )
+            )}
 
             <Link
               href="/booking"
