@@ -9,6 +9,7 @@ import { clearMockSession } from "@/lib/data/mock-session";
 import { AdminSidebar } from "@/components/admin/admin-sidebar";
 import { AdminBottomNav } from "@/components/admin/admin-bottom-nav";
 import { UserMenu } from "@/components/user-menu";
+import { NotificationBell } from "@/components/notification-bell";
 
 export default function AdminLayout({
   children,
@@ -58,7 +59,10 @@ export default function AdminLayout({
             </span>
           </Link>
 
-          <UserMenu name={admin.name} onLogout={handleLogout} />
+          <div className="flex items-center gap-2">
+            <NotificationBell />
+            <UserMenu name={admin.name} onLogout={handleLogout} />
+          </div>
         </div>
       </header>
 

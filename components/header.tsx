@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { UserMenu } from "@/components/user-menu";
+import { NotificationBell } from "@/components/notification-bell";
 import { useAuth } from "@/lib/auth-context";
 
 const navLinks = [
@@ -106,18 +107,21 @@ export function Header() {
           {isLoading ? (
             <div className="hidden h-10 w-24 sm:block" aria-hidden="true" />
           ) : user ? (
-            <UserMenu
-              name={user.name}
-              role={roleLabel}
-              onLogout={handleLogout}
-              items={[
-                {
-                  label: "پنل کاربری",
-                  icon: <LayoutDashboard className="h-4 w-4" />,
-                  onClick: goToPanel,
-                },
-              ]}
-            />
+            <>
+              <NotificationBell />
+              <UserMenu
+                name={user.name}
+                role={roleLabel}
+                onLogout={handleLogout}
+                items={[
+                  {
+                    label: "پنل کاربری",
+                    icon: <LayoutDashboard className="h-4 w-4" />,
+                    onClick: goToPanel,
+                  },
+                ]}
+              />
+            </>
           ) : (
             <Button
               size="sm"

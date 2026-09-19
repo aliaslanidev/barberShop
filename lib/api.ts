@@ -638,3 +638,68 @@ export function getPublicBarberReviews(barberId: string) {
     `/ratings/public/${encodeURIComponent(barberId)}`,
   );
 }
+// ==================== Notifications ====================
+
+export type NotificationType =
+  | "BOOKING_CREATED"
+  | "BOOKING_STATUS_CHANGED"
+  | "LEAVE_REQUEST_STATUS"
+  | "RATING_STATUS";
+
+export interface ApiNotification {
+  id: string;
+  userId: string;
+  type: NotificationType;
+  title: string;
+  body: string;
+  link: string | null;
+  isRead: boolean;
+  createdAt: string;
+}
+
+export interface ApiNotificationsResponse {
+  notifications: ApiNotification[];
+  unreadCount: number;
+}
+
+export function listMyNotificationsApi(token: string) {
+  return apiFetch<ApiNotificationsResponse>("/notifications/me", { token });
+}
+
+export function markNotificationReadApi(id: string, token: string) {
+  return apiFetch<{ ok: true }>(`/notifications/${id}/read`, {
+    method: "PATCH",
+    token,
+  });
+}
+
+export function markAllNotificationsReadApi(token: string) {
+  return apiFetch<{ ok: true }>("/notifications/read-all", {
+    method: "PATCH",
+    token,
+  });
+}
+
+export interface PushSubscriptionJSON {
+  endpoint: string;
+  keys: { p256dh: string; auth: string };
+}
+
+export function subscribePushApi(
+  subscription: PushSubscriptionJSON,
+  token: string,
+) {
+  return apiFetch<{ ok: true }>("/notifications/subscribe", {
+    method: "POST",
+    body: subscription,
+    token,
+  });
+}
+
+export function unsubscribePushApi(endpoint: string, token: string) {
+  return apiFetch<{ ok: true }>("/notifications/subscribe", {
+    method: "DELETE",
+    body: { endpoint },
+    token,
+  });
+}

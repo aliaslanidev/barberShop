@@ -12,6 +12,7 @@ import { clearMockSession } from "@/lib/data/mock-session";
 import { CustomerSidebar } from "@/components/customer/customer-sidebar";
 import { CustomerBottomNav } from "@/components/customer/customer-bottom-nav";
 import { UserMenu } from "@/components/user-menu";
+import { NotificationBell } from "@/components/notification-bell";
 
 export default function CustomerLayout({
   children,
@@ -63,7 +64,10 @@ export default function CustomerLayout({
             </span>
           </Link>
 
-          <UserMenu name={customer.name} role="مشتری" onLogout={handleLogout} />
+          <div className="flex items-center gap-2">
+            <NotificationBell />
+            <UserMenu name={customer.name} role="مشتری" onLogout={handleLogout} />
+          </div>
         </div>
       </header>
 

@@ -9,6 +9,7 @@ import { clearMockSession } from "@/lib/data/mock-session";
 import { BarberSidebar } from "@/components/barber/barber-sidebar";
 import { BarberBottomNav } from "@/components/barber/barber-bottom-nav";
 import { UserMenu } from "@/components/user-menu";
+import { NotificationBell } from "@/components/notification-bell";
 
 export default function BarberLayout({
   children,
@@ -52,7 +53,10 @@ export default function BarberLayout({
             </span>
           </Link>
 
-          <UserMenu name={barber.user.name} role="آرایشگر" onLogout={handleLogout} />
+          <div className="flex items-center gap-2">
+            <NotificationBell />
+            <UserMenu name={barber.user.name} role="آرایشگر" onLogout={handleLogout} />
+          </div>
         </div>
       </header>
 
