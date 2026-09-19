@@ -16,6 +16,7 @@ import type { ApiBarber } from "@/lib/api";
 const baseItems: RoleNavItem[] = [
   { href: "/barber/dashboard", label: "داشبورد", icon: LayoutDashboard },
   { href: "/barber/bookings", label: "نوبت‌های امروز", icon: CalendarClock },
+  { href: "/barber/time-off", label: "مرخصی", icon: CalendarX },
   { href: "/barber/reviews", label: "نظرات من", icon: MessageSquare },
   { href: "/barber/customers", label: "مشتریان من", icon: Users },
 ];
@@ -32,12 +33,6 @@ const managedItems: (RoleNavItem & { permissionKey: keyof ApiBarber })[] = [
     label: "زمان‌بندی",
     icon: Clock,
     permissionKey: "manageSchedule",
-  },
-  {
-    href: "/barber/time-off",
-    label: "مرخصی",
-    icon: CalendarX,
-    permissionKey: "manageTimeOff",
   },
 ];
 

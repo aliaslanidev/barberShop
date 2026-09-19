@@ -8,6 +8,7 @@ import {
   Scissors,
   CalendarClock,
   CalendarX,
+  CalendarCheck,
   BarChart3,
   Settings,
 } from "lucide-react";
@@ -19,6 +20,7 @@ const adminNavItems = [
   { label: "خدمات و قیمت", href: "/admin/services", icon: Scissors },
   { label: "نوبت‌ها", href: "/admin/bookings", icon: CalendarClock },
   { label: "تعطیلات", href: "/admin/holidays", icon: CalendarX },
+  { label: "درخواست‌های مرخصی", href: "/admin/leave-requests", icon: CalendarCheck },
   { label: "گزارش‌ها", href: "/admin/reports", icon: BarChart3 },
   { label: "تنظیمات", href: "/admin/settings", icon: Settings },
 ] as const;

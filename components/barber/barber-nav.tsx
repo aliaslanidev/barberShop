@@ -10,12 +10,12 @@ const baseItems = [
   { href: "/barber/dashboard", label: "داشبورد" },
   { href: "/barber/bookings", label: "نوبت‌های امروز" },
   { href: "/barber/customers", label: "مشتریان من" },
+  { href: "/barber/time-off", label: "مرخصی" },
 ];
 
 const managedItems: { href: string; label: string; permissionKey: keyof ApiBarber }[] = [
   { href: "/barber/services", label: "سرویس و قیمت", permissionKey: "manageServices" },
   { href: "/barber/schedule", label: "زمان‌بندی", permissionKey: "manageSchedule" },
-  { href: "/barber/time-off", label: "مرخصی", permissionKey: "manageTimeOff" },
 ];
 
 export function BarberNav() {

@@ -6,6 +6,7 @@ import {
   Scissors,
   CalendarClock,
   CalendarX,
+  CalendarCheck,
   MessageSquare,
   BarChart3,
   Settings,
@@ -20,6 +21,7 @@ const adminNavItems: RoleNavItem[] = [
   { label: "نوبت‌ها", href: "/admin/bookings", icon: CalendarClock },
   { label: "نظرات", href: "/admin/ratings", icon: MessageSquare },
   { label: "تعطیلات", href: "/admin/holidays", icon: CalendarX },
+  { label: "درخواست‌های مرخصی", href: "/admin/leave-requests", icon: CalendarCheck },
   { label: "گزارش‌ها", href: "/admin/reports", icon: BarChart3 },
   { label: "تنظیمات", href: "/admin/settings", icon: Settings },
 ];

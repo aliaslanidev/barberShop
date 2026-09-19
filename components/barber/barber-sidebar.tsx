@@ -13,9 +13,12 @@ import {
 import { RoleSidebar, type RoleNavItem } from "@/components/role-sidebar";
 import type { ApiBarber } from "@/lib/api";
 
+// مرخصی برای همه‌ی آرایشگرها نمایان است: با پرمیشن مستقیم ثبت می‌شود،
+// بدون پرمیشن به‌صورت درخواست برای تایید ادمین.
 const baseItems: RoleNavItem[] = [
   { href: "/barber/dashboard", label: "داشبورد", icon: LayoutDashboard },
   { href: "/barber/bookings", label: "نوبت‌ها", icon: CalendarClock },
+  { href: "/barber/time-off", label: "مرخصی", icon: CalendarX },
   { href: "/barber/reviews", label: "نظرات من", icon: MessageSquare },
 ];
 
@@ -40,12 +43,6 @@ const managedItems: (RoleNavItem & { isVisible: (barber: ApiBarber) => boolean }
     label: "زمان‌بندی",
     icon: Clock,
     isVisible: (barber) => barber.manageSchedule,
-  },
-  {
-    href: "/barber/time-off",
-    label: "مرخصی",
-    icon: CalendarX,
-    isVisible: (barber) => barber.manageTimeOff,
   },
   {
     href: "/barber/block-slots",
