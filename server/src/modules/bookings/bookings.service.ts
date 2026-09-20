@@ -8,6 +8,10 @@ import type {
   UpdateBookingStatusInput,
 } from "@/modules/bookings/bookings.schema";
 
+// بعد از چندمین لغوِ خودِ مشتری (نه آرایشگر/ادمین) حساب مشتری خودکار
+// مسدود می‌شه. آیتم ۱.۱ لیست اصلاحات.
+const CUSTOMER_CANCEL_BLOCK_THRESHOLD = 3;
+
 function parseDateOnly(dateStr: string): Date {
   return new Date(`${dateStr}T00:00:00.000Z`);
 }
@@ -56,7 +60,7 @@ function barberWorksOnWeekday(workingDays: Weekday[], weekday: Weekday): boolean
 
 // نسخه‌ی «فقط آزادها» — برای منطق داخلی (ساخت نوبت، شمارش ظرفیت روزها)
 //
-// excludeHoldId: هولدِ خودِ همین مشتری رو نادیده بگیر. وقتی مشتری داره
+// excludeHoldId: هولدِخودِمین مشتری رو نادیده بگیر. وقتی مشتری داره
 // نوبتش رو نهایی می‌کنه یا هولدش رو تمدید می‌کنه، نباید هولد خودش مانعش بشه.
 export async function getAvailableSlots(
   barberId: string,
@@ -131,7 +135,7 @@ export async function getSlotsWithStatus(
   const dateOnly = parseDateOnly(dateStr);
   const weekday = WEEKDAY_BY_JS_DAY[dateOnly.getUTCDay()];
 
-  // اگه روزِ کاری آرایشگر نیست، اصلاً هیچ اسلاتی (حتی قرمز) نمایش نمی‌دیم
+  // اگه روزکاری آرایشگر نیست، اصلاً هیچ اسلاتی (حتی قرمز) نمایش نمی‌دیم
   if (!barberWorksOnWeekday(barber.workingDays, weekday)) return [];
 
   const workingHours = await prisma.workingHours.findUnique({ where: { day: weekday } });
@@ -319,7 +323,7 @@ const bookingIncludes = {
 } satisfies Prisma.BookingInclude;
 
 export async function createBooking(customerId: string, input: CreateBookingInput) {
-  // اگه مشتری هولدِ همین اسلات رو داره، تو چک زیر خودش مانع خودش نشه
+  // اگه مشتری هولدهمین اسلات رو داره، تو چک زیر خودش مانع خودش نشه
   let ownHoldId: string | undefined;
   if (input.holdId) {
     const hold = await prisma.slotHold.findUnique({ where: { id: input.holdId } });
@@ -356,7 +360,7 @@ export async function createBooking(customerId: string, input: CreateBookingInpu
       date: parseDateOnly(input.date),
       time: input.time,
       notes: input.notes,
-      // قیمت نهایی همین لحظه ثبت می‌شه؛ تغییر بعدیِ قیمت آرایشگر/سرویس روی این نوبت اثری نداره
+      // قیمت نهایی همین لحظه ثبت می‌شه؛ تغییر بعدیِقیمت آرایشگر/سرویس روی این نوبت اثری نداره
       price: barberService.customPrice ?? barberService.service.priceValue,
       status: "CONFIRMED",
     },
@@ -430,7 +434,8 @@ interface ActingUser {
 export async function updateBookingStatus(
   bookingId: string,
   actingUser: ActingUser,
-  newStatus: UpdateBookingStatusInput["status"]
+  newStatus: UpdateBookingStatusInput["status"],
+  reason?: string
 ) {
   const booking = await getBookingById(bookingId);
 
@@ -472,10 +477,48 @@ export async function updateBookingStatus(
     }
   }
 
-  const updated = await prisma.booking.update({
-    where: { id: bookingId },
-    data: { status: newStatus },
-    include: bookingIncludes,
+  // آپدیت وضعیت نوبت + ثبت لغو + احتمالاً مسدودسازی مشتری، همه تو یه
+  // تراکنش — تا اگه هرجاش خطا خورد، هیچ‌کدوم نصفه‌کاره ثبت نشه.
+  const updated = await prisma.$transaction(async (tx) => {
+    const result = await tx.booking.update({
+      where: { id: bookingId },
+      data: { status: newStatus },
+      include: bookingIncludes,
+    });
+
+    if (newStatus === "CANCELLED") {
+      // هر لغو (توسط هر نقشی) اینجا ثبت می‌شه — این جدول تاریخچه‌ی کامل لغوهاست
+      await tx.cancellation.create({
+        data: {
+          bookingId: result.id,
+          cancelledById: actingUser.userId,
+          cancelledByRole: actingUser.role,
+          reason: reason ?? null,
+        },
+      });
+
+      // فقط لغوِ خودِ مشتری روی شمارنده‌ی مسدودسازی اثر داره؛ لغوی
+      // آرایشگر/ادمین صرفاً بالا ثبت شد ولی مشتری رو به Block نزدیک نمی‌کنه.
+      if (isOwnerCustomer) {
+        const customer = await tx.user.update({
+          where: { id: actingUser.userId },
+          data: { cancelCount: { increment: 1 } },
+        });
+
+        if (customer.cancelCount >= CUSTOMER_CANCEL_BLOCK_THRESHOLD && customer.isActive) {
+          await tx.user.update({
+            where: { id: actingUser.userId },
+            data: {
+              isActive: false,
+              blockedReason: `به دلیل لغو ${CUSTOMER_CANCEL_BLOCK_THRESHOLD} نوبت متوالی، حساب شما مسدود شد`,
+              blockedAt: new Date(),
+            },
+          });
+        }
+      }
+    }
+
+    return result;
   });
 
   // نوتیف‌های تغییر وضعیت نوبت
@@ -490,7 +533,7 @@ export async function updateBookingStatus(
     notifyUser(updated.customer.id, {
       type: "BOOKING_STATUS_CHANGED",
       title: "سرویس تمام شد",
-      body: `سرویس شما نزد ${updated.barber.user.name} تمام شد — می‌تونید امتیاز بدید`,
+      body: `سرویس شما نزد ${updated.barber.user.name} تمام شد — می‌توانید امتیاز بدید`,
       link: "/customer/bookings",
     }).catch(() => {});
   } else if (newStatus === "CANCELLED") {

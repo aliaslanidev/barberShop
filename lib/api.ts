@@ -569,10 +569,11 @@ export function updateBookingStatusApi(
   id: string,
   status: BookingStatus,
   token: string,
+  reason?: string,
 ) {
   return apiFetch<ApiBooking>(`/bookings/${id}/status`, {
     method: "PATCH",
-    body: { status },
+    body: reason ? { status, reason } : { status },
     token,
   });
 }
@@ -609,7 +610,7 @@ export interface ApiBarberReviewsResponse {
   ratings: ApiBarberReview[];
 }
 
-// نظرهای خودِ آرایشگر لاگین‌شده (همه‌ی وضعیت‌ها)
+// نظرهای خودِآرایشگر لاگین‌شده (همه‌ی وضعیت‌ها)
 export function listMyRatingsApi(token: string) {
   return apiFetch<ApiBarberReviewsResponse>("/ratings/me", { token });
 }
@@ -791,7 +792,7 @@ export function updateWorkingHoursApi(
   });
 }
 
-// فقط ادمین — تغییر رمز خودِ حساب لاگین‌شده (بر اساس توکن، نه آی‌دی ورودی)
+// فقط ادمین — تغییر رمز خودفساب لاگین‌شده (بر اساس توکن، نه آی‌دی ورودی)
 export function changePasswordApi(
   data: { currentPassword: string; newPassword: string },
   token: string,
@@ -863,4 +864,39 @@ export function updateManagerApi(
 
 export function deleteManagerApi(id: string, token: string) {
   return apiFetch<void>(`/managers/${id}`, { method: "DELETE", token });
+}
+
+// ==================== Customers (مدیریت مشتریان) ====================
+// برخلاف آرایشگر/مدیر، مشتری هرگز واقعاً Delete نمی‌شه — فقط فعال/غیرفعال
+// (isActive). غیرفعال‌سازی یا خودکاره (بعد از ۳ لغوِ خودِ مشتری، توسط
+// سرور) یا دستیِ ادمین؛ رفع مسدودیت همیشه دستیِ ادمینه.
+
+export interface ApiCustomer {
+  id: string;
+  name: string;
+  mobile: string;
+  isActive: boolean;
+  cancelCount: number;
+  blockedReason: string | null;
+  blockedAt: string | null;
+  createdAt: string;
+}
+
+// ادمین یا مدیر سالن — فقط مشاهده
+export function listCustomersApi(token: string) {
+  return apiFetch<ApiCustomer[]>("/users/customers", { token });
+}
+
+// فقط ادمین اصلی — isActive:false برای مسدودکردن دستی (reason اختیاری)،
+// isActive:true برای رفع مسدودیت (شمارنده‌ی لغو هم صفر می‌شه)
+export function updateCustomerStatusApi(
+  id: string,
+  data: { isActive: boolean; reason?: string },
+  token: string,
+) {
+  return apiFetch<ApiCustomer>(`/users/customers/${id}/status`, {
+    method: "PATCH",
+    body: data,
+    token,
+  });
 }

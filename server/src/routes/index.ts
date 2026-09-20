@@ -11,6 +11,7 @@ import { holidaysRouter } from "@/modules/holidays/holidays.routes";
 import { settingsRouter } from "@/modules/settings/settings.routes";
 import { reportsRouter } from "@/modules/reports/reports.routes";
 import { managersRouter } from "@/modules/managers/managers.routes";
+import { usersRouter } from "@/modules/users/users.router";
 
 export const apiRouter = Router();
 
@@ -26,3 +27,4 @@ apiRouter.use("/holidays", holidaysRouter);
 apiRouter.use("/settings", settingsRouter);
 apiRouter.use("/reports", reportsRouter);
 apiRouter.use("/managers", managersRouter);
+apiRouter.use("/users", usersRouter);

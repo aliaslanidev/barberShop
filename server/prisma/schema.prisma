@@ -47,10 +47,23 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  // فعال/غیرفعال بودن حساب (بلاک‌شدن). برای Customer فقط این مسیر
+  // وجود داره (نه Delete واقعی)؛ برای Barber/Manager می‌تونه یا این
+  // باشه یا Delete واقعی (تصمیم پروژه).
+  isActive      Boolean   @default(true)
+  // فقط برای Customer معنا داره: تعداد لغوهایی که خودِ مشتری (نه
+  // آرایشگر/ادمین) روی نوبت‌هاش انجام داده. با ۳ لغو، isActive خودکار
+  // false می‌شه. رفع مسدودی توسط ادمین این عدد رو صفر می‌کنه.
+  cancelCount   Int       @default(0)
+  blockedReason String?
+  blockedAt     DateTime?
+
   barberProfile     BarberProfile?
   bookings          Booking[]          @relation("CustomerBookings")
   notifications     Notification[]
   pushSubscriptions PushSubscription[]
+  // نوبت‌هایی که این کاربر (هر نقشی) لغو کرده — برای تاریخچه/گزارش لغوها
+  cancellations     Cancellation[]
 
   @@map("users")
 }
@@ -130,10 +143,12 @@ model Booking {
   createdAt  DateTime      @default(now())
   updatedAt  DateTime      @updatedAt
 
-  customer User          @relation("CustomerBookings", fields: [customerId], references: [id])
-  barber   BarberProfile @relation(fields: [barberId], references: [id])
-  service  Service       @relation(fields: [serviceId], references: [id])
-  rating   Rating?
+  customer     User          @relation("CustomerBookings", fields: [customerId], references: [id])
+  barber       BarberProfile @relation(fields: [barberId], references: [id])
+  service      Service       @relation(fields: [serviceId], references: [id])
+  rating       Rating?
+  // فقط وقتی status=CANCELLED پر می‌شه — جزئیات اینکه کی و چرا لغو کرد
+  cancellation Cancellation?
 
   @@index([barberId, date])
   @@index([customerId])
@@ -233,6 +248,28 @@ model SlotHold {
   @@unique([barberId, date, time])
   @@index([expiresAt])
   @@map("slot_holds")
+}
+
+// ثبت هر لغوِ نوبت — صرف‌نظر از اینکه چه نقشی لغو کرده. Cancellation
+// جدا از تصمیم Block نگه داشته می‌شه: منطق شمارش/Block روی User.cancelCount
+// هست (فقط لغوهای خودِ مشتری بهش اضافه می‌شه)، ولی این جدول تاریخچه‌ی
+// کاملِ همه‌ی لغوها رو (توسط هر نقشی) برای گزارش‌گیری نگه می‌داره.
+// cancelledById nullable هست چون اگه اون کاربر (مثلاً یه Manager) بعداً
+// واقعاً از دیتابیس حذف بشه، ردیف لغو باید بمونه (فقط ارجاع به کاربر پاک
+// می‌شه)؛ cancelledByRole همیشه باقی می‌مونه.
+model Cancellation {
+  id              String   @id @default(cuid())
+  bookingId       String   @unique
+  cancelledById   String?
+  cancelledByRole Role
+  reason          String?
+  createdAt       DateTime @default(now())
+
+  booking     Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  cancelledBy User?   @relation(fields: [cancelledById], references: [id], onDelete: SetNull)
+
+  @@index([cancelledById])
+  @@map("cancellations")
 }
 
 model SalonHoliday {

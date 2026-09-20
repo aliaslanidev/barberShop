@@ -79,8 +79,8 @@ export async function getBookingHandler(req: Request, res: Response) {
 }
 
 export async function updateBookingStatusHandler(req: Request, res: Response) {
-  const { status } = updateBookingStatusSchema.parse(req.body);
-  const booking = await bookingsService.updateBookingStatus(req.params.id, req.user!, status);
+  const { status, reason } = updateBookingStatusSchema.parse(req.body);
+  const booking = await bookingsService.updateBookingStatus(req.params.id, req.user!, status, reason);
   res.json(booking);
 }
 
