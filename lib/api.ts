@@ -816,6 +816,19 @@ export function getBookingsSummaryApi(token: string) {
   return apiFetch<ApiBookingsSummary>("/reports/bookings-summary", { token });
 }
 
+// آمار خلاصه‌ی داشبورد ادمین: نوبت‌های امروز، آرایشگرهای فعال، تعداد
+// خدمات، درآمد این ماه (فقط نوبت‌های COMPLETED). فقط ادمین/مدیر.
+export interface ApiDashboardSummary {
+  todaysBookingsCount: number;
+  activeBarbersCount: number;
+  servicesCount: number;
+  revenueThisMonth: number;
+}
+
+export function getDashboardSummaryApi(token: string) {
+  return apiFetch<ApiDashboardSummary>("/reports/dashboard", { token });
+}
+
 // ==================== Managers (مدیر سالن) ====================
 // مدیر سالن برخلاف آرایشگر، پروفایل جدا (BarberProfile) نداره؛ فقط یه
 // User ساده با role=MANAGER هست. حساب مدیر سالن فقط توسط ادمین اصلی ساخته

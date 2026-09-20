@@ -36,3 +36,44 @@ export async function getBookingsSummary() {
 
   return { totalCount, byStatus, byBarber };
 }
+
+// آمار داشبورد ادمین: نوبت‌های امروز، آرایشگرهای فعال، تعداد خدمات، درآمد
+// این ماه (فقط نوبت‌های COMPLETED، چون طبق تصمیم پروژه پرداخت فقط حضوری و
+// بعد از انجام سرویس ثبت می‌شه).
+export async function getDashboardSummary() {
+  const now = new Date();
+
+  const todayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const todayEnd = new Date(todayStart);
+  todayEnd.setUTCDate(todayEnd.getUTCDate() + 1);
+
+  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  const monthEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+
+  const [todaysBookingsCount, activeBarbersCount, servicesCount, completedThisMonth] =
+    await Promise.all([
+      prisma.booking.count({
+        where: { date: { gte: todayStart, lt: todayEnd }, status: { not: "CANCELLED" } },
+      }),
+      prisma.barberProfile.count({ where: { isActive: true } }),
+      prisma.service.count(),
+      prisma.booking.findMany({
+        where: { status: "COMPLETED", date: { gte: monthStart, lt: monthEnd } },
+        select: { price: true, service: { select: { priceValue: true } } },
+      }),
+    ]);
+
+  // price ممکنه برای نوبت‌های خیلی قدیمی null باشه؛ اون‌وقت از قیمت پایه‌ی
+  // سرویس استفاده می‌کنیم (همون قانونی که بقیه‌ی جاهای پروژه دارن)
+  const revenueThisMonth = completedThisMonth.reduce(
+    (sum, b) => sum + (b.price ?? b.service.priceValue),
+    0,
+  );
+
+  return {
+    todaysBookingsCount,
+    activeBarbersCount,
+    servicesCount,
+    revenueThisMonth,
+  };
+}
