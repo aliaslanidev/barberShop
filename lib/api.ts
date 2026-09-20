@@ -662,6 +662,7 @@ export interface ApiPublicReview {
   comment: string | null;
   createdAt: string;
   customerName: string; // نام + حرف اول نام‌خانوادگی، برای حریم خصوصی
+  serviceTitle: string;
 }
 
 export interface ApiPublicBarberReviews {
