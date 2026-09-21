@@ -5,7 +5,15 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Pencil, Plus, Search, ShieldAlert, Trash2, Users, X } from "lucide-react";
+import {
+  Pencil,
+  Plus,
+  Search,
+  ShieldAlert,
+  Trash2,
+  Users,
+  X,
+} from "lucide-react";
 
 import {
   listBarbers,
@@ -46,7 +54,10 @@ import {
   PopoverPortal,
 } from "@radix-ui/react-popover";
 
-const OPTIONAL_PERMISSIONS: { key: keyof ApiBarberPermissions; label: string }[] = [
+const OPTIONAL_PERMISSIONS: {
+  key: keyof ApiBarberPermissions;
+  label: string;
+}[] = [
   { key: "manageServices", label: "فعال/غیرفعال‌کردن سرویس‌های خودش" },
   { key: "managePricing", label: "مدیریت قیمت" },
   { key: "manageSchedule", label: "مدیریت زمان‌بندی" },
@@ -58,7 +69,9 @@ const OPTIONAL_PERMISSIONS: { key: keyof ApiBarberPermissions; label: string }[]
 
 const createBarberSchema = z.object({
   name: z.string().min(2, "نام باید حداقل ۲ حرف باشد"),
-  mobile: z.string().regex(/^09\d{9}$/, "شماره موبایل معتبر نیست (مثال: 09123456789)"),
+  mobile: z
+    .string()
+    .regex(/^09\d{9}$/, "شماره موبایل معتبر نیست (مثال: 09123456789)"),
   password: z.string().min(4, "رمز عبور باید حداقل ۴ کاراکتر باشد"),
   bio: z.string().optional(),
 });
@@ -66,7 +79,9 @@ type CreateBarberValues = z.infer<typeof createBarberSchema>;
 
 const editBarberSchema = z.object({
   name: z.string().min(2, "نام باید حداقل ۲ حرف باشد"),
-  mobile: z.string().regex(/^09\d{9}$/, "شماره موبایل معتبر نیست (مثال: 09123456789)"),
+  mobile: z
+    .string()
+    .regex(/^09\d{9}$/, "شماره موبایل معتبر نیست (مثال: 09123456789)"),
   bio: z.string().optional(),
   newPassword: z
     .string()
@@ -107,17 +122,21 @@ export default function AdminBarbersPage() {
   const [isTyping, setIsTyping] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [draftPermissions, setDraftPermissions] = useState<ApiBarberPermissions | null>(null);
+  const [draftPermissions, setDraftPermissions] =
+    useState<ApiBarberPermissions | null>(null);
   const [draftServiceIds, setDraftServiceIds] = useState<string[] | null>(null);
   const [isSavingServices, setIsSavingServices] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // ==================== غیرفعال‌سازی کامل حساب (فاز تکمیلی ۱.۲) ====================
-  const [isCheckingFutureBookings, setIsCheckingFutureBookings] = useState(false);
-  const [isSubmittingAccountStatus, setIsSubmittingAccountStatus] = useState(false);
+  const [isCheckingFutureBookings, setIsCheckingFutureBookings] =
+    useState(false);
+  const [isSubmittingAccountStatus, setIsSubmittingAccountStatus] =
+    useState(false);
   const [futureBookingsModalOpen, setFutureBookingsModalOpen] = useState(false);
   const [futureBookings, setFutureBookings] = useState<ApiFutureBooking[]>([]);
-  const [futureBookingsBarber, setFutureBookingsBarber] = useState<ApiBarber | null>(null);
+  const [futureBookingsBarber, setFutureBookingsBarber] =
+    useState<ApiBarber | null>(null);
 
   // مودال دلیل غیرفعال‌سازی (جایگزین window.prompt)
   const [reasonModalOpen, setReasonModalOpen] = useState(false);
@@ -128,11 +147,16 @@ export default function AdminBarbersPage() {
 
   async function refresh() {
     try {
-      const [barbersData, servicesData] = await Promise.all([listBarbers(), listServices()]);
+      const [barbersData, servicesData] = await Promise.all([
+        listBarbers(),
+        listServices(),
+      ]);
       setBarbers(barbersData);
       setServices(servicesData);
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "خطا در دریافت اطلاعات");
+      toast.error(
+        err instanceof ApiError ? err.message : "خطا در دریافت اطلاعات",
+      );
     } finally {
       setIsLoading(false);
     }
@@ -166,13 +190,18 @@ export default function AdminBarbersPage() {
     isAdmin &&
     !!selectedBarber &&
     !!draftPermissions &&
-    OPTIONAL_PERMISSIONS.some((perm) => draftPermissions[perm.key] !== selectedBarber[perm.key]);
+    OPTIONAL_PERMISSIONS.some(
+      (perm) => draftPermissions[perm.key] !== selectedBarber[perm.key],
+    );
 
   const isServicesDirty =
     isAdmin &&
     !!selectedBarber &&
     !!draftServiceIds &&
-    !sameIdSet(draftServiceIds, selectedBarber.services.map((s) => s.serviceId));
+    !sameIdSet(
+      draftServiceIds,
+      selectedBarber.services.map((s) => s.serviceId),
+    );
 
   const visibleBarbers = isTyping
     ? barbers.filter((b) => b.user.name.includes(searchQuery.trim()))
@@ -238,7 +267,9 @@ export default function AdminBarbersPage() {
       toast.success("اطلاعات آرایشگر ویرایش شد");
       setEditDialogOpen(false);
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "خطا در ویرایش آرایشگر");
+      toast.error(
+        err instanceof ApiError ? err.message : "خطا در ویرایش آرایشگر",
+      );
     }
   }
 
@@ -248,8 +279,14 @@ export default function AdminBarbersPage() {
     if (!token) return;
     try {
       const created = await createBarberApi(
-        { name: values.name, mobile: values.mobile, password: values.password, bio: values.bio, serviceIds: [] },
-        token
+        {
+          name: values.name,
+          mobile: values.mobile,
+          password: values.password,
+          bio: values.bio,
+          serviceIds: [],
+        },
+        token,
       );
       await refresh();
       setSelectedBarberId(created.id);
@@ -257,11 +294,16 @@ export default function AdminBarbersPage() {
       reset();
       setDialogOpen(false);
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "خطا در ساخت آرایشگر");
+      toast.error(
+        err instanceof ApiError ? err.message : "خطا در ساخت آرایشگر",
+      );
     }
   }
 
-  function handlePermissionDraftChange(key: keyof ApiBarberPermissions, value: boolean) {
+  function handlePermissionDraftChange(
+    key: keyof ApiBarberPermissions,
+    value: boolean,
+  ) {
     if (!isAdmin) return;
     setDraftPermissions((prev) => (prev ? { ...prev, [key]: value } : prev));
   }
@@ -271,11 +313,17 @@ export default function AdminBarbersPage() {
     const token = getAuthToken();
     if (!token) return;
     try {
-      await updateBarberPermissionsApi(selectedBarber.id, draftPermissions, token);
+      await updateBarberPermissionsApi(
+        selectedBarber.id,
+        draftPermissions,
+        token,
+      );
       await refresh();
       toast.success("پرمیشن‌ها ذخیره شد");
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "خطا در ذخیره‌ی پرمیشن‌ها");
+      toast.error(
+        err instanceof ApiError ? err.message : "خطا در ذخیره‌ی پرمیشن‌ها",
+      );
     }
   }
 
@@ -296,7 +344,9 @@ export default function AdminBarbersPage() {
     if (!isAdmin) return;
     setDraftServiceIds((prev) => {
       if (!prev) return prev;
-      return checked ? [...prev, serviceId] : prev.filter((id) => id !== serviceId);
+      return checked
+        ? [...prev, serviceId]
+        : prev.filter((id) => id !== serviceId);
     });
   }
 
@@ -306,11 +356,17 @@ export default function AdminBarbersPage() {
     if (!token) return;
     setIsSavingServices(true);
     try {
-      await updateBarberApi(selectedBarber.id, { serviceIds: draftServiceIds }, token);
+      await updateBarberApi(
+        selectedBarber.id,
+        { serviceIds: draftServiceIds },
+        token,
+      );
       await refresh();
       toast.success("خدمات این آرایشگر به‌روزرسانی شد");
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "خطا در ذخیره‌ی خدمات");
+      toast.error(
+        err instanceof ApiError ? err.message : "خطا در ذخیره‌ی خدمات",
+      );
     } finally {
       setIsSavingServices(false);
     }
@@ -330,7 +386,9 @@ export default function AdminBarbersPage() {
     try {
       await updateBarberApi(barberId, { isActive: value }, token);
       await refresh();
-      toast.success(value ? "پذیرش نوبت جدید فعال شد" : "پذیرش نوبت جدید غیرفعال شد");
+      toast.success(
+        value ? "پذیرش نوبت جدید فعال شد" : "پذیرش نوبت جدید غیرفعال شد",
+      );
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "خطا در تغییر وضعیت");
     }
@@ -338,7 +396,9 @@ export default function AdminBarbersPage() {
 
   async function handleDelete(barberId: string, name: string) {
     if (!isAdmin) return;
-    const confirmed = window.confirm(`آرایشگر «${name}» حذف شود؟ این عمل قابل بازگشت نیست.`);
+    const confirmed = window.confirm(
+      `آرایشگر «${name}» حذف شود؟ این عمل قابل بازگشت نیست.`,
+    );
     if (!confirmed) return;
     const token = getAuthToken();
     if (!token) return;
@@ -354,7 +414,10 @@ export default function AdminBarbersPage() {
 
   // ==================== «دسترسی به حساب» (فاز تکمیلی ۱.۲) ====================
 
-  async function handleAccountAccessChange(barber: ApiBarber, nextValue: boolean) {
+  async function handleAccountAccessChange(
+    barber: ApiBarber,
+    nextValue: boolean,
+  ) {
     if (!isAdmin) return;
     const token = getAuthToken();
     if (!token) return;
@@ -364,11 +427,17 @@ export default function AdminBarbersPage() {
     if (nextValue) {
       setIsSubmittingAccountStatus(true);
       try {
-        await updateBarberAccountStatusApi(barber.id, { isActive: true }, token);
+        await updateBarberAccountStatusApi(
+          barber.id,
+          { isActive: true },
+          token,
+        );
         await refresh();
         toast.success("دسترسی آرایشگر به حساب فعال شد");
       } catch (err) {
-        toast.error(err instanceof ApiError ? err.message : "خطا در فعال‌سازی حساب");
+        toast.error(
+          err instanceof ApiError ? err.message : "خطا در فعال‌سازی حساب",
+        );
       } finally {
         setIsSubmittingAccountStatus(false);
       }
@@ -390,7 +459,9 @@ export default function AdminBarbersPage() {
         setFutureBookingsModalOpen(true);
       }
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "خطا در بررسی نوبت‌های آینده");
+      toast.error(
+        err instanceof ApiError ? err.message : "خطا در بررسی نوبت‌های آینده",
+      );
     } finally {
       setIsCheckingFutureBookings(false);
     }
@@ -414,7 +485,9 @@ export default function AdminBarbersPage() {
       setReasonBarber(null);
       setReasonValue("");
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "خطا در غیرفعال‌سازی حساب");
+      toast.error(
+        err instanceof ApiError ? err.message : "خطا در غیرفعال‌سازی حساب",
+      );
     } finally {
       setIsSubmittingAccountStatus(false);
     }
@@ -435,7 +508,9 @@ export default function AdminBarbersPage() {
       toast.success("حساب غیرفعال شد؛ نوبت‌های موجود دست‌نخورده ماندند");
       setFutureBookingsModalOpen(false);
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "خطا در غیرفعال‌سازی حساب");
+      toast.error(
+        err instanceof ApiError ? err.message : "خطا در غیرفعال‌سازی حساب",
+      );
     } finally {
       setIsSubmittingAccountStatus(false);
     }
@@ -456,7 +531,9 @@ export default function AdminBarbersPage() {
       toast.success("حساب غیرفعال شد و نوبت‌ها لغو و به مشتریان اطلاع داده شد");
       setFutureBookingsModalOpen(false);
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "خطا در غیرفعال‌سازی حساب");
+      toast.error(
+        err instanceof ApiError ? err.message : "خطا در غیرفعال‌سازی حساب",
+      );
     } finally {
       setIsSubmittingAccountStatus(false);
     }
@@ -536,7 +613,8 @@ export default function AdminBarbersPage() {
                         }}
                         className={cn(
                           "flex w-full items-center rounded-md px-3 py-2 text-right text-sm transition-colors hover:bg-secondary",
-                          selectedBarberId === barber.id && "bg-secondary font-medium"
+                          selectedBarberId === barber.id &&
+                            "bg-secondary font-medium",
                         )}
                       >
                         {barber.user.name}
@@ -560,12 +638,18 @@ export default function AdminBarbersPage() {
                 <DialogHeader>
                   <DialogTitle>آرایشگر جدید</DialogTitle>
                 </DialogHeader>
-                <form onSubmit={handleSubmit(onCreateBarber)} className="flex flex-col gap-4" noValidate>
+                <form
+                  onSubmit={handleSubmit(onCreateBarber)}
+                  className="flex flex-col gap-4"
+                  noValidate
+                >
                   <div className="flex flex-col gap-2">
                     <Label htmlFor="name">نام</Label>
                     <Input id="name" {...register("name")} />
                     {errors.name && (
-                      <span className="text-xs text-destructive">{errors.name.message}</span>
+                      <span className="text-xs text-destructive">
+                        {errors.name.message}
+                      </span>
                     )}
                   </div>
                   <div className="flex flex-col gap-2">
@@ -578,14 +662,24 @@ export default function AdminBarbersPage() {
                       {...register("mobile")}
                     />
                     {errors.mobile && (
-                      <span className="text-xs text-destructive">{errors.mobile.message}</span>
+                      <span className="text-xs text-destructive">
+                        {errors.mobile.message}
+                      </span>
                     )}
                   </div>
                   <div className="flex flex-col gap-2">
                     <Label htmlFor="password">رمز عبور اولیه</Label>
-                    <Input id="password" type="text" dir="ltr" className="text-left" {...register("password")} />
+                    <Input
+                      id="password"
+                      type="text"
+                      dir="ltr"
+                      className="text-left"
+                      {...register("password")}
+                    />
                     {errors.password && (
-                      <span className="text-xs text-destructive">{errors.password.message}</span>
+                      <span className="text-xs text-destructive">
+                        {errors.password.message}
+                      </span>
                     )}
                   </div>
                   <div className="flex flex-col gap-2">
@@ -605,7 +699,10 @@ export default function AdminBarbersPage() {
       </div>
 
       {selectedBarber ? (
-        <Card key={selectedBarber.id} className={cn(PERMISSIONS_BOX_MIN_HEIGHT, "flex flex-col")}>
+        <Card
+          key={selectedBarber.id}
+          className={cn(PERMISSIONS_BOX_MIN_HEIGHT, "flex flex-col")}
+        >
           <CardContent className="flex flex-1 flex-col gap-4 p-5">
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
@@ -614,7 +711,10 @@ export default function AdminBarbersPage() {
                 </div>
                 <div>
                   <p className="font-bold">{selectedBarber.user.name}</p>
-                  <p dir="ltr" className="text-left text-xs text-muted-foreground">
+                  <p
+                    dir="ltr"
+                    className="text-left text-xs text-muted-foreground"
+                  >
                     {selectedBarber.user.mobile}
                   </p>
                 </div>
@@ -622,9 +722,16 @@ export default function AdminBarbersPage() {
 
               {isAdmin && (
                 <div className="flex items-center gap-3">
-                  <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+                  <Dialog
+                    open={editDialogOpen}
+                    onOpenChange={setEditDialogOpen}
+                  >
                     <DialogTrigger asChild>
-                      <Button type="button" variant="ghost" aria-label="ویرایش آرایشگر">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        aria-label="ویرایش آرایشگر"
+                      >
                         <Pencil className="h-4 w-4" />
                       </Button>
                     </DialogTrigger>
@@ -632,12 +739,18 @@ export default function AdminBarbersPage() {
                       <DialogHeader>
                         <DialogTitle>ویرایش آرایشگر</DialogTitle>
                       </DialogHeader>
-                      <form onSubmit={handleEditSubmit(onEditBarber)} className="flex flex-col gap-4" noValidate>
+                      <form
+                        onSubmit={handleEditSubmit(onEditBarber)}
+                        className="flex flex-col gap-4"
+                        noValidate
+                      >
                         <div className="flex flex-col gap-2">
                           <Label htmlFor="edit-name">نام</Label>
                           <Input id="edit-name" {...registerEdit("name")} />
                           {editErrors.name && (
-                            <span className="text-xs text-destructive">{editErrors.name.message}</span>
+                            <span className="text-xs text-destructive">
+                              {editErrors.name.message}
+                            </span>
                           )}
                         </div>
                         <div className="flex flex-col gap-2">
@@ -650,7 +763,9 @@ export default function AdminBarbersPage() {
                             {...registerEdit("mobile")}
                           />
                           {editErrors.mobile && (
-                            <span className="text-xs text-destructive">{editErrors.mobile.message}</span>
+                            <span className="text-xs text-destructive">
+                              {editErrors.mobile.message}
+                            </span>
                           )}
                         </div>
                         <div className="flex flex-col gap-2">
@@ -658,7 +773,9 @@ export default function AdminBarbersPage() {
                           <Input id="edit-bio" {...registerEdit("bio")} />
                         </div>
                         <div className="flex flex-col gap-2">
-                          <Label htmlFor="edit-password">رمز جدید (اختیاری)</Label>
+                          <Label htmlFor="edit-password">
+                            رمز جدید (اختیاری)
+                          </Label>
                           <Input
                             id="edit-password"
                             dir="ltr"
@@ -674,7 +791,9 @@ export default function AdminBarbersPage() {
                         </div>
                         <DialogFooter>
                           <Button type="submit" disabled={isEditSubmitting}>
-                            {isEditSubmitting ? "در حال ذخیره..." : "ذخیره تغییرات"}
+                            {isEditSubmitting
+                              ? "در حال ذخیره..."
+                              : "ذخیره تغییرات"}
                           </Button>
                         </DialogFooter>
                       </form>
@@ -684,7 +803,9 @@ export default function AdminBarbersPage() {
                     type="button"
                     variant="ghost"
                     className="text-destructive hover:text-destructive"
-                    onClick={() => handleDelete(selectedBarber.id, selectedBarber.user.name)}
+                    onClick={() =>
+                      handleDelete(selectedBarber.id, selectedBarber.user.name)
+                    }
                     aria-label="حذف آرایشگر"
                   >
                     <Trash2 className="h-4 w-4" />
@@ -704,31 +825,40 @@ export default function AdminBarbersPage() {
                 </div>
                 <Switch
                   checked={selectedBarber.user.isActive}
-                  onCheckedChange={(v) => handleAccountAccessChange(selectedBarber, v)}
-                  disabled={!isAdmin || isCheckingFutureBookings || isSubmittingAccountStatus}
+                  onCheckedChange={(v) =>
+                    handleAccountAccessChange(selectedBarber, v)
+                  }
+                  disabled={
+                    !isAdmin ||
+                    isCheckingFutureBookings ||
+                    isSubmittingAccountStatus
+                  }
                   aria-label="دسترسی به حساب"
                 />
               </div>
-              {!selectedBarber.user.isActive && selectedBarber.user.blockedReason && (
-                <p className="flex items-center gap-1 text-xs text-destructive">
-                  <ShieldAlert className="h-3.5 w-3.5 shrink-0" />
-                  {selectedBarber.user.blockedReason}
-                  {selectedBarber.user.blockedAt &&
-                    ` — ${formatDateFa(selectedBarber.user.blockedAt)}`}
-                </p>
-              )}
+              {!selectedBarber.user.isActive &&
+                selectedBarber.user.blockedReason && (
+                  <p className="flex items-center gap-1 text-xs text-destructive">
+                    <ShieldAlert className="h-3.5 w-3.5 shrink-0" />
+                    {selectedBarber.user.blockedReason}
+                    {selectedBarber.user.blockedAt &&
+                      ` — ${formatDateFa(selectedBarber.user.blockedAt)}`}
+                  </p>
+                )}
 
               <div className="flex items-center justify-between gap-3 rounded-lg bg-secondary/40 px-3 py-2.5">
                 <div>
                   <p className="text-sm font-medium">پذیرش نوبت جدید</p>
                   <p className="text-xs text-muted-foreground">
-                    غیرفعال یعنی مشتری‌های جدید نمی‌توانند از این آرایشگر نوبت بگیرند
-                    (مثلاً موقع مرخصی طولانی)
+                    غیرفعال یعنی مشتری‌های جدید نمی‌توانند از این آرایشگر نوبت
+                    بگیرند (مثلاً موقع مرخصی طولانی)
                   </p>
                 </div>
                 <Switch
                   checked={selectedBarber.isActive}
-                  onCheckedChange={(v) => handleActiveChange(selectedBarber.id, v)}
+                  onCheckedChange={(v) =>
+                    handleActiveChange(selectedBarber.id, v)
+                  }
                   disabled={!isAdmin}
                   aria-label="پذیرش نوبت جدید"
                 />
@@ -744,7 +874,9 @@ export default function AdminBarbersPage() {
                   <span className="text-sm">{perm.label}</span>
                   <Switch
                     checked={draftPermissions?.[perm.key] ?? false}
-                    onCheckedChange={(v) => handlePermissionDraftChange(perm.key, v)}
+                    onCheckedChange={(v) =>
+                      handlePermissionDraftChange(perm.key, v)
+                    }
                     disabled={!isAdmin}
                     aria-label={perm.label}
                   />
@@ -775,10 +907,13 @@ export default function AdminBarbersPage() {
             )}
 
             <div className="flex flex-col gap-3 border-t border-border pt-4">
-              <p className="text-sm font-medium">خدماتی که این آرایشگر انجام می‌دهد</p>
+              <p className="text-sm font-medium">
+                خدماتی که این آرایشگر انجام می‌دهد
+              </p>
               {services.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
-                  هنوز هیچ سرویسی تعریف نشده. اول از صفحه‌ی «خدمات» چند سرویس بساز.
+                  هنوز هیچ سرویسی تعریف نشده. اول از صفحه‌ی «خدمات» چند سرویس
+                  بساز.
                 </p>
               ) : (
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -790,7 +925,9 @@ export default function AdminBarbersPage() {
                       <span className="text-sm">{service.title}</span>
                       <Switch
                         checked={draftServiceIds?.includes(service.id) ?? false}
-                        onCheckedChange={(v) => handleServiceDraftToggle(service.id, v)}
+                        onCheckedChange={(v) =>
+                          handleServiceDraftToggle(service.id, v)
+                        }
                         disabled={!isAdmin}
                         aria-label={service.title}
                       />
@@ -824,7 +961,12 @@ export default function AdminBarbersPage() {
           </CardContent>
         </Card>
       ) : (
-        <Card className={cn(PERMISSIONS_BOX_MIN_HEIGHT, "flex items-center justify-center")}>
+        <Card
+          className={cn(
+            PERMISSIONS_BOX_MIN_HEIGHT,
+            "flex items-center justify-center",
+          )}
+        >
           <CardContent className="flex flex-col items-center gap-3 p-10 text-center text-muted-foreground">
             <Users className="h-8 w-8" />
             <p className="text-sm">
@@ -839,7 +981,10 @@ export default function AdminBarbersPage() {
       )}
 
       {/* مودال نوبت‌های آینده — فقط وقتی آرایشگر نوبت CONFIRMED آینده داره */}
-      <Dialog open={futureBookingsModalOpen} onOpenChange={setFutureBookingsModalOpen}>
+      <Dialog
+        open={futureBookingsModalOpen}
+        onOpenChange={setFutureBookingsModalOpen}
+      >
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>
@@ -848,8 +993,8 @@ export default function AdminBarbersPage() {
           </DialogHeader>
 
           <p className="text-sm text-muted-foreground">
-            این آرایشگر {toPersianCount(futureBookings.length)} نوبت تاییدشده‌ی آینده
-            دارد. می‌خواهید با این نوبت‌ها چه کنیم؟
+            این آرایشگر {toPersianCount(futureBookings.length)} نوبت تاییدشده‌ی
+            آینده دارد. می‌خواهید با این نوبت‌ها چه کنیم؟
           </p>
 
           <div className="max-h-56 overflow-y-auto rounded-lg border border-border">
@@ -860,7 +1005,9 @@ export default function AdminBarbersPage() {
               >
                 <div>
                   <p className="font-medium">{b.customerName}</p>
-                  <p className="text-xs text-muted-foreground">{b.serviceTitle}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {b.serviceTitle}
+                  </p>
                 </div>
                 <div className="text-left text-xs text-muted-foreground">
                   <p>{formatDateFa(b.date)}</p>
@@ -915,10 +1062,10 @@ export default function AdminBarbersPage() {
             />
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="gap-2">
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               disabled={isSubmittingAccountStatus}
               onClick={() => setReasonModalOpen(false)}
             >
