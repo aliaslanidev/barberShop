@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import {
   createManagerSchema,
   updateManagerSchema,
+  updateManagerStatusSchema,
 } from "@/modules/managers/managers.schema";
 import * as managersService from "@/modules/managers/managers.service";
 
@@ -25,4 +26,10 @@ export async function updateManagerHandler(req: Request, res: Response) {
 export async function deleteManagerHandler(req: Request, res: Response) {
   await managersService.deleteManager(req.params.id);
   res.status(204).send();
+}
+
+export async function updateManagerStatusHandler(req: Request, res: Response) {
+  const input = updateManagerStatusSchema.parse(req.body);
+  const manager = await managersService.updateManagerStatus(req.params.id, input);
+  res.json(manager);
 }

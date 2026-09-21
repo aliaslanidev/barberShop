@@ -7,6 +7,7 @@ import {
   updateServicePriceSchema,
   updateServiceActiveSchema,
   updateWorkingDaysSchema,
+  updateBarberAccountStatusSchema,
 } from "@/modules/barbers/barbers.schema";
 
 export async function listBarbersHandler(_req: Request, res: Response) {
@@ -60,5 +61,30 @@ export async function updateOwnServiceActiveHandler(req: Request, res: Response)
 export async function updateOwnWorkingDaysHandler(req: Request, res: Response) {
   const input = updateWorkingDaysSchema.parse(req.body);
   const barber = await barbersService.updateOwnWorkingDays(req.user!.userId, input.workingDays);
+  res.json(barber);
+}
+
+// ==================== غیرفعال‌سازی کامل حساب آرایشگر (فاز تکمیلی ۱.۲) ====================
+
+export async function getFutureBookingsHandler(req: Request, res: Response) {
+  const bookings = await barbersService.getFutureConfirmedBookings(req.params.id);
+  res.json(
+    bookings.map((b) => ({
+      id: b.id,
+      date: b.date.toISOString().slice(0, 10),
+      time: b.time,
+      customerName: b.customer.name,
+      customerMobile: b.customer.mobile,
+      serviceTitle: b.service.title,
+    }))
+  );
+}
+
+export async function updateAccountStatusHandler(req: Request, res: Response) {
+  const input = updateBarberAccountStatusSchema.parse(req.body);
+  const barber = await barbersService.updateBarberAccountStatus(req.params.id, input, {
+    userId: req.user!.userId,
+    role: req.user!.role,
+  });
   res.json(barber);
 }

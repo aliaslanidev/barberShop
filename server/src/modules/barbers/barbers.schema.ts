@@ -48,9 +48,24 @@ export const updateWorkingDaysSchema = z.object({
   workingDays: z.array(z.enum(WEEKDAY_VALUES)),
 });
 
+// ==================== غیرفعال‌سازی کامل حساب آرایشگر (فاز تکمیلی ۱.۲) ====================
+// isActive=false یعنی ادمین داره کل حساب (دسترسی/لاگین) آرایشگر رو مسدود
+// می‌کنه — این با BarberProfile.isActive (که فقط «پذیرش نوبت جدید» رو
+// کنترل می‌کنه) کاملاً جداست. cancelFutureBookings فقط وقتی isActive:false
+// هست معنا داره: اگه true باشه و نوبت آینده‌ی CONFIRMED داشته باشه، همه‌ی
+// اون نوبت‌ها لغو می‌شن و به مشتری اطلاع داده می‌شه؛ اگه false/نده، نوبت‌های
+// موجود دست‌نخورده می‌مونن (فقط رزرو جدید بسته می‌شه، چون کسکید یک‌طرفه
+// BarberProfile.isActive رو هم false می‌کنه).
+export const updateBarberAccountStatusSchema = z.object({
+  isActive: z.boolean(),
+  reason: z.string().optional(),
+  cancelFutureBookings: z.boolean().optional(),
+});
+
 export type CreateBarberInput = z.infer<typeof createBarberSchema>;
 export type UpdateBarberInput = z.infer<typeof updateBarberSchema>;
 export type UpdatePermissionsInput = z.infer<typeof updatePermissionsSchema>;
 export type UpdateServicePriceInput = z.infer<typeof updateServicePriceSchema>;
 export type UpdateServiceActiveInput = z.infer<typeof updateServiceActiveSchema>;
 export type UpdateWorkingDaysInput = z.infer<typeof updateWorkingDaysSchema>;
+export type UpdateBarberAccountStatusInput = z.infer<typeof updateBarberAccountStatusSchema>;

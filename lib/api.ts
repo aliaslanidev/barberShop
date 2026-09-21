@@ -178,11 +178,21 @@ export interface ApiBarber extends ApiBarberPermissions {
   id: string;
   userId: string;
   bio: string;
-  initials: string;
+  // «پذیرش نوبت جدید» — جدا از دسترسی به حساب (user.isActive پایین)
   isActive: boolean;
+  initials: string;
   createdAt: string;
   workingDays: ApiWeekday[];
-  user: { id: string; name: string; mobile: string };
+  user: {
+    id: string;
+    name: string;
+    mobile: string;
+    // «دسترسی به حساب» — فاز تکمیلی ۱.۲؛ جدا از isActive بالا که فقط
+    // پذیرش نوبت جدید رو کنترل می‌کنه
+    isActive: boolean;
+    blockedReason: string | null;
+    blockedAt: string | null;
+  };
   services: ApiBarberService[];
   rating: ApiRatingSummary;
 }
@@ -276,6 +286,39 @@ export function updateMyWorkingDaysApi(
   return apiFetch<ApiBarber>("/barbers/me/working-days", {
     method: "PATCH",
     body: { workingDays },
+    token,
+  });
+}
+
+// ==================== غیرفعال‌سازی کامل حساب آرایشگر (فاز تکمیلی ۱.۲) ====================
+
+export interface ApiFutureBooking {
+  id: string;
+  date: string;
+  time: string;
+  customerName: string;
+  customerMobile: string;
+  serviceTitle: string;
+}
+
+// لیست نوبت‌های آینده‌ی تاییدشده‌ی این آرایشگر — برای نمایش تو مودال قبل
+// از غیرفعال‌سازی کامل حساب. فقط ادمین اصلی.
+export function getBarberFutureBookingsApi(barberId: string, token: string) {
+  return apiFetch<ApiFutureBooking[]>(`/barbers/${barberId}/future-bookings`, { token });
+}
+
+// غیرفعال/فعال‌سازی کامل حساب آرایشگر (دسترسی/لاگین) — جدا از isActive
+// روی خودِ ApiBarber که فقط «پذیرش نوبت جدید» رو کنترل می‌کنه.
+// cancelFutureBookings فقط موقع isActive:false و فقط وقتی نوبت آینده هست
+// معنا داره: true یعنی لغو و اطلاع به مشتری، false/نده یعنی نوبت‌ها دست‌نخورده بمونن.
+export function updateBarberAccountStatusApi(
+  barberId: string,
+  data: { isActive: boolean; reason?: string; cancelFutureBookings?: boolean },
+  token: string,
+) {
+  return apiFetch<ApiBarber>(`/barbers/${barberId}/account-status`, {
+    method: "PATCH",
+    body: data,
     token,
   });
 }
@@ -841,6 +884,10 @@ export interface ApiManager {
   name: string;
   mobile: string;
   role: "MANAGER";
+  // فاز تکمیلی ۱.۲ — غیرفعال‌سازی کامل حساب (بدون نوبت، پس بدون مودال)
+  isActive: boolean;
+  blockedReason: string | null;
+  blockedAt: string | null;
   createdAt: string;
 }
 
@@ -873,6 +920,19 @@ export function updateManagerApi(
 
 export function deleteManagerApi(id: string, token: string) {
   return apiFetch<void>(`/managers/${id}`, { method: "DELETE", token });
+}
+
+// غیرفعال/فعال‌سازی کامل حساب مدیر سالن — فقط ادمین اصلی
+export function updateManagerStatusApi(
+  id: string,
+  data: { isActive: boolean; reason?: string },
+  token: string,
+) {
+  return apiFetch<ApiManager>(`/managers/${id}/status`, {
+    method: "PATCH",
+    body: data,
+    token,
+  });
 }
 
 // ==================== Customers (مدیریت مشتریان) ====================

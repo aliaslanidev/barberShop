@@ -5,7 +5,9 @@ import {
   createBarberHandler,
   deleteBarberHandler,
   getBarberHandler,
+  getFutureBookingsHandler,
   listBarbersHandler,
+  updateAccountStatusHandler,
   updateBarberHandler,
   updateOwnServiceActiveHandler,
   updateOwnServicePriceHandler,
@@ -48,3 +50,18 @@ barbersRouter.patch(
   asyncHandler(updatePermissionsHandler)
 );
 barbersRouter.delete("/:id", requireAuth, requireRole("ADMIN"), asyncHandler(deleteBarberHandler));
+
+// غیرفعال‌سازی کامل حساب آرایشگر (فاز تکمیلی ۱.۲) — فقط ادمین اصلی،
+// هم‌راستا با بقیه‌ی عملیات حساس این ماژول
+barbersRouter.get(
+  "/:id/future-bookings",
+  requireAuth,
+  requireRole("ADMIN"),
+  asyncHandler(getFutureBookingsHandler)
+);
+barbersRouter.patch(
+  "/:id/account-status",
+  requireAuth,
+  requireRole("ADMIN"),
+  asyncHandler(updateAccountStatusHandler)
+);
