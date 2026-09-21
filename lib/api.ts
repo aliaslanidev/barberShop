@@ -852,7 +852,11 @@ export function createManagerApi(
   data: { name: string; mobile: string; password: string },
   token: string,
 ) {
-  return apiFetch<ApiManager>("/managers", { method: "POST", body: data, token });
+  return apiFetch<ApiManager>("/managers", {
+    method: "POST",
+    body: data,
+    token,
+  });
 }
 
 export function updateManagerApi(
@@ -860,7 +864,11 @@ export function updateManagerApi(
   data: Partial<{ name: string; mobile: string; password: string }>,
   token: string,
 ) {
-  return apiFetch<ApiManager>(`/managers/${id}`, { method: "PATCH", body: data, token });
+  return apiFetch<ApiManager>(`/managers/${id}`, {
+    method: "PATCH",
+    body: data,
+    token,
+  });
 }
 
 export function deleteManagerApi(id: string, token: string) {
@@ -883,9 +891,43 @@ export interface ApiCustomer {
   createdAt: string;
 }
 
-// ادمین یا مدیر سالن — فقط مشاهده
-export function listCustomersApi(token: string) {
-  return apiFetch<ApiCustomer[]>("/users/customers", { token });
+export type CustomerStatusFilter = "ALL" | "ACTIVE" | "BLOCKED";
+export type CustomerSortKey = "createdAt" | "name" | "cancelCount";
+
+export interface ListCustomersParams {
+  search?: string;
+  status?: CustomerStatusFilter;
+  sortBy?: CustomerSortKey;
+  sortDir?: "asc" | "desc";
+  page?: number;
+  pageSize?: number;
+}
+
+export interface ApiCustomersPage {
+  items: ApiCustomer[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  counts: { all: number; active: number; blocked: number };
+}
+
+// ادمین یا مدیر سالن — فقط مشاهده. جستجو/فیلتر/مرتب‌سازی/صفحه‌بندی سمت سرور
+export function listCustomersApi(
+  token: string,
+  params: ListCustomersParams = {},
+) {
+  const qs = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== "") qs.set(key, String(value));
+  });
+  const query = qs.toString();
+  return apiFetch<ApiCustomersPage>(
+    `/users/customers${query ? `?${query}` : ""}`,
+    {
+      token,
+    },
+  );
 }
 
 // فقط ادمین اصلی — isActive:false برای مسدودکردن دستی (reason اختیاری)،
