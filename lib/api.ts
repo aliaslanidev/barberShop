@@ -307,7 +307,9 @@ export interface ApiFutureBooking {
 // لیست نوبت‌های آینده‌ی تاییدشده‌ی این آرایشگر — برای نمایش تو مودال قبل
 // از غیرفعال‌سازی کامل حساب. فقط ادمین اصلی.
 export function getBarberFutureBookingsApi(barberId: string, token: string) {
-  return apiFetch<ApiFutureBooking[]>(`/barbers/${barberId}/future-bookings`, { token });
+  return apiFetch<ApiFutureBooking[]>(`/barbers/${barberId}/future-bookings`, {
+    token,
+  });
 }
 
 // غیرفعال/فعال‌سازی کامل حساب آرایشگر (دسترسی/لاگین) — جدا از isActive
@@ -924,7 +926,7 @@ export function getSalonRevenueReportApi(
 
 // گزارش درآمد شخصیِ خودِ آرایشگرِ خودمختار (managePricing). فقط خودِ
 // آرایشگر می‌تونه این رو ببینه — سرور barberId رو از روی توکن تشخیص
-// می‌ده، نه از پارامتر.
+// می‌ده، نه از پارامتر. dateFrom/dateTo اختیاریه — بدون‌شون کل تاریخچه.
 export interface ApiBarberRevenueByService {
   serviceTitle: string;
   revenue: number;
@@ -937,10 +939,24 @@ export interface ApiBarberOwnRevenueReport {
   byService: ApiBarberRevenueByService[];
 }
 
-export function getMyRevenueReportApi(token: string) {
-  return apiFetch<ApiBarberOwnRevenueReport>("/reports/revenue/mine", {
-    token,
+export interface MyRevenueReportFilter {
+  dateFrom?: string; // YYYY-MM-DD
+  dateTo?: string; // YYYY-MM-DD، inclusive سمت سرور
+}
+
+export function getMyRevenueReportApi(
+  token: string,
+  filter: MyRevenueReportFilter = {},
+) {
+  const params = new URLSearchParams();
+  Object.entries(filter).forEach(([key, value]) => {
+    if (value) params.set(key, value);
   });
+  const qs = params.toString();
+  return apiFetch<ApiBarberOwnRevenueReport>(
+    `/reports/revenue/mine${qs ? `?${qs}` : ""}`,
+    { token },
+  );
 }
 
 // ==================== Managers (مدیر سالن) ====================

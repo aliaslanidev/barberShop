@@ -30,6 +30,15 @@ function parseDateQueryParam(value: unknown): Date | undefined {
   return d;
 }
 
+// dateTo ورودی رو exclusive می‌کنه (یک روز جلو می‌بره) تا خودِ اون روز هم
+// داخل بازه حساب بشه — منطق مشترک بین گزارش سالن و گزارش شخصی آرایشگر
+function toExclusiveEndDate(dateTo: Date | undefined): Date | undefined {
+  if (!dateTo) return undefined;
+  const result = new Date(dateTo);
+  result.setUTCDate(result.getUTCDate() + 1);
+  return result;
+}
+
 // گزارش مالی سالن — فقط ادمین/مدیر. طبق تصمیم بند ۷.۱، این گزارش هرگز
 // نوبت‌های isBarberOwnRevenue=true یا isPrivateCustomer=true رو نشون
 // نمی‌ده (این فیلتر داخل reportsService.getSalonRevenueReport اعمال می‌شه).
@@ -41,14 +50,7 @@ export async function getSalonRevenueReportHandler(req: Request, res: Response) 
 
   const barberId = typeof req.query.barberId === "string" ? req.query.barberId : undefined;
   const dateFrom = parseDateQueryParam(req.query.dateFrom);
-  let dateTo = parseDateQueryParam(req.query.dateTo);
-  // dateTo تو گزارش exclusive استفاده می‌شه، پس اگه کاربر یه روز مشخص
-  // (نه بازه) رو به‌عنوان "تا" می‌فرسته، باید یک روز جلو بره تا خودِ اون
-  // روز هم داخل بازه حساب بشه
-  if (dateTo) {
-    dateTo = new Date(dateTo);
-    dateTo.setUTCDate(dateTo.getUTCDate() + 1);
-  }
+  const dateTo = toExclusiveEndDate(parseDateQueryParam(req.query.dateTo));
 
   const data = await reportsService.getSalonRevenueReport({ barberId, dateFrom, dateTo });
   res.json(data);
@@ -58,7 +60,8 @@ export async function getSalonRevenueReportHandler(req: Request, res: Response) 
 // barberId. قاطعانه و بدون استثنا: نه ادمین، نه مدیر سالن نباید بتونن این
 // endpoint رو برای دیدن درآمد شخصی یه آرایشگر دیگه فراخوانی کنن؛ به همین
 // خاطر این هندلر barberId رو از پارامتر نمی‌گیره، بلکه از خودِ کاربرِ
-// لاگین‌شده استخراج می‌کنه.
+// لاگین‌شده استخراج می‌کنه. dateFrom/dateTo اختیاری هستن — بدون‌شون کل
+// تاریخچه برمی‌گرده (رفتار قبلی حفظ شده).
 export async function getOwnRevenueReportHandler(req: Request, res: Response) {
   const user = req.user!;
   if (user.role !== "BARBER") {
@@ -77,6 +80,9 @@ export async function getOwnRevenueReportHandler(req: Request, res: Response) {
     throw new AppError("شما اجازه‌ی قیمت‌گذاری (و در نتیجه گزارش درآمد شخصی) ندارید", 403);
   }
 
-  const data = await reportsService.getBarberOwnRevenueReport(barberProfile.id);
+  const dateFrom = parseDateQueryParam(req.query.dateFrom);
+  const dateTo = toExclusiveEndDate(parseDateQueryParam(req.query.dateTo));
+
+  const data = await reportsService.getBarberOwnRevenueReport(barberProfile.id, { dateFrom, dateTo });
   res.json(data);
 }
