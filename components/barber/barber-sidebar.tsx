@@ -9,6 +9,7 @@ import {
   Clock,
   Ban,
   MessageSquare,
+  Wallet,
 } from "lucide-react";
 import { RoleSidebar, type RoleNavItem } from "@/components/role-sidebar";
 import type { ApiBarber } from "@/lib/api";
@@ -49,6 +50,14 @@ const managedItems: (RoleNavItem & { isVisible: (barber: ApiBarber) => boolean }
     label: "بلاک کردن اسلات",
     icon: Ban,
     isVisible: (barber) => barber.blockSlots,
+  },
+  {
+    // فقط آرایشگرِ خودمختار (managePricing) گزارش درآمد شخصی داره — طبق
+    // تصمیم بند ۷.۱، این گزارش هیچ‌جای دیگه‌ای (نه ادمین، نه مدیر) دیده نمی‌شه
+    href: "/barber/revenue",
+    label: "درآمد من",
+    icon: Wallet,
+    isVisible: (barber) => barber.managePricing,
   },
 ];
 

@@ -1,14 +1,22 @@
 import { Router } from "express";
-import { asyncHandler } from "@/utils/asyncHandler";
 import { requireAuth } from "@/middleware/auth";
+import { asyncHandler } from "@/utils/asyncHandler";
 import {
   getBookingsSummaryHandler,
   getDashboardSummaryHandler,
+  getSalonRevenueReportHandler,
+  getOwnRevenueReportHandler,
 } from "@/modules/reports/reports.controller";
 
-export const reportsRouter = Router();
+const router = Router();
 
-reportsRouter.use(requireAuth);
+router.get("/bookings-summary", requireAuth, asyncHandler(getBookingsSummaryHandler));
+router.get("/dashboard", requireAuth, asyncHandler(getDashboardSummaryHandler));
 
-reportsRouter.get("/bookings-summary", asyncHandler(getBookingsSummaryHandler));
-reportsRouter.get("/dashboard", asyncHandler(getDashboardSummaryHandler));
+// گزارش مالی سالن (ادمین/مدیر) — فیلتر اختیاری با query: barberId, dateFrom, dateTo
+router.get("/revenue", requireAuth, asyncHandler(getSalonRevenueReportHandler));
+
+// گزارش درآمد شخصیِ خودِ آرایشگر (فقط BARBER با پرمیشن managePricing)
+router.get("/revenue/mine", requireAuth, asyncHandler(getOwnRevenueReportHandler));
+
+export const reportsRouter = router;

@@ -145,6 +145,9 @@ export interface ApiBarberPermissions {
   blockSlots: boolean;
   cancelOwnBookings: boolean;
   viewCustomers: boolean;
+  // پرمیشن «مشتری اختصاصی» — مستقل از managePricing؛ وقتی فعاله، مشتری‌ها
+  // و نوبت‌های این آرایشگر خصوصیِ خودشه (بند ۷.۱ گزارش‌های مالی).
+  exclusiveCustomers: boolean;
 }
 
 export interface ApiBarberService {
@@ -872,6 +875,72 @@ export interface ApiDashboardSummary {
 
 export function getDashboardSummaryApi(token: string) {
   return apiFetch<ApiDashboardSummary>("/reports/dashboard", { token });
+}
+
+// گزارش مالی سالن (بند ۷.۱) — فقط ادمین/مدیر. سرور خودش نوبت‌های
+// isBarberOwnRevenue/isPrivateCustomer رو حذف می‌کنه؛ اینجا فقط فیلتر
+// اختیاری آرایشگر/بازه‌ی تاریخ رو می‌فرسته.
+export interface ApiRevenueByBarber {
+  barberId: string;
+  barberName: string;
+  revenue: number;
+  count: number;
+}
+
+export interface ApiRevenueByService {
+  serviceId: string;
+  serviceTitle: string;
+  revenue: number;
+  count: number;
+}
+
+export interface ApiSalonRevenueReport {
+  totalRevenue: number;
+  completedCount: number;
+  byBarber: ApiRevenueByBarber[];
+  byService: ApiRevenueByService[];
+}
+
+export interface SalonRevenueReportFilter {
+  barberId?: string;
+  dateFrom?: string; // YYYY-MM-DD
+  dateTo?: string; // YYYY-MM-DD، inclusive سمت سرور
+}
+
+export function getSalonRevenueReportApi(
+  token: string,
+  filter: SalonRevenueReportFilter = {},
+) {
+  const params = new URLSearchParams();
+  Object.entries(filter).forEach(([key, value]) => {
+    if (value) params.set(key, value);
+  });
+  const qs = params.toString();
+  return apiFetch<ApiSalonRevenueReport>(
+    `/reports/revenue${qs ? `?${qs}` : ""}`,
+    { token },
+  );
+}
+
+// گزارش درآمد شخصیِ خودِ آرایشگرِ خودمختار (managePricing). فقط خودِ
+// آرایشگر می‌تونه این رو ببینه — سرور barberId رو از روی توکن تشخیص
+// می‌ده، نه از پارامتر.
+export interface ApiBarberRevenueByService {
+  serviceTitle: string;
+  revenue: number;
+  count: number;
+}
+
+export interface ApiBarberOwnRevenueReport {
+  totalRevenue: number;
+  completedCount: number;
+  byService: ApiBarberRevenueByService[];
+}
+
+export function getMyRevenueReportApi(token: string) {
+  return apiFetch<ApiBarberOwnRevenueReport>("/reports/revenue/mine", {
+    token,
+  });
 }
 
 // ==================== Managers (مدیر سالن) ====================

@@ -85,6 +85,10 @@ model BarberProfile {
   blockSlots         Boolean @default(false)
   cancelOwnBookings  Boolean @default(false)
   viewCustomers      Boolean @default(false)
+  // پرمیشن «مشتری اختصاصی» — مستقل از managePricing. وقتی فعاله، مشتری‌ها
+  // و نوبت‌های این آرایشگر کاملاً خصوصیِ خودشه (نه ادمین، نه مدیر سالن
+  // نمی‌بینتشون). تصمیم فاز گزارش‌های مالی (بند ۷.۱).
+  exclusiveCustomers Boolean @default(false)
 
   // آرایه خالی = پیرو روزهای بازِ سالن (WorkingHours)؛ آرایه‌ی غیرخالی =
   // فقط همین روزها کار می‌کنه، حتی اگه سالن اون روز بازتر باشه
@@ -145,6 +149,21 @@ model Booking {
   reminderSentAt DateTime?
   createdAt  DateTime      @default(now())
   updatedAt  DateTime      @updatedAt
+
+  // ==================== Snapshot فیلدهای گزارش مالی (بند ۷.۱) ====================
+  // تعیین‌کننده‌ی این دو فیلد، وضعیتِ پرمیشن آرایشگر *در لحظه‌ی ثبت این
+  // نوبت* هست — نه وضعیت زنده‌ی فعلی و نه لحظه‌ی تکمیل سرویس. این دو
+  // پرمیشن (managePricing و exclusiveCustomers) کاملاً مستقلن، پس هر
+  // کدوم فیلد Snapshot جدا و مستقل خودشو داره.
+
+  // Snapshot از BarberProfile.managePricing وقت ساخت نوبت. true یعنی این
+  // نوبت درآمد شخصیِ آرایشگره، نه درآمد سالن — در گزارش‌های مالی سالن
+  // اصلاً حساب نمی‌شه و فقط خودِ آرایشگر می‌تونه ببینتش.
+  isBarberOwnRevenue Boolean @default(false)
+  // Snapshot از BarberProfile.exclusiveCustomers وقت ساخت نوبت. true یعنی
+  // این نوبت/مشتری خصوصیِ خودِ آرایشگره — از /admin/customers، از
+  // /admin/bookings و از شمارش کلِ نوبت‌های سالن حذف می‌شه.
+  isPrivateCustomer  Boolean @default(false)
 
   customer     User          @relation("CustomerBookings", fields: [customerId], references: [id])
   barber       BarberProfile @relation(fields: [barberId], references: [id])

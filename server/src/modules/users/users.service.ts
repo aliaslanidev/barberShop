@@ -29,6 +29,19 @@ function buildOrderBy(
   return [primary, { id: "asc" }];
 }
 
+// مشتری‌ای که *همه‌ی* نوبت‌هاش isPrivateCustomer=true دارن (یعنی فقط با
+// آرایشگرِ دارای پرمیشن «مشتری اختصاصی» نوبت گرفته) جزو «مشتری سالن»
+// محسوب نمی‌شه و باید از این لیست حذف بشه (بند ۷.۱). مشتری‌ای که هیچ
+// نوبتی نداره، یا حداقل یک نوبتِ غیرخصوصی داره، همچنان تو لیست می‌مونه —
+// طبق Edge Case حل‌شده: تکراری‌بودنِ مشتری بین لیست عمومی و لیست خصوصیِ
+// آرایشگر عمدیه، نه چیزی که اینجا باید حذفش کنیم.
+const salonCustomerFilter: Prisma.UserWhereInput = {
+  OR: [
+    { bookings: { none: {} } },
+    { bookings: { some: { isPrivateCustomer: false } } },
+  ],
+};
+
 // لیست مشتری‌ها برای پنل ادمین — همراه وضعیت فعال/مسدود و تعداد
 // لغوهای خودشون (cancelCount)، تا ادمین بدونه چرا کسی مسدود شده.
 export async function listCustomers(query: ListCustomersQuery) {
@@ -36,6 +49,7 @@ export async function listCustomers(query: ListCustomersQuery) {
 
   const baseWhere: Prisma.UserWhereInput = {
     role: "CUSTOMER",
+    AND: [salonCustomerFilter],
     ...(search
       ? {
           OR: [

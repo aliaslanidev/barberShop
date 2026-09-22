@@ -24,6 +24,10 @@ export const updatePermissionsSchema = z.object({
   blockSlots: z.boolean().optional(),
   cancelOwnBookings: z.boolean().optional(),
   viewCustomers: z.boolean().optional(),
+  // پرمیشن «مشتری اختصاصی» — مستقل از managePricing؛ ادمین می‌تونه این دو
+  // رو جدا جدا بده. وقتی فعاله، مشتری‌ها و نوبت‌های این آرایشگر خصوصیِ
+  // خودشه (بند ۷.۱ گزارش‌های مالی).
+  exclusiveCustomers: z.boolean().optional(),
 });
 
 export const updateServicePriceSchema = z.object({

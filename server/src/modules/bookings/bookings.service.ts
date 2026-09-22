@@ -352,6 +352,18 @@ export async function createBooking(customerId: string, input: CreateBookingInpu
     throw new AppError("این سرویس در حال حاضر توسط این آرایشگر ارائه نمی‌شود", 400);
   }
 
+  // خودِ آرایشگر رو برای خوندنِ وضعیتِ *زنده‌ی* دو پرمیشنِ مالی/خصوصی‌سازی
+  // می‌گیریم — این وضعیت همین الان روی نوبت Snapshot می‌شه (بند ۷.۱).
+  // این تصمیم فقط همین یک‌بار، لحظه‌ی ساخت نوبت گرفته می‌شه؛ تغییر بعدیِ
+  // پرمیشن آرایشگر هیچ اثری روی نوبت‌های قبلاً ثبت‌شده نداره.
+  const barberProfile = await prisma.barberProfile.findUnique({
+    where: { id: input.barberId },
+    select: { managePricing: true, exclusiveCustomers: true },
+  });
+  if (!barberProfile) {
+    throw new AppError("آرایشگر پیدا نشد", 404);
+  }
+
   const booking = await prisma.booking.create({
     data: {
       customerId,
@@ -363,6 +375,9 @@ export async function createBooking(customerId: string, input: CreateBookingInpu
       // قیمت نهایی همین لحظه ثبت می‌شه؛ تغییر بعدیِقیمت آرایشگر/سرویس روی این نوبت اثری نداره
       price: barberService.customPrice ?? barberService.service.priceValue,
       status: "CONFIRMED",
+      // Snapshot دو پرمیشن مالی/خصوصی‌سازی — رجوع کنید به توضیح بالا
+      isBarberOwnRevenue: barberProfile.managePricing,
+      isPrivateCustomer: barberProfile.exclusiveCustomers,
     },
     include: bookingIncludes,
   });
@@ -387,11 +402,19 @@ export async function getBarberProfileIdForUser(userId: string): Promise<string 
   return profile?.id ?? null;
 }
 
-export async function listBookings(filter: ListBookingsQuery) {
+// excludePrivateCustomers: وقتی true، نوبت‌هایی که isPrivateCustomer=true
+// دارن حذف می‌شن. کنترلر باید این رو true بفرسته برای /admin/bookings
+// (ادمین/مدیر) و false/نده برای صفحه‌ی «نوبت‌های خودِ آرایشگر» (چون
+// آرایشگر باید مشتری‌های اختصاصی خودش رو ببینه).
+export async function listBookings(
+  filter: ListBookingsQuery,
+  excludePrivateCustomers = false
+) {
   const where: Prisma.BookingWhereInput = {};
   if (filter.barberId) where.barberId = filter.barberId;
   if (filter.customerId) where.customerId = filter.customerId;
   if (filter.status) where.status = filter.status;
+  if (excludePrivateCustomers) where.isPrivateCustomer = false;
 
   if (filter.date) {
     const { gte, lt } = dateRangeForDay(filter.date);
@@ -416,6 +439,10 @@ export async function getBookingById(id: string) {
   return booking;
 }
 
+// این تابع همیشه محدود به یک barberId خاصه (صفحه‌ی «مشتریان من» خودِ
+// آرایشگر)، پس فیلتر isPrivateCustomer لازم نداره — آرایشگر باید مشتری‌های
+// اختصاصی خودش رو هم ببینه. برای صفحه‌ی ادمین از این تابع استفاده نکنید؛
+// اون باید از طریق ماژول customers با excludePrivateCustomers فراخوانی بشه.
 export async function getBarberCustomers(barberId: string) {
   const bookings = await prisma.booking.findMany({
     where: { barberId },
