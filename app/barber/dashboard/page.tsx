@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -37,8 +37,13 @@ function formatShortDate(key: string) {
 
 export default function BarberDashboardPage() {
   const barber = useCurrentBarberProfile();
-  // همه‌ی نوبت‌های امروز و روزهای آینده
-  const [bookings, setBookings] = useState<ApiBooking[]>([]);
+  const [todaysCount, setTodaysCount] = useState(0);
+  const [completedCount, setCompletedCount] = useState(0);
+  const [remainingCount, setRemainingCount] = useState(0);
+  const [current, setCurrent] = useState<ApiBooking | null>(null);
+  const [upcoming, setUpcoming] = useState<ApiBooking[]>([]);
+  const [upcomingTotal, setUpcomingTotal] = useState(0);
+  const [futureCount, setFutureCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
   const today = toISODate(new Date());
@@ -46,42 +51,47 @@ export default function BarberDashboardPage() {
   useEffect(() => {
     const token = getAuthToken();
     if (!token) return;
-    listBookingsApi(token, { dateFrom: today })
-      .then((data) => setBookings(data.filter((b) => dateKeyOf(b) >= today)))
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = toISODate(tomorrow);
+    Promise.all([
+      listBookingsApi(token, { date: today, pageSize: 1, includeStatusCounts: true }),
+      listBookingsApi(token, { date: today, status: "IN_PROGRESS", pageSize: 1 }),
+      listBookingsApi(token, { date: today, status: "CONFIRMED", pageSize: UPCOMING_PREVIEW_COUNT }),
+      listBookingsApi(token, {
+        dateFrom: tomorrowStr,
+        statuses: ["CONFIRMED", "IN_PROGRESS"],
+        pageSize: UPCOMING_PREVIEW_COUNT,
+      }),
+    ])
+      .then(([todayPage, currentPage, todayConfirmed, future]) => {
+        setTodaysCount(todayPage.total);
+        const statusCounts = todayPage.statusCounts;
+        setCompletedCount(statusCounts?.COMPLETED ?? 0);
+        setRemainingCount(
+          todayPage.total - (statusCounts?.COMPLETED ?? 0) - (statusCounts?.CANCELLED ?? 0),
+        );
+        setCurrent(currentPage.items[0] ?? null);
+        setFutureCount(future.total);
+
+        const preview = [...todayConfirmed.items, ...future.items]
+          .sort((a, b) => {
+            const dateOrder = dateKeyOf(a).localeCompare(dateKeyOf(b));
+            return dateOrder || a.time.localeCompare(b.time);
+          })
+          .slice(0, UPCOMING_PREVIEW_COUNT);
+        setUpcoming(preview);
+        setUpcomingTotal((statusCounts?.CONFIRMED ?? 0) + future.total);
+      })
       .catch((err) => console.error(err instanceof ApiError ? err.message : err))
       .finally(() => setIsLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const todays = useMemo(() => bookings.filter((b) => dateKeyOf(b) === today), [bookings, today]);
-
-  // نوبت‌های پیش‌رو: امروزِ در انتظار + روزهای بعد (بدون انجام‌شده/لغوشده)
-  const upcoming = useMemo(() => {
-    return bookings
-      .filter((b) => {
-        if (b.status === "COMPLETED" || b.status === "CANCELLED") return false;
-        const key = dateKeyOf(b);
-        return key > today || (key === today && b.status === "CONFIRMED");
-      })
-      .sort((a, b) => {
-        const ka = dateKeyOf(a);
-        const kb = dateKeyOf(b);
-        if (ka !== kb) return ka < kb ? -1 : 1;
-        return a.time.localeCompare(b.time);
-      });
-  }, [bookings, today]);
-
   if (barber === undefined || isLoading) {
     return <div className="p-8 text-center text-sm text-muted-foreground">در حال بارگذاری...</div>;
   }
   if (!barber) return null;
-
-  const completed = todays.filter((a) => a.status === "COMPLETED").length;
-  const remaining = todays.filter((a) => a.status !== "COMPLETED" && a.status !== "CANCELLED").length;
-  const futureCount = bookings.filter(
-    (b) => dateKeyOf(b) > today && b.status !== "CANCELLED",
-  ).length;
-  const current = todays.find((a) => a.status === "IN_PROGRESS");
 
   return (
     <div className="space-y-8">
@@ -93,19 +103,19 @@ export default function BarberDashboardPage() {
         <Card>
           <CardContent className="p-5">
             <p className="text-xs text-muted-foreground">نوبت‌های امروز</p>
-            <p className="mt-1 text-2xl font-bold">{toPersianDigits(String(todays.length))}</p>
+            <p className="mt-1 text-2xl font-bold">{toPersianDigits(String(todaysCount))}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-5">
             <p className="text-xs text-muted-foreground">انجام‌شده</p>
-            <p className="mt-1 text-2xl font-bold text-primary">{toPersianDigits(String(completed))}</p>
+            <p className="mt-1 text-2xl font-bold text-primary">{toPersianDigits(String(completedCount))}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-5">
             <p className="text-xs text-muted-foreground">باقی‌مانده امروز</p>
-            <p className="mt-1 text-2xl font-bold">{toPersianDigits(String(remaining))}</p>
+            <p className="mt-1 text-2xl font-bold">{toPersianDigits(String(remainingCount))}</p>
           </CardContent>
         </Card>
         <Card>
@@ -169,9 +179,9 @@ export default function BarberDashboardPage() {
                 </Card>
               );
             })}
-            {upcoming.length > UPCOMING_PREVIEW_COUNT && (
+            {upcomingTotal > UPCOMING_PREVIEW_COUNT && (
               <p className="text-center text-xs text-muted-foreground">
-                و {toPersianDigits(String(upcoming.length - UPCOMING_PREVIEW_COUNT))} نوبت دیگر
+                و {toPersianDigits(String(upcomingTotal - UPCOMING_PREVIEW_COUNT))} نوبت دیگر
               </p>
             )}
           </div>

@@ -27,20 +27,29 @@ function getAppointmentStart(date: Date, time: string): Date {
 async function runReminderCheck() {
   const now = new Date();
 
-  // بازه‌ی گشاد برای کوئری؛ فیلتر دقیق زمان پایین‌تر تو جاوااسکریپت انجام می‌شه
-  const from = new Date(now.getTime() - 36 * 60 * 60_000);
-  const to = new Date(now.getTime() + 36 * 60 * 60_000);
+  const tehranNow = new Date(now.getTime() + TEHRAN_OFFSET_MINUTES * 60_000);
+  const from = new Date(
+    Date.UTC(tehranNow.getUTCFullYear(), tehranNow.getUTCMonth(), tehranNow.getUTCDate()),
+  );
+  const to = new Date(from);
+  to.setUTCDate(to.getUTCDate() + 2);
 
   const bookings = await prisma.booking.findMany({
     where: {
       status: "CONFIRMED", // نوبت لغوشده/تمام‌شده اصلاً وارد نمی‌شه
       reminderSentAt: null,
-      date: { gte: from, lte: to },
+      date: { gte: from, lt: to },
     },
-    include: {
-      barber: { include: { user: { select: { name: true } } } },
+    select: {
+      id: true,
+      customerId: true,
+      date: true,
+      time: true,
+      createdAt: true,
+      barber: { select: { user: { select: { name: true } } } },
       service: { select: { title: true } },
     },
+    orderBy: [{ date: "asc" }, { time: "asc" }],
   });
 
   for (const booking of bookings) {

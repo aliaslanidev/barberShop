@@ -13,7 +13,9 @@ import { getAuthToken } from "@/lib/data/mock-session";
 export default function CustomerDashboardPage() {
   const router = useRouter();
   const customer = getCurrentCustomer();
-  const [bookings, setBookings] = useState<ApiBooking[]>([]);
+  const [nextBooking, setNextBooking] = useState<ApiBooking | null>(null);
+  const [upcomingCount, setUpcomingCount] = useState(0);
+  const [historyCount, setHistoryCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -23,8 +25,21 @@ export default function CustomerDashboardPage() {
     }
     const token = getAuthToken();
     if (!token) return;
-    listBookingsApi(token)
-      .then(setBookings)
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+    Promise.all([
+      listBookingsApi(token, { status: "CONFIRMED", dateFrom: todayStr, pageSize: 1 }),
+      listBookingsApi(token, {
+        statuses: ["COMPLETED", "CANCELLED"],
+        pageSize: 1,
+        sort: "desc",
+      }),
+    ])
+      .then(([upcoming, history]) => {
+        setNextBooking(upcoming.items[0] ?? null);
+        setUpcomingCount(upcoming.total);
+        setHistoryCount(history.total);
+      })
       .catch((err) => console.error(err instanceof ApiError ? err.message : err))
       .finally(() => setIsLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -40,12 +55,6 @@ export default function CustomerDashboardPage() {
     );
   }
 
-  const upcoming = bookings
-    .filter((b) => b.status === "CONFIRMED")
-    .sort((a, b) => (a.date + a.time > b.date + b.time ? 1 : -1));
-  const nextBooking = upcoming[0] ?? null;
-  const historyCount = bookings.filter((b) => b.status === "COMPLETED" || b.status === "CANCELLED").length;
-
   return (
     <div className="space-y-8">
       <div>
@@ -57,7 +66,7 @@ export default function CustomerDashboardPage() {
         <Card>
           <CardContent className="p-5">
             <p className="text-xs text-muted-foreground">نوبت‌های آینده</p>
-            <p className="mt-1 text-2xl font-bold text-primary">{upcoming.length}</p>
+            <p className="mt-1 text-2xl font-bold text-primary">{upcomingCount}</p>
           </CardContent>
         </Card>
         <Card>

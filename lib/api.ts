@@ -592,9 +592,24 @@ export interface ListBookingsFilter {
   barberId?: string;
   customerId?: string;
   status?: BookingStatus;
+  statuses?: BookingStatus[];
   date?: string;
   dateFrom?: string;
   dateTo?: string;
+  search?: string;
+  page?: number;
+  pageSize?: number;
+  sort?: "asc" | "desc";
+  includeStatusCounts?: boolean;
+}
+
+export interface ApiBookingsPage {
+  items: ApiBooking[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  statusCounts?: Record<BookingStatus, number>;
 }
 
 export function listBookingsApi(
@@ -603,10 +618,11 @@ export function listBookingsApi(
 ) {
   const params = new URLSearchParams();
   Object.entries(filter).forEach(([key, value]) => {
-    if (value) params.set(key, value);
+    if (value === undefined || value === null || value === "" || value === false) return;
+    params.set(key, Array.isArray(value) ? value.join(",") : String(value));
   });
   const qs = params.toString();
-  return apiFetch<ApiBooking[]>(`/bookings${qs ? `?${qs}` : ""}`, { token });
+  return apiFetch<ApiBookingsPage>(`/bookings${qs ? `?${qs}` : ""}`, { token });
 }
 
 export function getBookingApi(id: string, token: string) {

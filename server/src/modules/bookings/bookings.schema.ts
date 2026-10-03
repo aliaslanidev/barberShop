@@ -43,9 +43,22 @@ export const listBookingsQuerySchema = z.object({
   barberId: z.string().optional(),
   customerId: z.string().optional(),
   status: z.enum(["CONFIRMED", "IN_PROGRESS", "COMPLETED", "CANCELLED"]).optional(),
+  statuses: z
+    .string()
+    .transform((value) => value.split(","))
+    .pipe(z.array(z.enum(["CONFIRMED", "IN_PROGRESS", "COMPLETED", "CANCELLED"])).min(1))
+    .optional(),
   date: z.string().regex(dateRegex).optional(),
   dateFrom: z.string().regex(dateRegex).optional(),
   dateTo: z.string().regex(dateRegex).optional(),
+  search: z.string().trim().max(100).optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+  sort: z.enum(["asc", "desc"]).default("asc"),
+  includeStatusCounts: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((value) => value === "true"),
 });
 export type ListBookingsQuery = z.infer<typeof listBookingsQuerySchema>;
 

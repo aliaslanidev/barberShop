@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { BookingPagination } from "@/components/booking-pagination";
 import { cn } from "@/lib/utils";
 import {
   listBookingsApi,
@@ -15,6 +16,8 @@ import {
 import { getAuthToken } from "@/lib/data/mock-session";
 
 type Tab = "today" | "upcoming" | "past" | "all";
+
+const PAGE_SIZE = 20;
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "today", label: "امروز" },
@@ -74,16 +77,34 @@ export default function BarberBookingsPage() {
   const [items, setItems] = useState<ApiBooking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [tab, setTab] = useState<Tab>("today");
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
 
   const today = toISODate(new Date());
+  const yesterdayDate = new Date();
+  yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+  const yesterday = toISODate(yesterdayDate);
+  const tomorrowDate = new Date();
+  tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+  const tomorrow = toISODate(tomorrowDate);
 
   async function refresh() {
     const token = getAuthToken();
     if (!token) return;
     try {
-      // بدون فیلتر تاریخ: همه‌ی نوبت‌های آرایشگر
-      const data = await listBookingsApi(token);
-      setItems(data);
+      const result = await listBookingsApi(token, {
+        page,
+        pageSize: PAGE_SIZE,
+        date: tab === "today" ? today : undefined,
+        dateFrom: tab === "upcoming" ? tomorrow : undefined,
+        dateTo: tab === "past" ? yesterday : undefined,
+        sort: tab === "past" || tab === "all" ? "desc" : "asc",
+      });
+      setItems(result.items);
+      setTotal(result.total);
+      setTotalPages(result.totalPages);
+      if (result.page !== page) setPage(result.page);
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "خطا در دریافت نوبت‌ها");
     } finally {
@@ -92,8 +113,8 @@ export default function BarberBookingsPage() {
   }
 
   useEffect(() => {
-    refresh();
-  }, []);
+    void refresh();
+  }, [tab, page]);
 
   async function updateStatus(id: string, status: BookingStatus) {
     const token = getAuthToken();
@@ -106,19 +127,6 @@ export default function BarberBookingsPage() {
       toast.error(err instanceof ApiError ? err.message : "خطا در تغییر وضعیت");
     }
   }
-
-  const counts = useMemo(() => {
-    let todayCount = 0;
-    let upcoming = 0;
-    let past = 0;
-    for (const b of items) {
-      const key = dateKeyOf(b);
-      if (key === today) todayCount++;
-      else if (key > today) upcoming++;
-      else past++;
-    }
-    return { today: todayCount, upcoming, past, all: items.length };
-  }, [items, today]);
 
   // فیلتر + مرتب‌سازی + گروه‌بندی بر اساس روز
   const groups = useMemo(() => {
@@ -166,16 +174,13 @@ export default function BarberBookingsPage() {
           <button
             key={t.key}
             type="button"
-            onClick={() => setTab(t.key)}
+            onClick={() => { setTab(t.key); setPage(1); }}
             className={cn(
               "flex-1 rounded-md py-2 text-sm font-medium transition-colors",
               tab === t.key ? "bg-primary text-primary-foreground" : "text-muted-foreground",
             )}
           >
-            {t.label}{" "}
-            <span className="text-xs opacity-80">
-              ({toPersianDigits(String(counts[t.key]))})
-            </span>
+            {t.label}
           </button>
         ))}
       </div>
@@ -234,6 +239,7 @@ export default function BarberBookingsPage() {
           ))}
         </div>
       )}
+      <BookingPagination page={page} totalPages={totalPages} total={total} onPageChange={setPage} />
     </div>
   );
 }

@@ -410,27 +410,73 @@ export async function listBookings(
   filter: ListBookingsQuery,
   excludePrivateCustomers = false
 ) {
-  const where: Prisma.BookingWhereInput = {};
-  if (filter.barberId) where.barberId = filter.barberId;
-  if (filter.customerId) where.customerId = filter.customerId;
-  if (filter.status) where.status = filter.status;
-  if (excludePrivateCustomers) where.isPrivateCustomer = false;
+  const baseWhere: Prisma.BookingWhereInput = {};
+  if (filter.barberId) baseWhere.barberId = filter.barberId;
+  if (filter.customerId) baseWhere.customerId = filter.customerId;
+  if (excludePrivateCustomers) baseWhere.isPrivateCustomer = false;
 
   if (filter.date) {
     const { gte, lt } = dateRangeForDay(filter.date);
-    where.date = { gte, lt };
+    baseWhere.date = { gte, lt };
   } else if (filter.dateFrom || filter.dateTo) {
-    where.date = {
+    baseWhere.date = {
       ...(filter.dateFrom ? { gte: parseDateOnly(filter.dateFrom) } : {}),
       ...(filter.dateTo ? { lt: dateRangeForDay(filter.dateTo).lt } : {}),
     };
   }
 
-  return prisma.booking.findMany({
+  if (filter.search) {
+    baseWhere.customer = {
+      OR: [
+        { name: { contains: filter.search, mode: "insensitive" } },
+        { mobile: { contains: filter.search } },
+      ],
+    };
+  }
+
+  const statuses = filter.statuses ?? (filter.status ? [filter.status] : undefined);
+  const where: Prisma.BookingWhereInput = {
+    ...baseWhere,
+    ...(statuses ? { status: { in: statuses } } : {}),
+  };
+  const statusGroupsWhere = filter.status ? baseWhere : where;
+
+  const [total, statusGroups] = await Promise.all([
+    prisma.booking.count({ where }),
+    filter.includeStatusCounts
+      ? prisma.booking.groupBy({
+          by: ["status"],
+          where: statusGroupsWhere,
+          _count: { _all: true },
+        })
+      : Promise.resolve(null),
+  ]);
+
+  const totalPages = Math.max(1, Math.ceil(total / filter.pageSize));
+  const page = Math.min(filter.page, totalPages);
+  const items = await prisma.booking.findMany({
     where,
     include: bookingIncludes,
-    orderBy: [{ date: "asc" }, { time: "asc" }],
+    orderBy: [{ date: filter.sort }, { time: "asc" }],
+    skip: (page - 1) * filter.pageSize,
+    take: filter.pageSize,
   });
+
+  const statusCounts = filter.includeStatusCounts
+    ? {
+        CONFIRMED: 0,
+        IN_PROGRESS: 0,
+        COMPLETED: 0,
+        CANCELLED: 0,
+      }
+    : undefined;
+  if (statusGroups && statusCounts) {
+    for (const group of statusGroups) {
+      statusCounts[group.status] = group._count._all;
+    }
+  }
+
+  return { items, total, page, pageSize: filter.pageSize, totalPages, statusCounts };
 }
 
 export async function getBookingById(id: string) {

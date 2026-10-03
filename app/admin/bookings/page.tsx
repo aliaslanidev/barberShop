@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Search } from "lucide-react";
 import type { DateObject } from "react-multi-date-picker";
 
 import { Card, CardContent } from "@/components/ui/card";
+import { BookingPagination } from "@/components/booking-pagination";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -25,11 +26,14 @@ import {
   ApiError,
   type ApiBooking,
   type ApiBarber,
+  type BookingStatus,
 } from "@/lib/api";
 import { getAuthToken } from "@/lib/data/mock-session";
 import { STATUS_LABELS, formatPersianDate, getBookingColumns } from "./columns";
 
 type DayFilter = "today" | "tomorrow" | "upcoming7" | "history" | "all" | "custom";
+
+const PAGE_SIZE = 20;
 
 const DAY_TABS: { value: DayFilter; label: string }[] = [
   { value: "today", label: "امروز" },
@@ -55,11 +59,14 @@ function addDays(base: Date, days: number): Date {
 export default function AdminBookingsPage() {
   const [barbers, setBarbers] = useState<ApiBarber[]>([]);
   const [bookings, setBookings] = useState<ApiBooking[]>([]);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
 
   const [search, setSearch] = useState("");
   const [barberFilter, setBarberFilter] = useState<string>("all");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<BookingStatus | "all">("all");
 
   const [dayFilter, setDayFilter] = useState<DayFilter>("today");
   const [customDate, setCustomDate] = useState<DateObject | null>(null);
@@ -69,65 +76,67 @@ export default function AdminBookingsPage() {
   const weekEndStr = useMemo(() => toISODate(addDays(new Date(), 6)), []);
   const customDateStr = customDate ? toISODate(customDate.toDate()) : "";
 
-  async function refresh() {
+  const refresh = useCallback(async () => {
     const token = getAuthToken();
     if (!token) return;
     try {
-      const [b, list] = await Promise.all([listBarbers(), listBookingsApi(token)]);
-      setBarbers(b);
-      setBookings(list);
+      let date: string | undefined;
+      let dateFrom: string | undefined;
+      let dateTo: string | undefined;
+      if (dayFilter === "today") date = todayStr;
+      if (dayFilter === "tomorrow") date = tomorrowStr;
+      if (dayFilter === "upcoming7") {
+        dateFrom = todayStr;
+        dateTo = weekEndStr;
+      }
+      if (dayFilter === "history") dateTo = toISODate(addDays(new Date(), -1));
+      if (dayFilter === "custom") date = customDateStr;
+
+      const result = await listBookingsApi(token, {
+        page,
+        pageSize: PAGE_SIZE,
+        barberId: barberFilter === "all" ? undefined : barberFilter,
+        status: statusFilter === "all" ? undefined : statusFilter,
+        date,
+        dateFrom,
+        dateTo,
+        search: search.trim() || undefined,
+      });
+      setBookings(result.items);
+      setTotal(result.total);
+      setTotalPages(result.totalPages);
+      if (result.page !== page) setPage(result.page);
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "خطا در دریافت نوبت‌ها");
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [dayFilter, customDateStr, page, barberFilter, statusFilter, search, todayStr, tomorrowStr, weekEndStr]);
 
   useEffect(() => {
-    refresh();
+    listBarbers()
+      .then(setBarbers)
+      .catch((err) => toast.error(err instanceof ApiError ? err.message : "خطا در دریافت آرایشگرها"));
   }, []);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => void refresh(), 250);
+    return () => clearTimeout(timeout);
+  }, [refresh]);
 
   function handleSelectTab(tab: DayFilter) {
     setDayFilter(tab);
     setCustomDate(null);
+    setPage(1);
   }
 
   function handleCustomDateChange(value: DateObject | null) {
     setCustomDate(value);
     setDayFilter(value ? "custom" : "today");
+    setPage(1);
   }
 
-  const filtered = useMemo(() => {
-    return bookings
-      .filter((b) => {
-        const dateStr = b.date.slice(0, 10); // ISO -> فقط بخش تاریخ
-        switch (dayFilter) {
-          case "today":
-            return dateStr === todayStr;
-          case "tomorrow":
-            return dateStr === tomorrowStr;
-          case "upcoming7":
-            return dateStr >= todayStr && dateStr <= weekEndStr;
-          case "history":
-            return dateStr < todayStr;
-          case "custom":
-            return dateStr === customDateStr;
-          case "all":
-          default:
-            return true;
-        }
-      })
-      .filter((b) => barberFilter === "all" || b.barberId === barberFilter)
-      .filter((b) => statusFilter === "all" || b.status === statusFilter)
-      .filter(
-        (b) =>
-          !search.trim() ||
-          b.customer.name.includes(search.trim()) ||
-          b.customer.mobile.includes(search.trim()),
-      );
-  }, [bookings, dayFilter, customDateStr, todayStr, tomorrowStr, weekEndStr, barberFilter, statusFilter, search]);
-
-  async function handleCancel(id: string) {
+  const handleCancel = useCallback(async (id: string) => {
     const token = getAuthToken();
     if (!token) return;
     try {
@@ -137,9 +146,9 @@ export default function AdminBookingsPage() {
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "خطا در لغو نوبت");
     }
-  }
+  }, [refresh]);
 
-  const columns = useMemo(() => getBookingColumns({ onCancel: handleCancel }), []);
+  const columns = useMemo(() => getBookingColumns({ onCancel: handleCancel }), [handleCancel]);
 
   if (isLoading) {
     return <div className="p-8 text-center text-sm text-muted-foreground">در حال دریافت نوبت‌ها...</div>;
@@ -204,11 +213,11 @@ export default function AdminBookingsPage() {
                 placeholder="جستجو با نام یا شماره مشتری..."
                 className="pr-9"
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
               />
             </div>
 
-            <Select value={barberFilter} onValueChange={setBarberFilter}>
+            <Select value={barberFilter} onValueChange={(value) => { setBarberFilter(value); setPage(1); }}>
               <SelectTrigger className="sm:w-48">
                 <SelectValue placeholder="آرایشگر" />
               </SelectTrigger>
@@ -222,7 +231,7 @@ export default function AdminBookingsPage() {
               </SelectContent>
             </Select>
 
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <Select value={statusFilter} onValueChange={(value) => { setStatusFilter(value as BookingStatus | "all"); setPage(1); }}>
               <SelectTrigger className="sm:w-40">
                 <SelectValue placeholder="وضعیت" />
               </SelectTrigger>
@@ -237,7 +246,8 @@ export default function AdminBookingsPage() {
             </Select>
           </div>
 
-          <DataTable columns={columns} data={filtered} emptyMessage="نوبتی با این فیلترها پیدا نشد" />
+          <DataTable columns={columns} data={bookings} emptyMessage="نوبتی با این فیلترها پیدا نشد" />
+          <BookingPagination page={page} totalPages={totalPages} total={total} onPageChange={setPage} />
         </CardContent>
       </Card>
     </main>

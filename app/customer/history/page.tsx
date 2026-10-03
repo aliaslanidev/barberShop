@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { BookingCard } from "@/components/customer/booking-card";
+import { BookingPagination } from "@/components/booking-pagination";
 import {
   listBookingsApi,
   createRatingApi,
@@ -12,23 +13,33 @@ import {
 } from "@/lib/api";
 import { getAuthToken } from "@/lib/data/mock-session";
 
+const PAGE_SIZE = 20;
+
 export default function CustomerHistoryPage() {
   const [history, setHistory] = useState<ApiBooking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
 
   useEffect(() => {
     const token = getAuthToken();
     if (!token) return;
-    listBookingsApi(token)
-      .then((all) => {
-        const filtered = all
-          .filter((b) => b.status === "COMPLETED" || b.status === "CANCELLED")
-          .sort((a, b) => (a.date + a.time < b.date + b.time ? 1 : -1));
-        setHistory(filtered);
+    listBookingsApi(token, {
+      statuses: ["COMPLETED", "CANCELLED"],
+      page,
+      pageSize: PAGE_SIZE,
+      sort: "desc",
+    })
+      .then((result) => {
+        setHistory(result.items);
+        setTotal(result.total);
+        setTotalPages(result.totalPages);
+        if (result.page !== page) setPage(result.page);
       })
       .catch((err) => toast.error(err instanceof ApiError ? err.message : "خطا در دریافت تاریخچه"))
       .finally(() => setIsLoading(false));
-  }, []);
+  }, [page]);
 
   // ثبت امتیاز. اگه خطا بده، پیام رو نشون می‌دیم و دوباره throw می‌کنیم تا
   // BookingCard بدونه ثبت انجام نشده و فرم رو باز نگه داره.
@@ -73,6 +84,7 @@ export default function CustomerHistoryPage() {
           ))}
         </div>
       )}
+      <BookingPagination page={page} totalPages={totalPages} total={total} onPageChange={setPage} />
     </div>
   );
 }

@@ -6,24 +6,32 @@ import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { BookingCard } from "@/components/customer/booking-card";
+import { BookingPagination } from "@/components/booking-pagination";
 import { listBookingsApi, updateBookingStatusApi, ApiError, type ApiBooking } from "@/lib/api";
 import { getAuthToken } from "@/lib/data/mock-session";
+
+const PAGE_SIZE = 20;
 
 export default function CustomerBookingsPage() {
   const [items, setItems] = useState<ApiBooking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
 
   async function refresh() {
     const token = getAuthToken();
     if (!token) return;
     try {
-      const data = await listBookingsApi(token);
-      // نوبت‌های فعال: تاییدشده + در حال انجام. (انجام‌شده/لغوشده تو «تاریخچه» هستن.)
-      // قبلاً فقط CONFIRMED می‌اومد و نوبتِ «در حال انجام» نه اینجا دیده می‌شد نه تو تاریخچه.
-      const active = data
-        .filter((b) => b.status === "CONFIRMED" || b.status === "IN_PROGRESS")
-        .sort((a, b) => (a.date.slice(0, 10) + a.time < b.date.slice(0, 10) + b.time ? -1 : 1));
-      setItems(active);
+      const result = await listBookingsApi(token, {
+        statuses: ["CONFIRMED", "IN_PROGRESS"],
+        page,
+        pageSize: PAGE_SIZE,
+      });
+      setItems(result.items);
+      setTotal(result.total);
+      setTotalPages(result.totalPages);
+      if (result.page !== page) setPage(result.page);
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "خطا در دریافت نوبت‌ها");
     } finally {
@@ -32,8 +40,8 @@ export default function CustomerBookingsPage() {
   }
 
   useEffect(() => {
-    refresh();
-  }, []);
+    void refresh();
+  }, [page]);
 
   async function handleCancel(id: string) {
     const token = getAuthToken();
@@ -75,6 +83,7 @@ export default function CustomerBookingsPage() {
           ))}
         </div>
       )}
+      <BookingPagination page={page} totalPages={totalPages} total={total} onPageChange={setPage} />
     </div>
   );
 }
