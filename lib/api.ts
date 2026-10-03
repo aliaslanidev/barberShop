@@ -783,30 +783,6 @@ export function markAllNotificationsReadApi(token: string) {
   });
 }
 
-export interface PushSubscriptionJSON {
-  endpoint: string;
-  keys: { p256dh: string; auth: string };
-}
-
-export function subscribePushApi(
-  subscription: PushSubscriptionJSON,
-  token: string,
-) {
-  return apiFetch<{ ok: true }>("/notifications/subscribe", {
-    method: "POST",
-    body: subscription,
-    token,
-  });
-}
-
-export function unsubscribePushApi(endpoint: string, token: string) {
-  return apiFetch<{ ok: true }>("/notifications/subscribe", {
-    method: "DELETE",
-    body: { endpoint },
-    token,
-  });
-}
-
 // ==================== Settings (اطلاعات سالن + ساعات کاری + رمز ادمین) ====================
 
 export interface ApiSalonSettings {

@@ -10,6 +10,7 @@ import {
   Plus,
   Search,
   ShieldAlert,
+  SlidersHorizontal,
   Trash2,
   Users,
   X,
@@ -20,7 +21,6 @@ import {
   createBarberApi,
   updateBarberApi,
   updateBarberPermissionsApi,
-  deleteBarberApi,
   listServices,
   getBarberFutureBookingsApi,
   updateBarberAccountStatusApi,
@@ -52,6 +52,7 @@ import {
   PopoverAnchor,
   PopoverContent,
   PopoverPortal,
+  PopoverTrigger,
 } from "@radix-ui/react-popover";
 
 const OPTIONAL_PERMISSIONS: {
@@ -117,6 +118,10 @@ export default function AdminBarbersPage() {
   const [services, setServices] = useState<ApiService[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedBarberId, setSelectedBarberId] = useState<string | null>(null);
+  const [barberStatusFilter, setBarberStatusFilter] = useState<
+    "active" | "inactive" | "all"
+  >("active");
+  const [statusFilterOpen, setStatusFilterOpen] = useState(false);
   const [comboOpen, setComboOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isTyping, setIsTyping] = useState(false);
@@ -137,11 +142,6 @@ export default function AdminBarbersPage() {
   const [futureBookings, setFutureBookings] = useState<ApiFutureBooking[]>([]);
   const [futureBookingsBarber, setFutureBookingsBarber] =
     useState<ApiBarber | null>(null);
-
-  // مودال دلیل غیرفعال‌سازی (جایگزین window.prompt)
-  const [reasonModalOpen, setReasonModalOpen] = useState(false);
-  const [reasonBarber, setReasonBarber] = useState<ApiBarber | null>(null);
-  const [reasonValue, setReasonValue] = useState("");
 
   const selectedBarber = barbers.find((b) => b.id === selectedBarberId) ?? null;
 
@@ -204,9 +204,26 @@ export default function AdminBarbersPage() {
       selectedBarber.services.map((s) => s.serviceId),
     );
 
+  const statusFilteredBarbers = barbers.filter((barber) => {
+    if (barberStatusFilter === "all") return true;
+    return barber.user.isActive === (barberStatusFilter === "active");
+  });
   const visibleBarbers = isTyping
-    ? barbers.filter((b) => b.user.name.includes(searchQuery.trim()))
-    : barbers;
+    ? statusFilteredBarbers.filter((barber) =>
+        barber.user.name.includes(searchQuery.trim()),
+      )
+    : statusFilteredBarbers;
+
+  function handleBarberStatusFilterChange(
+    filter: "active" | "inactive" | "all",
+  ) {
+    setBarberStatusFilter(filter);
+    setStatusFilterOpen(false);
+    setSelectedBarberId(null);
+    setSearchQuery("");
+    setIsTyping(false);
+    setComboOpen(false);
+  }
 
   useEffect(() => {
     if (!comboOpen) {
@@ -396,24 +413,6 @@ export default function AdminBarbersPage() {
     }
   }
 
-  async function handleDelete(barberId: string, name: string) {
-    if (!isAdmin) return;
-    const confirmed = window.confirm(
-      `آرایشگر «${name}» حذف شود؟ این عمل قابل بازگشت نیست.`,
-    );
-    if (!confirmed) return;
-    const token = getAuthToken();
-    if (!token) return;
-    try {
-      await deleteBarberApi(barberId, token);
-      await refresh();
-      if (selectedBarberId === barberId) setSelectedBarberId(null);
-      toast.success("آرایشگر حذف شد");
-    } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "خطا در حذف آرایشگر");
-    }
-  }
-
   // ==================== «دسترسی به حساب» (فاز تکمیلی ۱.۲) ====================
 
   async function handleAccountAccessChange(
@@ -435,6 +434,7 @@ export default function AdminBarbersPage() {
           token,
         );
         await refresh();
+        setBarberStatusFilter("active");
         toast.success("دسترسی آرایشگر به حساب فعال شد");
       } catch (err) {
         toast.error(
@@ -451,10 +451,19 @@ export default function AdminBarbersPage() {
     try {
       const future = await getBarberFutureBookingsApi(barber.id, token);
       if (future.length === 0) {
-        // نوبت آینده‌ای نداره → مودال دلیل (اختیاری) رو باز کن
-        setReasonBarber(barber);
-        setReasonValue("");
-        setReasonModalOpen(true);
+        setIsSubmittingAccountStatus(true);
+        try {
+          await updateBarberAccountStatusApi(
+            barber.id,
+            { isActive: false },
+            token,
+          );
+          await refresh();
+          setBarberStatusFilter("inactive");
+          toast.success("دسترسی آرایشگر غیرفعال شد و رزرو جدید بسته شد");
+        } finally {
+          setIsSubmittingAccountStatus(false);
+        }
       } else {
         setFutureBookings(future);
         setFutureBookingsBarber(barber);
@@ -466,32 +475,6 @@ export default function AdminBarbersPage() {
       );
     } finally {
       setIsCheckingFutureBookings(false);
-    }
-  }
-
-  // تایید نهایی غیرفعال‌سازی از داخل مودال دلیل (وقتی نوبت آینده‌ای وجود نداره)
-  async function handleConfirmDeactivateNoBookings() {
-    if (!reasonBarber) return;
-    const token = getAuthToken();
-    if (!token) return;
-    setIsSubmittingAccountStatus(true);
-    try {
-      await updateBarberAccountStatusApi(
-        reasonBarber.id,
-        { isActive: false, reason: reasonValue.trim() || undefined },
-        token,
-      );
-      await refresh();
-      toast.success("دسترسی آرایشگر به حساب غیرفعال شد");
-      setReasonModalOpen(false);
-      setReasonBarber(null);
-      setReasonValue("");
-    } catch (err) {
-      toast.error(
-        err instanceof ApiError ? err.message : "خطا در غیرفعال‌سازی حساب",
-      );
-    } finally {
-      setIsSubmittingAccountStatus(false);
     }
   }
 
@@ -507,6 +490,7 @@ export default function AdminBarbersPage() {
         token,
       );
       await refresh();
+      setBarberStatusFilter("inactive");
       toast.success("حساب غیرفعال شد؛ نوبت‌های موجود دست‌نخورده ماندند");
       setFutureBookingsModalOpen(false);
     } catch (err) {
@@ -524,15 +508,20 @@ export default function AdminBarbersPage() {
     if (!token) return;
     setIsSubmittingAccountStatus(true);
     try {
+      const bookingCount = futureBookings.length;
       await updateBarberAccountStatusApi(
         futureBookingsBarber.id,
         { isActive: false, cancelFutureBookings: true },
         token,
       );
       await refresh();
-      toast.success("حساب غیرفعال شد و نوبت‌ها لغو و به مشتریان اطلاع داده شد");
+      setBarberStatusFilter("inactive");
+      toast.success(
+        `${toPersianCount(bookingCount)} نوبت لغو شد و به مشتریان اطلاع داده شد`,
+      );
       setFutureBookingsModalOpen(false);
     } catch (err) {
+      await refresh();
       toast.error(
         err instanceof ApiError ? err.message : "خطا در غیرفعال‌سازی حساب",
       );
@@ -562,6 +551,66 @@ export default function AdminBarbersPage() {
         </div>
 
         <div className="flex items-center gap-2">
+          <Popover open={statusFilterOpen} onOpenChange={setStatusFilterOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                aria-label={`فیلتر آرایشگرها: ${barberStatusFilter === "active" ? "فعال" : barberStatusFilter === "inactive" ? "غیرفعال" : "همه"}`}
+                title={`فیلتر آرایشگرها: ${barberStatusFilter === "active" ? "فعال" : barberStatusFilter === "inactive" ? "غیرفعال" : "همه"}`}
+                className={cn(
+                  "h-9 w-9 shrink-0 border-primary/40 bg-primary/5 p-0 text-primary hover:bg-primary/10 hover:text-primary",
+                  barberStatusFilter !== "active" &&
+                    "border-primary/60 bg-primary/15 hover:bg-primary/20",
+                )}
+              >
+                <SlidersHorizontal className="h-4 w-4" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverPortal>
+              <PopoverContent
+                dir="rtl"
+                align="end"
+                sideOffset={4}
+                className="z-50 w-44 rounded-md border border-border bg-background p-1 text-foreground shadow-lg"
+              >
+                {([
+                  ["active", "فعال", barbers.filter((barber) => barber.user.isActive).length],
+                  ["inactive", "غیرفعال", barbers.filter((barber) => !barber.user.isActive).length],
+                  ["all", "همه", barbers.length],
+                ] as const).map(([filter, label, count]) => (
+                  <button
+                    key={filter}
+                    type="button"
+                    aria-pressed={barberStatusFilter === filter}
+                    onClick={() => handleBarberStatusFilterChange(filter)}
+                    className={cn(
+                      "flex w-full items-center justify-between rounded-sm px-3 py-2 text-right text-sm transition-colors hover:bg-secondary",
+                      filter === "active" &&
+                        (barberStatusFilter === filter
+                          ? "bg-primary/10 font-medium text-primary"
+                          : "text-primary"),
+                      filter === "inactive" &&
+                        (barberStatusFilter === filter
+                          ? "bg-red-400/10 font-medium text-red-400"
+                          : "text-red-400"),
+                      filter === "all" &&
+                        (barberStatusFilter === filter
+                          ? "bg-secondary font-medium text-foreground"
+                          : "text-muted-foreground"),
+                    )}
+                  >
+                    <span>{label}</span>
+                    <span className="text-xs opacity-80">
+                      {toPersianCount(count)}
+                    </span>
+                  </button>
+                ))}
+              </PopoverContent>
+            </PopoverPortal>
+          </Popover>
+
           <Popover open={comboOpen} onOpenChange={setComboOpen}>
             <PopoverAnchor asChild>
               <div className="relative w-full sm:w-72">
@@ -602,7 +651,11 @@ export default function AdminBarbersPage() {
                 <div className="max-h-64 overflow-y-auto">
                   {visibleBarbers.length === 0 ? (
                     <p className="px-3 py-6 text-center text-sm text-muted-foreground">
-                      آرایشگری یافت نشد
+                      {isTyping
+                        ? "آرایشگری با این نام یافت نشد"
+                        : barberStatusFilter === "inactive"
+                          ? "آرایشگر غیرفعالی وجود ندارد"
+                          : "آرایشگر فعالی وجود ندارد"}
                     </p>
                   ) : (
                     visibleBarbers.map((barber) => (
@@ -732,6 +785,7 @@ export default function AdminBarbersPage() {
                       <Button
                         type="button"
                         variant="ghost"
+                        className="h-10 w-10 p-0"
                         aria-label="ویرایش آرایشگر"
                       >
                         <Pencil className="h-4 w-4" />
@@ -804,11 +858,12 @@ export default function AdminBarbersPage() {
                   <Button
                     type="button"
                     variant="ghost"
-                    className="text-destructive hover:text-destructive"
+                    className="h-10 w-10 p-0 text-red-400 hover:bg-red-500/10 hover:text-red-300 focus-visible:ring-red-500"
                     onClick={() =>
-                      handleDelete(selectedBarber.id, selectedBarber.user.name)
+                      handleAccountAccessChange(selectedBarber, false)
                     }
-                    aria-label="حذف آرایشگر"
+                    aria-label="غیرفعال‌سازی آرایشگر"
+                    title="غیرفعال‌سازی آرایشگر"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -989,14 +1044,14 @@ export default function AdminBarbersPage() {
       >
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>
-              {futureBookingsBarber?.user.name} نوبت‌های آینده دارد
-            </DialogTitle>
+            <DialogTitle>غیرفعال‌سازی آرایشگر</DialogTitle>
           </DialogHeader>
 
           <p className="text-sm text-muted-foreground">
-            این آرایشگر {toPersianCount(futureBookings.length)} نوبت تاییدشده‌ی
-            آینده دارد. می‌خواهید با این نوبت‌ها چه کنیم؟
+            برای «{futureBookingsBarber?.user.name}»{" "}
+            {toPersianCount(futureBookings.length)} نوبت تاییدشده‌ی آینده ثبت شده.
+            آرایشگر از فهرست رزرو جدید حذف می‌شود و سوابق قبلی حفظ می‌شوند؛ انتخاب
+            کن با نوبت‌های ثبت‌شده چه شود.
           </p>
 
           <div className="max-h-56 overflow-y-auto rounded-lg border border-border">
@@ -1023,66 +1078,44 @@ export default function AdminBarbersPage() {
             <Button
               type="button"
               variant="outline"
-              className="w-full"
+              className="h-auto w-full flex-col items-start gap-1 whitespace-normal py-3 text-right"
               disabled={isSubmittingAccountStatus}
               onClick={handleDeactivateKeepBookings}
             >
-              فقط جلوی رزرو جدید گرفته بشود (نوبت‌های موجود دست‌نخورده)
+              <span className="font-semibold">غیرفعال‌سازی و حفظ نوبت‌ها</span>
+              <span className="text-xs font-normal text-muted-foreground">
+                رزروهای فعلی برقرار می‌مانند؛ فقط رزرو جدید و ورود آرایشگر بسته می‌شود.
+              </span>
             </Button>
             <Button
               type="button"
               variant="destructive"
-              className="w-full"
+              className="h-auto w-full flex-col items-start gap-1 whitespace-normal py-3 text-right"
               disabled={isSubmittingAccountStatus}
               onClick={handleDeactivateCancelBookings}
             >
-              {isSubmittingAccountStatus
-                ? "در حال ثبت..."
-                : "نوبت‌ها لغو شوند و به مشتری اطلاع داده شود"}
+              <span className="font-semibold">
+                {isSubmittingAccountStatus
+                  ? "در حال ثبت..."
+                  : "لغو نوبت‌ها و اطلاع به مشتریان"}
+              </span>
+              <span className="text-xs font-normal text-white/80">
+                همه‌ی نوبت‌های آینده لغو می‌شوند و برای مشتریان اعلان ارسال می‌شود.
+              </span>
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* مودال دلیل غیرفعال‌سازی — جایگزین window.prompt، فقط وقتی نوبت آینده‌ای وجود نداره */}
-      <Dialog open={reasonModalOpen} onOpenChange={setReasonModalOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              دلیل غیرفعال‌کردن حساب «{reasonBarber?.user.name}» (اختیاری)
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="deactivate-reason">دلیل</Label>
-            <Input
-              id="deactivate-reason"
-              value={reasonValue}
-              onChange={(e) => setReasonValue(e.target.value)}
-              placeholder="مثلاً: درخواست خود آرایشگر"
-              autoFocus
-            />
-          </div>
-
-          <DialogFooter className="gap-2">
             <Button
               type="button"
               variant="ghost"
+              className="w-full"
               disabled={isSubmittingAccountStatus}
-              onClick={() => setReasonModalOpen(false)}
+              onClick={() => setFutureBookingsModalOpen(false)}
             >
               انصراف
-            </Button>
-            <Button
-              type="button"
-              onClick={handleConfirmDeactivateNoBookings}
-              disabled={isSubmittingAccountStatus}
-            >
-              {isSubmittingAccountStatus ? "در حال ثبت..." : "غیرفعال کن"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
     </div>
   );
 }

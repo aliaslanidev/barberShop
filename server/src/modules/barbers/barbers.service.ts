@@ -9,7 +9,7 @@ import type {
   UpdatePermissionsInput,
   UpdateBarberAccountStatusInput,
 } from "@/modules/barbers/barbers.schema";
-import type { Role, Weekday } from "@prisma/client";
+import { Prisma, type Role, type Weekday } from "@prisma/client";
 import {
   getRatingSummaries,
   EMPTY_RATING_SUMMARY,
@@ -118,8 +118,33 @@ export async function updateBarberPermissions(id: string, input: UpdatePermissio
 }
 
 export async function deleteBarber(id: string) {
-  const barber = await getBarberById(id);
-  await prisma.user.delete({ where: { id: barber.user.id } });
+  const barber = await prisma.barberProfile.findUnique({
+    where: { id },
+    select: { userId: true },
+  });
+  if (!barber) throw new AppError("آرایشگر پیدا نشد", 404);
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      const bookingCount = await tx.booking.count({ where: { barberId: id } });
+      if (bookingCount > 0) {
+        throw new AppError(
+          `این آرایشگر ${bookingCount.toLocaleString("fa-IR")} نوبت در تاریخچه دارد؛ برای حفظ سوابق، حذف واقعی ممکن نیست. از سوییچ «دسترسی به حساب» برای غیرفعال‌کردن حساب استفاده کنید.`,
+          409,
+        );
+      }
+
+      await tx.user.delete({ where: { id: barber.userId } });
+    });
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2003") {
+      throw new AppError(
+        "این آرایشگر سابقه‌ی مرتبط دارد و برای حفظ اطلاعات، حذف واقعی ممکن نیست. از سوییچ «دسترسی به حساب» برای غیرفعال‌کردن حساب استفاده کنید.",
+        409,
+      );
+    }
+    throw err;
+  }
 }
 
 async function getOwnBarberServiceOrThrow(userId: string, serviceId: string) {
@@ -197,12 +222,19 @@ export async function updateOwnWorkingDays(userId: string, workingDays: Weekday[
 export async function getFutureConfirmedBookings(barberId: string) {
   await getBarberById(barberId);
 
+  return findFutureConfirmedBookings(prisma, barberId);
+}
+
+function findFutureConfirmedBookings(
+  db: Prisma.TransactionClient | typeof prisma,
+  barberId: string
+) {
   const now = new Date();
   const todayStart = new Date(
     Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
   );
 
-  return prisma.booking.findMany({
+  return db.booking.findMany({
     where: { barberId, status: "CONFIRMED", date: { gte: todayStart } },
     include: { customer: true, service: true },
     orderBy: [{ date: "asc" }, { time: "asc" }],
@@ -232,9 +264,19 @@ export async function updateBarberAccountStatus(
     return getBarberById(id);
   }
 
-  const futureBookings = await getFutureConfirmedBookings(id);
+  const futureBookings = await prisma.$transaction(async (tx) => {
+    // Booking creation takes the same row lock, so the list and deactivation
+    // cannot race with a newly confirmed booking.
+    await tx.$queryRaw`SELECT id FROM barber_profiles WHERE id = ${id} FOR UPDATE`;
+    const futureBookings = await findFutureConfirmedBookings(tx, id);
+    if (futureBookings.length > 0 && input.cancelFutureBookings === undefined) {
+      throw new AppError(
+        "این آرایشگر نوبت آینده دارد؛ فهرست نوبت‌ها را دوباره بررسی و یکی از گزینه‌های غیرفعال‌سازی را انتخاب کنید.",
+        409
+      );
+    }
+    const bookingsToCancel = input.cancelFutureBookings ? futureBookings : [];
 
-  await prisma.$transaction(async (tx) => {
     await tx.user.update({
       where: { id: barber.user.id },
       data: {
@@ -248,7 +290,7 @@ export async function updateBarberAccountStatus(
     await tx.barberProfile.update({ where: { id }, data: { isActive: false } });
 
     if (input.cancelFutureBookings) {
-      for (const booking of futureBookings) {
+      for (const booking of bookingsToCancel) {
         await tx.booking.update({ where: { id: booking.id }, data: { status: "CANCELLED" } });
         await tx.cancellation.create({
           data: {
@@ -260,16 +302,33 @@ export async function updateBarberAccountStatus(
         });
       }
     }
+
+    return bookingsToCancel;
   });
 
   if (input.cancelFutureBookings) {
-    for (const booking of futureBookings) {
+    const notifications = await Promise.allSettled(futureBookings.map((booking) =>
       notifyUser(booking.customerId, {
         type: "BOOKING_STATUS_CHANGED",
         title: "لغو نوبت",
         body: `نوبت شما برای ${formatPersianDate(booking.date)} ساعت ${toPersianDigits(booking.time)} به دلیل در دسترس نبودن آرایشگر لغو شد`,
         link: "/customer/bookings",
-      }).catch(() => {});
+      })
+    ));
+    const failedNotifications = notifications
+      .map((result, index) => ({ result, booking: futureBookings[index] }))
+      .filter(({ result }) => result.status === "rejected");
+
+    if (failedNotifications.length > 0) {
+      for (const { result, booking } of failedNotifications) {
+        if (result.status === "rejected") {
+          console.error("خطا در ثبت اعلان لغو نوبت", booking.id, result.reason);
+        }
+      }
+      throw new AppError(
+        `حساب غیرفعال و نوبت‌ها لغو شدند، اما ثبت اعلان برای ${failedNotifications.length.toLocaleString("fa-IR")} مشتری ناموفق بود.`,
+        500
+      );
     }
   }
 

@@ -72,6 +72,10 @@
     font-family: var(--font-yekan-bakh), Tahoma, sans-serif;
   }
 
+  body[data-scroll-locked] .role-bottom-nav {
+    right: var(--removed-body-scroll-bar-size, 0px);
+  }
+
   ::selection {
     background: hsl(var(--primary) / 0.3);
     color: hsl(var(--foreground));
@@ -144,34 +148,16 @@
   }
 }
 
-/* ========================================
-   Custom Scrollbar
-======================================== */
-
 @layer base {
-  ::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
+  * {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
   }
 
-  ::-webkit-scrollbar-track {
-    background: hsl(60 20% 1%);
-  }
-
-  ::-webkit-scrollbar-thumb {
-    background: hsl(var(--border));
-    border-radius: 9999px;
-  }
-
-  ::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--muted-foreground) / 0.4);
-  }
-
-  html {
-    scrollbar-width: thin;
-    scrollbar-color:
-      hsl(var(--border))
-      hsl(60 20% 1%);
+  *::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
   }
 }
 

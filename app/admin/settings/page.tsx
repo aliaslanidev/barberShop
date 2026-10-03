@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Eye, EyeOff } from "lucide-react";
+import { ChevronDown, ChevronUp, Eye, EyeOff } from "lucide-react";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { toPersianDigits } from "@/lib/utils";
 
 import { getAuthToken } from "@/lib/data/mock-session";
 import { getCurrentAdmin } from "@/lib/data/admin-session";
@@ -43,13 +44,24 @@ export default function AdminSettingsPage() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [isSavingSalon, setIsSavingSalon] = useState(false);
-  const [savingDay, setSavingDay] = useState<ApiWeekday | null>(null);
+  const [isSavingHours, setIsSavingHours] = useState(false);
 
   // --- اطلاعات سالن ---
   const [salon, setSalon] = useState<ApiSalonSettings>({ name: "", address: "", phone: "" });
 
   // --- ساعات کاری ---
   const [hours, setHours] = useState<ApiWorkingHours[]>([]);
+  const [savedHours, setSavedHours] = useState<ApiWorkingHours[]>([]);
+  const [expandedWorkingDay, setExpandedWorkingDay] = useState<ApiWeekday | null>(null);
+  const hasUnsavedHours = hours.some((hour) => {
+    const savedHour = savedHours.find((saved) => saved.day === hour.day);
+    return (
+      !savedHour ||
+      hour.isOpen !== savedHour.isOpen ||
+      hour.openTime !== savedHour.openTime ||
+      hour.closeTime !== savedHour.closeTime
+    );
+  });
 
   useEffect(() => {
     if (!isAdmin) {
@@ -60,6 +72,7 @@ export default function AdminSettingsPage() {
       .then((data) => {
         setSalon(data.salon);
         setHours(data.workingHours);
+        setSavedHours(data.workingHours);
       })
       .catch((err) => {
         toast.error(err instanceof ApiError ? err.message : "خطا در دریافت تنظیمات");
@@ -83,23 +96,59 @@ export default function AdminSettingsPage() {
     }
   }
 
-  // هر تغییر (روشن/خاموش یا ساعت) بلافاصله ذخیره می‌شه — نیازی به دکمه‌ی
-  // «ذخیره» جدا نیست، چون endpoint به‌ازای هر روز جداگانه‌ست
-  async function handleHourChange(
+  function handleHourChange(
     day: ApiWeekday,
     data: Partial<{ isOpen: boolean; openTime: string; closeTime: string }>,
   ) {
+    setHours((prev) =>
+      prev.map((hour) => (hour.day === day ? { ...hour, ...data } : hour)),
+    );
+  }
+
+  async function handleSaveWorkingHours() {
     const token = getAuthToken();
-    if (!token) return;
-    setSavingDay(day);
-    try {
-      const updated = await updateWorkingHoursApi(day, data, token);
-      setHours((prev) => prev.map((h) => (h.day === day ? updated : h)));
-    } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "خطا در ذخیره‌ی ساعت کاری");
-    } finally {
-      setSavingDay(null);
+    if (!token) {
+      toast.error("ابتدا وارد حساب کاربری شوید");
+      return;
     }
+
+    const changedHours = hours.filter((hour) => {
+      const savedHour = savedHours.find((saved) => saved.day === hour.day);
+      return (
+        !savedHour ||
+        hour.isOpen !== savedHour.isOpen ||
+        hour.openTime !== savedHour.openTime ||
+        hour.closeTime !== savedHour.closeTime
+      );
+    });
+    if (changedHours.length === 0) return;
+
+    setIsSavingHours(true);
+    try {
+      for (const hour of changedHours) {
+        const updated = await updateWorkingHoursApi(
+          hour.day,
+          {
+            isOpen: hour.isOpen,
+            openTime: hour.openTime,
+            closeTime: hour.closeTime,
+          },
+          token,
+        );
+        setSavedHours((prev) =>
+          prev.map((saved) => (saved.day === updated.day ? updated : saved)),
+        );
+      }
+      toast.success("ساعات کاری با موفقیت ثبت شد");
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "خطا در ثبت ساعات کاری");
+    } finally {
+      setIsSavingHours(false);
+    }
+  }
+
+  function handleCancelWorkingHours() {
+    setHours(savedHours);
   }
 
   // --- تغییر رمز ادمین ---
@@ -200,7 +249,7 @@ export default function AdminSettingsPage() {
             </div>
           </div>
 
-          <Button onClick={handleSaveSalon} disabled={isSavingSalon} className="self-start">
+          <Button onClick={handleSaveSalon} disabled={isSavingSalon} className="w-full">
             {isSavingSalon ? "..." : "ذخیره اطلاعات سالن"}
           </Button>
         </CardContent>
@@ -210,52 +259,120 @@ export default function AdminSettingsPage() {
         <Card>
           <CardContent className="flex flex-col gap-4 p-4">
             <h2 className="font-semibold">ساعات کاری</h2>
-            <p className="text-xs text-muted-foreground">هر تغییر بلافاصله ذخیره می‌شود.</p>
+            <p className="text-xs text-muted-foreground">
+              تغییرات تا زمان ثبت، ذخیره نمی‌شوند.
+            </p>
 
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2">
               {hours.map((h) => (
-                <div
-                  key={h.day}
-                  className="flex flex-wrap items-center gap-3 rounded-lg border border-border px-3 py-2"
-                >
-                  <span className="w-16 shrink-0 text-sm font-medium">
-                    {WEEKDAY_LABELS[h.day]}
-                  </span>
-
-                  <div className="flex items-center gap-2">
+                <div key={h.day} className="rounded-lg border border-border px-3">
+                  <div className="flex min-h-14 items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      className="flex min-h-14 min-w-0 flex-1 items-center justify-between gap-3 text-right"
+                      aria-expanded={expandedWorkingDay === h.day}
+                      aria-controls={`working-hours-${h.day}`}
+                      onClick={() =>
+                        setExpandedWorkingDay((current) =>
+                          current === h.day ? null : h.day,
+                        )
+                      }
+                    >
+                      <span className="shrink-0 text-sm font-medium">
+                        {WEEKDAY_LABELS[h.day]}
+                      </span>
+                      <span className="flex min-w-0 items-center gap-2">
+                        <span
+                          className="min-w-0 whitespace-nowrap text-xs text-muted-foreground"
+                          dir="rtl"
+                        >
+                          {h.isOpen ? (
+                            <>
+                              <bdi dir="ltr">{toPersianDigits(h.openTime)}</bdi>
+                              {" تا "}
+                              <bdi dir="ltr">{toPersianDigits(h.closeTime)}</bdi>
+                            </>
+                          ) : (
+                            "تعطیل"
+                          )}
+                        </span>
+                        {expandedWorkingDay === h.day ? (
+                          <ChevronUp className="h-4 w-4" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4" />
+                        )}
+                      </span>
+                    </button>
                     <Switch
                       checked={h.isOpen}
-                      disabled={savingDay === h.day}
-                      onCheckedChange={(checked) => handleHourChange(h.day, { isOpen: checked })}
+                      disabled={isSavingHours}
+                      onCheckedChange={(checked) => {
+                        if (checked) setExpandedWorkingDay(h.day);
+                        else if (expandedWorkingDay === h.day) setExpandedWorkingDay(null);
+                        handleHourChange(h.day, { isOpen: checked });
+                      }}
+                      aria-label={`وضعیت ${WEEKDAY_LABELS[h.day]}`}
                     />
-                    <span className="text-sm text-muted-foreground">
-                      {h.isOpen ? "باز" : "تعطیل"}
-                    </span>
                   </div>
 
-                  {h.isOpen && (
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="time"
-                        dir="ltr"
-                        className="w-28"
-                        value={h.openTime}
-                        disabled={savingDay === h.day}
-                        onChange={(e) => handleHourChange(h.day, { openTime: e.target.value })}
-                      />
-                      <span className="text-sm text-muted-foreground">تا</span>
-                      <Input
-                        type="time"
-                        dir="ltr"
-                        className="w-28"
-                        value={h.closeTime}
-                        disabled={savingDay === h.day}
-                        onChange={(e) => handleHourChange(h.day, { closeTime: e.target.value })}
-                      />
+                  {expandedWorkingDay === h.day && (
+                    <div id={`working-hours-${h.day}`} className="border-t border-border py-3">
+                      {h.isOpen ? (
+                        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+                          <div className="flex flex-col gap-1.5">
+                            <Label htmlFor={`opening-${h.day}`} className="text-xs text-muted-foreground">
+                              شروع
+                            </Label>
+                            <Input
+                              id={`opening-${h.day}`}
+                              type="time"
+                              dir="ltr"
+                              value={h.openTime}
+                              disabled={isSavingHours}
+                              onChange={(e) => handleHourChange(h.day, { openTime: e.target.value })}
+                            />
+                          </div>
+                          <span className="pt-5 text-xs text-muted-foreground">تا</span>
+                          <div className="flex flex-col gap-1.5">
+                            <Label htmlFor={`closing-${h.day}`} className="text-xs text-muted-foreground">
+                              پایان
+                            </Label>
+                            <Input
+                              id={`closing-${h.day}`}
+                              type="time"
+                              dir="ltr"
+                              value={h.closeTime}
+                              disabled={isSavingHours}
+                              onChange={(e) => handleHourChange(h.day, { closeTime: e.target.value })}
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">
+                          این روز تعطیل است؛ برای ثبت ساعت کاری، آن را با کلید وضعیت باز کنید.
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>
               ))}
+            </div>
+            <div className="flex flex-wrap justify-end gap-2 border-t border-border pt-3">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={handleCancelWorkingHours}
+                disabled={!hasUnsavedHours || isSavingHours}
+              >
+                انصراف
+              </Button>
+              <Button
+                type="button"
+                onClick={handleSaveWorkingHours}
+                disabled={!hasUnsavedHours || isSavingHours}
+              >
+                {isSavingHours ? "در حال ثبت..." : "ثبت تغییرات"}
+              </Button>
             </div>
           </CardContent>
         </Card>

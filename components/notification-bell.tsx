@@ -10,7 +10,6 @@ import {
   markAllNotificationsReadApi,
   type ApiNotification,
 } from "@/lib/api";
-import { enablePushNotifications, getNotificationPermission } from "@/lib/push-notifications";
 import { getAuthToken } from "@/lib/data/mock-session";
 
 const POLL_INTERVAL_MS = 30000;
@@ -47,15 +46,6 @@ export function NotificationBell() {
     refresh();
     const interval = setInterval(refresh, POLL_INTERVAL_MS);
     return () => clearInterval(interval);
-  }, []);
-
-  // درخواست اجازه‌ی Push فقط یه‌بار، بعد از اولین باری که کاربر لاگین کرده
-  useEffect(() => {
-    const token = getAuthToken();
-    if (!token) return;
-    if (getNotificationPermission() === "default") {
-      enablePushNotifications(token).catch(() => {});
-    }
   }, []);
 
   useEffect(() => {

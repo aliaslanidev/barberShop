@@ -28,7 +28,7 @@ export function ScrollToTopButton() {
       aria-label="بازگشت به بالا"
       className={`
         fixed
-        bottom-6
+        bottom-[calc(4.25rem+env(safe-area-inset-bottom)+1rem)] md:bottom-6
         left-6
         z-50
         flex
@@ -37,13 +37,14 @@ export function ScrollToTopButton() {
         items-center
         justify-center
         rounded-full
-        bg-primary
-        text-[#02100d]
-        shadow-[0_8px_25px_rgba(0,0,0,0.35)]
+        border
+        border-purple
+        bg-purple
+        text-white
+        shadow-lg
         transition-all
         duration-300
-        hover:-translate-y-1
-        hover:shadow-[0_10px_30px_rgba(79,240,174,0.25)]
+        hover:-translate-y-1 hover:brightness-110
         ${isVisible ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-4 opacity-0"}
       `}
     >

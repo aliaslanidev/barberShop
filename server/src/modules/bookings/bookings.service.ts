@@ -345,42 +345,51 @@ export async function createBooking(customerId: string, input: CreateBookingInpu
     throw new AppError("این اسلات زمانی دیگر در دسترس نیست، لطفاً زمان دیگری انتخاب کنید", 409);
   }
 
-  const barberService = await prisma.barberService.findUnique({
-    where: { barberId_serviceId: { barberId: input.barberId, serviceId: input.serviceId } },
-    include: { service: true },
-  });
-  if (!barberService || !barberService.isActive) {
-    throw new AppError("این سرویس در حال حاضر توسط این آرایشگر ارائه نمی‌شود", 400);
-  }
+  const booking = await prisma.$transaction(async (tx) => {
+    // Deactivation locks this same row before checking/cancelling future
+    // bookings, preventing a booking from slipping in during that decision.
+    await tx.$queryRaw`SELECT id FROM barber_profiles WHERE id = ${input.barberId} FOR UPDATE`;
 
-  // خودِ آرایشگر رو برای خوندنِ وضعیتِ *زنده‌ی* دو پرمیشنِ مالی/خصوصی‌سازی
-  // می‌گیریم — این وضعیت همین الان روی نوبت Snapshot می‌شه (بند ۷.۱).
-  // این تصمیم فقط همین یک‌بار، لحظه‌ی ساخت نوبت گرفته می‌شه؛ تغییر بعدیِ
-  // پرمیشن آرایشگر هیچ اثری روی نوبت‌های قبلاً ثبت‌شده نداره.
-  const barberProfile = await prisma.barberProfile.findUnique({
-    where: { id: input.barberId },
-    select: { managePricing: true, exclusiveCustomers: true },
-  });
-  if (!barberProfile) {
-    throw new AppError("آرایشگر پیدا نشد", 404);
-  }
+    const barberProfile = await tx.barberProfile.findUnique({
+      where: { id: input.barberId },
+      select: {
+        isActive: true,
+        user: { select: { isActive: true } },
+        managePricing: true,
+        exclusiveCustomers: true,
+      },
+    });
+    if (!barberProfile) {
+      throw new AppError("آرایشگر پیدا نشد", 404);
+    }
+    if (!barberProfile.isActive || !barberProfile.user.isActive) {
+      throw new AppError("این آرایشگر در حال حاضر نوبت جدید نمی‌پذیرد", 409);
+    }
 
-  const booking = await prisma.booking.create({
-    data: {
-      customerId,
-      barberId: input.barberId,
-      serviceId: input.serviceId,
-      date: parseDateOnly(input.date),
-      time: input.time,
-      notes: input.notes,
-      // قیمت نهایی همین لحظه ثبت می‌شه؛ تغییر بعدیِقیمت آرایشگر/سرویس روی این نوبت اثری نداره
-      price: barberService.customPrice ?? barberService.service.priceValue,
-      status: "CONFIRMED",
-      // Snapshot دو پرمیشن مالی/خصوصی‌سازی — رجوع کنید به توضیح بالا
-      isBarberOwnRevenue: barberProfile.managePricing,
-      isPrivateCustomer: barberProfile.exclusiveCustomers,
-    },
-    include: bookingIncludes,
+    const barberService = await tx.barberService.findUnique({
+      where: { barberId_serviceId: { barberId: input.barberId, serviceId: input.serviceId } },
+      include: { service: true },
+    });
+    if (!barberService || !barberService.isActive) {
+      throw new AppError("این سرویس در حال حاضر توسط این آرایشگر ارائه نمی‌شود", 400);
+    }
+
+    // Snapshot current financial/privacy permissions at booking creation.
+    return tx.booking.create({
+      data: {
+        customerId,
+        barberId: input.barberId,
+        serviceId: input.serviceId,
+        date: parseDateOnly(input.date),
+        time: input.time,
+        notes: input.notes,
+        price: barberService.customPrice ?? barberService.service.priceValue,
+        status: "CONFIRMED",
+        isBarberOwnRevenue: barberProfile.managePricing,
+        isPrivateCustomer: barberProfile.exclusiveCustomers,
+      },
+      include: bookingIncludes,
+    });
   });
 
   if (ownHoldId) {

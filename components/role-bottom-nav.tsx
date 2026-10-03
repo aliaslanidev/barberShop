@@ -59,7 +59,7 @@ export function RoleBottomNav({ items, maxVisible = 4 }: RoleBottomNavProps) {
                   className={cn(
                     "flex flex-col items-center gap-1 rounded-lg px-2 py-2.5 text-[11px] font-medium transition-colors",
                     isActive
-                      ? "bg-primary text-primary-foreground"
+                      ? "bg-purple text-white"
                       : "text-muted-foreground hover:bg-secondary hover:text-foreground"
                   )}
                 >
@@ -72,7 +72,7 @@ export function RoleBottomNav({ items, maxVisible = 4 }: RoleBottomNavProps) {
         </div>
       )}
 
-      <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card pb-[env(safe-area-inset-bottom)] md:hidden">
+      <nav className="role-bottom-nav fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card pb-[env(safe-area-inset-bottom)] md:hidden">
         <div className="flex gap-1 px-2 py-2">
           {visibleItems.map((item) => {
             const Icon = item.icon;
@@ -85,7 +85,7 @@ export function RoleBottomNav({ items, maxVisible = 4 }: RoleBottomNavProps) {
                 className={cn(
                   "flex flex-1 flex-col items-center gap-1 rounded-lg px-2 py-1.5 text-[11px] font-medium transition-colors",
                   isActive
-                    ? "bg-primary text-primary-foreground"
+                    ? "bg-purple text-white"
                     : "text-muted-foreground hover:bg-secondary hover:text-foreground"
                 )}
               >
@@ -101,10 +101,11 @@ export function RoleBottomNav({ items, maxVisible = 4 }: RoleBottomNavProps) {
               onClick={() => setIsMoreOpen((prev) => !prev)}
               className={cn(
                 "flex flex-1 flex-col items-center gap-1 rounded-lg px-2 py-1.5 text-[11px] font-medium transition-colors",
-                isMoreOpen || isOverflowActive
-                  ? "bg-primary text-primary-foreground"
+                !isMoreOpen && isOverflowActive
+                  ? "bg-purple text-white"
                   : "text-muted-foreground hover:bg-secondary hover:text-foreground"
               )}
+              aria-expanded={isMoreOpen}
             >
               {isMoreOpen ? <X className="h-5 w-5" /> : <MoreHorizontal className="h-5 w-5" />}
               بیشتر

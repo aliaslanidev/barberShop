@@ -69,6 +69,9 @@ export default function AdminManagersPage() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingManager, setEditingManager] = useState<ApiManager | null>(null);
   const [pendingStatusId, setPendingStatusId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ApiManager | null>(null);
+  const [reasonTarget, setReasonTarget] = useState<ApiManager | null>(null);
+  const [deactivationReason, setDeactivationReason] = useState("");
 
   async function refresh() {
     try {
@@ -140,41 +143,59 @@ export default function AdminManagersPage() {
     }
   }
 
-  async function handleDelete(id: string, name: string) {
-    const confirmed = window.confirm(`مدیر سالن «${name}» حذف شود؟ این عمل قابل بازگشت نیست.`);
-    if (!confirmed) return;
+  async function handleConfirmDelete() {
+    if (!deleteTarget) return;
     const token = getAuthToken();
     if (!token) return;
     try {
-      await deleteManagerApi(id, token);
+      await deleteManagerApi(deleteTarget.id, token);
       await refresh();
       toast.success("مدیر سالن حذف شد");
+      setDeleteTarget(null);
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "خطا در حذف مدیر سالن");
     }
   }
 
-  // فاز تکمیلی ۱.۲ — غیرفعال‌سازی کامل حساب به‌جای حذف. مدیر سالن نوبت
-  // نداره، پس برخلاف آرایشگر نیازی به چک نوبت‌های آینده/مودال نیست.
+  // فاز تکمیلی ۱.۲ — غیرفعال‌سازی کامل حساب به‌جای حذف.
   async function handleStatusChange(manager: ApiManager, nextValue: boolean) {
+    if (!nextValue) {
+      setDeactivationReason("");
+      setReasonTarget(manager);
+      return;
+    }
+
     const token = getAuthToken();
     if (!token) return;
 
-    let reason: string | undefined;
-    if (!nextValue) {
-      const input = window.prompt(
-        `دلیل غیرفعال‌کردن حساب «${manager.name}» را وارد کنید (اختیاری):`,
-        "",
-      );
-      if (input === null) return; // انصراف
-      reason = input.trim() || undefined;
-    }
-
     setPendingStatusId(manager.id);
     try {
-      await updateManagerStatusApi(manager.id, { isActive: nextValue, reason }, token);
+      await updateManagerStatusApi(manager.id, { isActive: true }, token);
       await refresh();
-      toast.success(nextValue ? "حساب مدیر سالن فعال شد" : "حساب مدیر سالن غیرفعال شد");
+      toast.success("حساب مدیر سالن فعال شد");
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "خطا در تغییر وضعیت حساب");
+    } finally {
+      setPendingStatusId(null);
+    }
+  }
+
+  async function handleConfirmDeactivate() {
+    if (!reasonTarget) return;
+    const token = getAuthToken();
+    if (!token) return;
+
+    setPendingStatusId(reasonTarget.id);
+    try {
+      await updateManagerStatusApi(
+        reasonTarget.id,
+        { isActive: false, reason: deactivationReason.trim() || undefined },
+        token,
+      );
+      await refresh();
+      toast.success("حساب مدیر سالن غیرفعال شد");
+      setReasonTarget(null);
+      setDeactivationReason("");
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "خطا در تغییر وضعیت حساب");
     } finally {
@@ -354,7 +375,7 @@ export default function AdminManagersPage() {
                       type="button"
                       variant="ghost"
                       className="text-destructive hover:text-destructive"
-                      onClick={() => handleDelete(manager.id, manager.name)}
+                      onClick={() => setDeleteTarget(manager)}
                       aria-label="حذف مدیر سالن"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -389,6 +410,73 @@ export default function AdminManagersPage() {
           ))}
         </div>
       )}
+
+      <Dialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeleteTarget(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>حذف مدیر سالن</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            مدیر سالن «{deleteTarget?.name}» حذف شود؟ این عمل قابل بازگشت نیست.
+          </p>
+          <DialogFooter>
+            <Button type="button" variant="ghost" onClick={() => setDeleteTarget(null)}>
+              انصراف
+            </Button>
+            <Button type="button" variant="destructive" onClick={handleConfirmDelete}>
+              حذف مدیر سالن
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={reasonTarget !== null}
+        onOpenChange={(open) => {
+          if (!open && pendingStatusId === null) setReasonTarget(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>غیرفعال‌کردن حساب مدیر سالن</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            دسترسی «{reasonTarget?.name}» به حساب غیرفعال شود؟
+          </p>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="manager-deactivation-reason">دلیل (اختیاری)</Label>
+            <Input
+              id="manager-deactivation-reason"
+              value={deactivationReason}
+              onChange={(event) => setDeactivationReason(event.target.value)}
+              placeholder="مثلاً: پایان همکاری"
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={pendingStatusId !== null}
+              onClick={() => setReasonTarget(null)}
+            >
+              انصراف
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={pendingStatusId !== null}
+              onClick={handleConfirmDeactivate}
+            >
+              {pendingStatusId === reasonTarget?.id ? "در حال ثبت..." : "غیرفعال کن"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
