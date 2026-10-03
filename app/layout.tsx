@@ -1,9 +1,10 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import { Toaster } from "sonner";
 import { ScrollToTopButton } from "@/components/scroll-to-top-button";
 import { AuthProvider } from "@/lib/auth-context";
 import { WaitlistOfferDialog } from "@/components/waitlist-offer-dialog";
+import { DisableZoom } from "@/components/disable-zoom";
 import "./globals.css";
 
 const yekanBakh = localFont({
@@ -39,8 +40,6 @@ export const metadata: Metadata = {
 
   manifest: "/manifest.json",
 
-  themeColor: "#010100",
-
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
@@ -53,6 +52,15 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
+  themeColor: "#010100",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -61,6 +69,7 @@ export default function RootLayout({
   return (
     <html lang="fa" dir="rtl" className="dark">
       <body className={`${yekanBakh.variable} font-sans antialiased`}>
+        <DisableZoom />
         <AuthProvider>
           {children}
           <WaitlistOfferDialog />

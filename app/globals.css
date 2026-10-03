@@ -50,6 +50,11 @@
   html {
     scroll-behavior: smooth;
     font-family: var(--font-yekan-bakh), Tahoma, sans-serif;
+
+    /* جلوگیری از زوم دابل‌تپ و تغییر خودکار اندازه‌ی متن در iOS */
+    touch-action: manipulation;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
   }
 
   body {
@@ -237,4 +242,19 @@
 
 .rmdp-container {
   width: 100%;
+}
+
+/* ========================================
+   iOS: جلوگیری از زوم خودکار روی فوکوس فیلدها
+   (iOS اگر فونت فیلد کمتر از ۱۶px باشد زوم می‌کند)
+======================================== */
+
+@media (pointer: coarse) {
+  input,
+  select,
+  textarea,
+  .jalali-input,
+  .rmdp-container input {
+    font-size: 16px !important;
+  }
 }
