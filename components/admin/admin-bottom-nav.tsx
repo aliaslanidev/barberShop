@@ -4,6 +4,7 @@ import {
   LayoutDashboard,
   Users,
   UserCog,
+  Contact,
   Scissors,
   CalendarClock,
   CalendarX,
@@ -18,7 +19,8 @@ import { getCurrentAdmin } from "@/lib/data/admin-session";
 // آیتم‌هایی که هم ادمین هم مدیر سالن می‌بینن
 const sharedNavItems: RoleNavItem[] = [
   { label: "داشبورد", href: "/admin/dashboard", icon: LayoutDashboard },
-  { label: "باربرها", href: "/admin/barbers", icon: Users },
+  { label: "آرایشگرها", href: "/admin/barbers", icon: Users },
+  { label: "مشتریان", href: "/admin/customers", icon: Contact },
   { label: "خدمات و قیمت", href: "/admin/services", icon: Scissors },
   { label: "نوبت‌ها", href: "/admin/bookings", icon: CalendarClock },
   { label: "نظرات", href: "/admin/ratings", icon: MessageSquare },

@@ -4,14 +4,20 @@ import { hashPassword } from "@/utils/password";
 import type {
   CreateManagerInput,
   UpdateManagerInput,
+  UpdateManagerStatusInput,
 } from "@/modules/managers/managers.schema";
 
 // passwordHash هیچ‌وقت به فرانت برنمی‌گرده؛ فقط فیلدهای عمومی انتخاب می‌شن.
+// isActive/blockedReason/blockedAt برای فاز تکمیلی ۱.۲ (غیرفعال‌سازی کامل
+// حساب) اضافه شدن.
 const managerSelect = {
   id: true,
   name: true,
   mobile: true,
   role: true,
+  isActive: true,
+  blockedReason: true,
+  blockedAt: true,
   createdAt: true,
 } as const;
 
@@ -65,4 +71,29 @@ export async function updateManager(id: string, input: UpdateManagerInput) {
 export async function deleteManager(id: string) {
   await getManagerById(id);
   await prisma.user.delete({ where: { id } });
+}
+
+// غیرفعال‌سازی کامل حساب مدیر سالن (فاز تکمیلی ۱.۲) — دقیقاً هم‌الگوی
+// updateCustomerStatus تو users.service.ts؛ چون مدیر سالن نوبت نداره،
+// نیازی به چک نوبت‌های آینده نیست.
+export async function updateManagerStatus(id: string, input: UpdateManagerStatusInput) {
+  await getManagerById(id);
+
+  if (input.isActive) {
+    await prisma.user.update({
+      where: { id },
+      data: { isActive: true, blockedReason: null, blockedAt: null },
+    });
+    return getManagerById(id);
+  }
+
+  await prisma.user.update({
+    where: { id },
+    data: {
+      isActive: false,
+      blockedReason: input.reason ?? "توسط ادمین غیرفعال شد",
+      blockedAt: new Date(),
+    },
+  });
+  return getManagerById(id);
 }

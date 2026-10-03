@@ -1,19 +1,33 @@
 import { prisma } from "@/lib/prisma";
 import { AppError } from "@/utils/AppError";
 import { hashPassword } from "@/utils/password";
+import { notifyUser } from "@/modules/notifications/notifications.service";
 import type {
   CreateBarberInput,
   UpdateBarberInput,
   UpdatePermissionsInput,
+  UpdateBarberAccountStatusInput,
 } from "@/modules/barbers/barbers.schema";
-import type { Weekday } from "@prisma/client";
+import type { Role, Weekday } from "@prisma/client";
 import {
   getRatingSummaries,
   EMPTY_RATING_SUMMARY,
 } from "@/modules/ratings/ratings.service";
 
+// user.isActive/blockedReason/blockedAt هم اینجا include می‌شن تا فرانت
+// بتونه وضعیت «دسترسی به حساب» رو (جدا از BarberProfile.isActive که
+// «پذیرش نوبت جدید» رو کنترل می‌کنه) نشون بده.
 const barberInclude = {
-  user: { select: { id: true, name: true, mobile: true } },
+  user: {
+    select: {
+      id: true,
+      name: true,
+      mobile: true,
+      isActive: true,
+      blockedReason: true,
+      blockedAt: true,
+    },
+  },
   services: { include: { service: true } },
 };
 
@@ -158,7 +172,7 @@ export async function updateOwnServiceActive(
 }
 
 // آرایشگر با پرمیشن manageSchedule، روزهای کاری هفتگی خودش رو تعیین می‌کنه.
-// آرایه‌ی خالی یعنی برگرد به پیروی از روزهای بازِ سالن.
+// آرایه‌ی خالی یعنی برگرد به پیروی از روزهای بازسالن.
 export async function updateOwnWorkingDays(userId: string, workingDays: Weekday[]) {
   const barberProfile = await prisma.barberProfile.findUnique({ where: { userId } });
   if (!barberProfile) throw new AppError("پروفایل آرایشگر پیدا نشد", 404);
@@ -173,4 +187,90 @@ export async function updateOwnWorkingDays(userId: string, workingDays: Weekday[
   });
 
   return getBarberById(barberProfile.id);
+}
+
+// ==================== غیرفعال‌سازی کامل حساب آرایشگر (فاز تکمیلی ۱.۲) ====================
+
+// نوبت‌های آینده‌ی تاییدشده‌ی این آرایشگر (امروز به بعد) — برای نمایش تو
+// مودال تایید قبل از غیرفعال‌سازی کامل حساب.
+export async function getFutureConfirmedBookings(barberId: string) {
+  await getBarberById(barberId);
+
+  const now = new Date();
+  const todayStart = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+  );
+
+  return prisma.booking.findMany({
+    where: { barberId, status: "CONFIRMED", date: { gte: todayStart } },
+    include: { customer: true, service: true },
+    orderBy: [{ date: "asc" }, { time: "asc" }],
+  });
+}
+
+interface ActingAdmin {
+  userId: string;
+  role: Role;
+}
+
+export async function updateBarberAccountStatus(
+  id: string,
+  input: UpdateBarberAccountStatusInput,
+  actingAdmin: ActingAdmin
+) {
+  const barber = await getBarberById(id);
+
+  if (input.isActive) {
+    // رفع مسدودیت — فقط دسترسی به حساب برمی‌گرده. BarberProfile.isActive
+    // («پذیرش نوبت جدید») خودکار برنمی‌گرده؛ ادمین جدا تصمیم می‌گیره کِی
+    // نوبت‌گیری رو هم باز کنه (مثلاً بعد از پایان مرخصی طولانی).
+    await prisma.user.update({
+      where: { id: barber.user.id },
+      data: { isActive: true, blockedReason: null, blockedAt: null },
+    });
+    return getBarberById(id);
+  }
+
+  const futureBookings = await getFutureConfirmedBookings(id);
+
+  await prisma.$transaction(async (tx) => {
+    await tx.user.update({
+      where: { id: barber.user.id },
+      data: {
+        isActive: false,
+        blockedReason: input.reason ?? "توسط ادمین غیرفعال شد",
+        blockedAt: new Date(),
+      },
+    });
+
+    // کسکید یک‌طرفه: غیرفعال‌شدن حساب همیشه پذیرش نوبت جدید رو هم می‌بنده
+    await tx.barberProfile.update({ where: { id }, data: { isActive: false } });
+
+    if (input.cancelFutureBookings) {
+      for (const booking of futureBookings) {
+        await tx.booking.update({ where: { id: booking.id }, data: { status: "CANCELLED" } });
+        await tx.cancellation.create({
+          data: {
+            bookingId: booking.id,
+            cancelledById: actingAdmin.userId,
+            cancelledByRole: actingAdmin.role,
+            reason: "غیرفعال‌سازی حساب آرایشگر توسط ادمین",
+          },
+        });
+      }
+    }
+  });
+
+  if (input.cancelFutureBookings) {
+    for (const booking of futureBookings) {
+      notifyUser(booking.customerId, {
+        type: "BOOKING_STATUS_CHANGED",
+        title: "لغو نوبت",
+        body: `نوبت شما برای ${booking.date.toISOString().slice(0, 10)} ساعت ${booking.time} به دلیل در دسترس نبودن آرایشگر لغو شد`,
+        link: "/customer/bookings",
+      }).catch(() => {});
+    }
+  }
+
+  return getBarberById(id);
 }

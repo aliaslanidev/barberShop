@@ -178,18 +178,24 @@ export function BarberProfileModal({
                       </span>
                     </div>
 
-                    <div className="mb-1 flex items-center gap-0.5">
-                      {Array.from({ length: 5 }, (_, index) => (
-                        <Star
-                          key={index}
-                          className={cn(
-                            "h-3.5 w-3.5",
-                            index < review.score
-                              ? "fill-primary text-primary"
-                              : "fill-none text-border",
-                          )}
-                        />
-                      ))}
+                    <div className="mb-1 flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-0.5">
+                        {Array.from({ length: 5 }, (_, index) => (
+                          <Star
+                            key={index}
+                            className={cn(
+                              "h-3.5 w-3.5",
+                              index < review.score
+                                ? "fill-primary text-primary"
+                                : "fill-none text-border",
+                            )}
+                          />
+                        ))}
+                      </div>
+
+                      <span className="shrink-0 rounded-full bg-secondary px-2 py-0.5 text-[11px] text-muted-foreground">
+                        {review.serviceTitle}
+                      </span>
                     </div>
 
                     {review.comment ? (

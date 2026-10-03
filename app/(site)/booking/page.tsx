@@ -79,6 +79,13 @@ function toPersianDigits(input: string) {
   return input.replace(/[0-9]/g, (d) => persianDigits[Number(d)]);
 }
 
+// آرایشگری که حسابش غیرفعال شده (مثلاً قطع همکاری) یا پذیرش نوبت جدیدش
+// بسته‌ست، هیچ‌جای فرایند رزرو نباید دیده بشه (نه تو انتخاب آرایشگر، نه تو
+// لیست آرایشگرهای یک سرویس، نه تو بازه‌ی قیمت).
+function isBarberBookable(barber: ApiBarber) {
+  return barber.isActive !== false && barber.user.isActive !== false;
+}
+
 // معدل امتیاز و تعداد نظرات آرایشگر (عمومی) — ستاره‌ها + عدد + «(۱۲ نظر)»
 function RatingBadge({ rating }: { rating: ApiBarber["rating"] | undefined }) {
   if (!rating || rating.count === 0 || rating.average === null) {
@@ -224,7 +231,9 @@ export default function BookingPage() {
     Promise.all([listServices(), listBarbers()])
       .then(([s, b]) => {
         setServices(s);
-        setBarbers(b);
+        // آرایشگر غیرفعال/قطع‌همکاری‌شده از همین‌جا حذف می‌شه تا هیچ‌جای
+        // رزرو (انتخاب آرایشگر، لیست آرایشگرهای سرویس، قیمت) دیده نشه
+        setBarbers(b.filter(isBarberBookable));
       })
       .catch((err) => {
         toast.error(err instanceof ApiError ? err.message : "خطا در دریافت اطلاعات");
@@ -357,6 +366,11 @@ export default function BookingPage() {
       const barber = barbers.find((b) => b.id === selectedBarberId);
       const ids = new Set(barber ? activeRows(barber).map((r) => r.serviceId) : []);
       return services.filter((s) => ids.has(s.id));
+    }
+    if (entryPath === "service") {
+      // سرویسی که هیچ آرایشگر فعالی برایش نمونده هم نباید نشان داده بشه
+      const offeredIds = new Set(barbers.flatMap((b) => activeRows(b).map((r) => r.serviceId)));
+      return services.filter((s) => offeredIds.has(s.id));
     }
     return services;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -742,6 +756,11 @@ export default function BookingPage() {
       {step === "pick" && entryPath === "barber" && (
         <div className="space-y-3">
           <Label>انتخاب آرایشگر</Label>
+          {barbersToShow.length === 0 && (
+            <p className="rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground">
+              در حال حاضر آرایشگری برای رزرو در دسترس نیست.
+            </p>
+          )}
           <div className="grid gap-3 sm:grid-cols-2">
             {barbersToShow.map((b) => (
               <BarberCard
@@ -793,6 +812,11 @@ export default function BookingPage() {
       {step === "pick" && entryPath === "service" && (
         <div className="space-y-3">
           <Label>انتخاب سرویس</Label>
+          {servicesToShow.length === 0 && (
+            <p className="rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground">
+              در حال حاضر سرویسی برای رزرو در دسترس نیست.
+            </p>
+          )}
           <div className="grid grid-cols-2 gap-3">
             {servicesToShow.map((s) => {
               const isSelected = selectedServiceId === s.id;

@@ -145,6 +145,9 @@ export interface ApiBarberPermissions {
   blockSlots: boolean;
   cancelOwnBookings: boolean;
   viewCustomers: boolean;
+  // پرمیشن «مشتری اختصاصی» — مستقل از managePricing؛ وقتی فعاله، مشتری‌ها
+  // و نوبت‌های این آرایشگر خصوصیِ خودشه (بند ۷.۱ گزارش‌های مالی).
+  exclusiveCustomers: boolean;
 }
 
 export interface ApiBarberService {
@@ -178,11 +181,21 @@ export interface ApiBarber extends ApiBarberPermissions {
   id: string;
   userId: string;
   bio: string;
-  initials: string;
+  // «پذیرش نوبت جدید» — جدا از دسترسی به حساب (user.isActive پایین)
   isActive: boolean;
+  initials: string;
   createdAt: string;
   workingDays: ApiWeekday[];
-  user: { id: string; name: string; mobile: string };
+  user: {
+    id: string;
+    name: string;
+    mobile: string;
+    // «دسترسی به حساب» — فاز تکمیلی ۱.۲؛ جدا از isActive بالا که فقط
+    // پذیرش نوبت جدید رو کنترل می‌کنه
+    isActive: boolean;
+    blockedReason: string | null;
+    blockedAt: string | null;
+  };
   services: ApiBarberService[];
   rating: ApiRatingSummary;
 }
@@ -276,6 +289,41 @@ export function updateMyWorkingDaysApi(
   return apiFetch<ApiBarber>("/barbers/me/working-days", {
     method: "PATCH",
     body: { workingDays },
+    token,
+  });
+}
+
+// ==================== غیرفعال‌سازی کامل حساب آرایشگر (فاز تکمیلی ۱.۲) ====================
+
+export interface ApiFutureBooking {
+  id: string;
+  date: string;
+  time: string;
+  customerName: string;
+  customerMobile: string;
+  serviceTitle: string;
+}
+
+// لیست نوبت‌های آینده‌ی تاییدشده‌ی این آرایشگر — برای نمایش تو مودال قبل
+// از غیرفعال‌سازی کامل حساب. فقط ادمین اصلی.
+export function getBarberFutureBookingsApi(barberId: string, token: string) {
+  return apiFetch<ApiFutureBooking[]>(`/barbers/${barberId}/future-bookings`, {
+    token,
+  });
+}
+
+// غیرفعال/فعال‌سازی کامل حساب آرایشگر (دسترسی/لاگین) — جدا از isActive
+// روی خودِ ApiBarber که فقط «پذیرش نوبت جدید» رو کنترل می‌کنه.
+// cancelFutureBookings فقط موقع isActive:false و فقط وقتی نوبت آینده هست
+// معنا داره: true یعنی لغو و اطلاع به مشتری، false/نده یعنی نوبت‌ها دست‌نخورده بمونن.
+export function updateBarberAccountStatusApi(
+  barberId: string,
+  data: { isActive: boolean; reason?: string; cancelFutureBookings?: boolean },
+  token: string,
+) {
+  return apiFetch<ApiBarber>(`/barbers/${barberId}/account-status`, {
+    method: "PATCH",
+    body: data,
     token,
   });
 }
@@ -569,10 +617,11 @@ export function updateBookingStatusApi(
   id: string,
   status: BookingStatus,
   token: string,
+  reason?: string,
 ) {
   return apiFetch<ApiBooking>(`/bookings/${id}/status`, {
     method: "PATCH",
-    body: { status },
+    body: reason ? { status, reason } : { status },
     token,
   });
 }
@@ -609,7 +658,7 @@ export interface ApiBarberReviewsResponse {
   ratings: ApiBarberReview[];
 }
 
-// نظرهای خودِ آرایشگر لاگین‌شده (همه‌ی وضعیت‌ها)
+// نظرهای خودِآرایشگر لاگین‌شده (همه‌ی وضعیت‌ها)
 export function listMyRatingsApi(token: string) {
   return apiFetch<ApiBarberReviewsResponse>("/ratings/me", { token });
 }
@@ -661,6 +710,7 @@ export interface ApiPublicReview {
   comment: string | null;
   createdAt: string;
   customerName: string; // نام + حرف اول نام‌خانوادگی، برای حریم خصوصی
+  serviceTitle: string;
 }
 
 export interface ApiPublicBarberReviews {
@@ -791,7 +841,7 @@ export function updateWorkingHoursApi(
   });
 }
 
-// فقط ادمین — تغییر رمز خودِ حساب لاگین‌شده (بر اساس توکن، نه آی‌دی ورودی)
+// فقط ادمین — تغییر رمز خودفساب لاگین‌شده (بر اساس توکن، نه آی‌دی ورودی)
 export function changePasswordApi(
   data: { currentPassword: string; newPassword: string },
   token: string,
@@ -829,6 +879,86 @@ export function getDashboardSummaryApi(token: string) {
   return apiFetch<ApiDashboardSummary>("/reports/dashboard", { token });
 }
 
+// گزارش مالی سالن (بند ۷.۱) — فقط ادمین/مدیر. سرور خودش نوبت‌های
+// isBarberOwnRevenue/isPrivateCustomer رو حذف می‌کنه؛ اینجا فقط فیلتر
+// اختیاری آرایشگر/بازه‌ی تاریخ رو می‌فرسته.
+export interface ApiRevenueByBarber {
+  barberId: string;
+  barberName: string;
+  revenue: number;
+  count: number;
+}
+
+export interface ApiRevenueByService {
+  serviceId: string;
+  serviceTitle: string;
+  revenue: number;
+  count: number;
+}
+
+export interface ApiSalonRevenueReport {
+  totalRevenue: number;
+  completedCount: number;
+  byBarber: ApiRevenueByBarber[];
+  byService: ApiRevenueByService[];
+}
+
+export interface SalonRevenueReportFilter {
+  barberId?: string;
+  dateFrom?: string; // YYYY-MM-DD
+  dateTo?: string; // YYYY-MM-DD، inclusive سمت سرور
+}
+
+export function getSalonRevenueReportApi(
+  token: string,
+  filter: SalonRevenueReportFilter = {},
+) {
+  const params = new URLSearchParams();
+  Object.entries(filter).forEach(([key, value]) => {
+    if (value) params.set(key, value);
+  });
+  const qs = params.toString();
+  return apiFetch<ApiSalonRevenueReport>(
+    `/reports/revenue${qs ? `?${qs}` : ""}`,
+    { token },
+  );
+}
+
+// گزارش درآمد شخصیِ خودِ آرایشگرِ خودمختار (managePricing). فقط خودِ
+// آرایشگر می‌تونه این رو ببینه — سرور barberId رو از روی توکن تشخیص
+// می‌ده، نه از پارامتر. dateFrom/dateTo اختیاریه — بدون‌شون کل تاریخچه.
+export interface ApiBarberRevenueByService {
+  serviceTitle: string;
+  revenue: number;
+  count: number;
+}
+
+export interface ApiBarberOwnRevenueReport {
+  totalRevenue: number;
+  completedCount: number;
+  byService: ApiBarberRevenueByService[];
+}
+
+export interface MyRevenueReportFilter {
+  dateFrom?: string; // YYYY-MM-DD
+  dateTo?: string; // YYYY-MM-DD، inclusive سمت سرور
+}
+
+export function getMyRevenueReportApi(
+  token: string,
+  filter: MyRevenueReportFilter = {},
+) {
+  const params = new URLSearchParams();
+  Object.entries(filter).forEach(([key, value]) => {
+    if (value) params.set(key, value);
+  });
+  const qs = params.toString();
+  return apiFetch<ApiBarberOwnRevenueReport>(
+    `/reports/revenue/mine${qs ? `?${qs}` : ""}`,
+    { token },
+  );
+}
+
 // ==================== Managers (مدیر سالن) ====================
 // مدیر سالن برخلاف آرایشگر، پروفایل جدا (BarberProfile) نداره؛ فقط یه
 // User ساده با role=MANAGER هست. حساب مدیر سالن فقط توسط ادمین اصلی ساخته
@@ -839,6 +969,10 @@ export interface ApiManager {
   name: string;
   mobile: string;
   role: "MANAGER";
+  // فاز تکمیلی ۱.۲ — غیرفعال‌سازی کامل حساب (بدون نوبت، پس بدون مودال)
+  isActive: boolean;
+  blockedReason: string | null;
+  blockedAt: string | null;
   createdAt: string;
 }
 
@@ -850,7 +984,11 @@ export function createManagerApi(
   data: { name: string; mobile: string; password: string },
   token: string,
 ) {
-  return apiFetch<ApiManager>("/managers", { method: "POST", body: data, token });
+  return apiFetch<ApiManager>("/managers", {
+    method: "POST",
+    body: data,
+    token,
+  });
 }
 
 export function updateManagerApi(
@@ -858,9 +996,95 @@ export function updateManagerApi(
   data: Partial<{ name: string; mobile: string; password: string }>,
   token: string,
 ) {
-  return apiFetch<ApiManager>(`/managers/${id}`, { method: "PATCH", body: data, token });
+  return apiFetch<ApiManager>(`/managers/${id}`, {
+    method: "PATCH",
+    body: data,
+    token,
+  });
 }
 
 export function deleteManagerApi(id: string, token: string) {
   return apiFetch<void>(`/managers/${id}`, { method: "DELETE", token });
+}
+
+// غیرفعال/فعال‌سازی کامل حساب مدیر سالن — فقط ادمین اصلی
+export function updateManagerStatusApi(
+  id: string,
+  data: { isActive: boolean; reason?: string },
+  token: string,
+) {
+  return apiFetch<ApiManager>(`/managers/${id}/status`, {
+    method: "PATCH",
+    body: data,
+    token,
+  });
+}
+
+// ==================== Customers (مدیریت مشتریان) ====================
+// برخلاف آرایشگر/مدیر، مشتری هرگز واقعاً Delete نمی‌شه — فقط فعال/غیرفعال
+// (isActive). غیرفعال‌سازی یا خودکاره (بعد از ۳ لغوِ خودِ مشتری، توسط
+// سرور) یا دستیِ ادمین؛ رفع مسدودیت همیشه دستیِ ادمینه.
+
+export interface ApiCustomer {
+  id: string;
+  name: string;
+  mobile: string;
+  isActive: boolean;
+  cancelCount: number;
+  blockedReason: string | null;
+  blockedAt: string | null;
+  createdAt: string;
+}
+
+export type CustomerStatusFilter = "ALL" | "ACTIVE" | "BLOCKED";
+export type CustomerSortKey = "createdAt" | "name" | "cancelCount";
+
+export interface ListCustomersParams {
+  search?: string;
+  status?: CustomerStatusFilter;
+  sortBy?: CustomerSortKey;
+  sortDir?: "asc" | "desc";
+  page?: number;
+  pageSize?: number;
+}
+
+export interface ApiCustomersPage {
+  items: ApiCustomer[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  counts: { all: number; active: number; blocked: number };
+}
+
+// ادمین یا مدیر سالن — فقط مشاهده. جستجو/فیلتر/مرتب‌سازی/صفحه‌بندی سمت سرور
+export function listCustomersApi(
+  token: string,
+  params: ListCustomersParams = {},
+) {
+  const qs = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== "") qs.set(key, String(value));
+  });
+  const query = qs.toString();
+  return apiFetch<ApiCustomersPage>(
+    `/users/customers${query ? `?${query}` : ""}`,
+    {
+      token,
+    },
+  );
+}
+
+// فقط ادمین اصلی — isActive:false برای مسدودکردن دستی (reason اختیاری)،
+// isActive:true برای رفع مسدودیت (شمارنده‌ی لغو هم صفر می‌شه)
+export function updateCustomerStatusApi(
+  id: string,
+  data: { isActive: boolean; reason?: string },
+  token: string,
+) {
+  return apiFetch<ApiCustomer>(`/users/customers/${id}/status`, {
+    method: "PATCH",
+    body: data,
+    token,
+  });
 }

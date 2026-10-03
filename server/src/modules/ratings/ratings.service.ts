@@ -37,7 +37,7 @@ export async function getRatingSummary(barberId: string): Promise<RatingSummary>
   return map.get(barberId) ?? EMPTY_RATING_SUMMARY;
 }
 
-// ثبت امتیاز: فقط مشتریِ همون نوبت، فقط بعد از COMPLETED، و فقط یک بار برای هر نوبت.
+// ثبت امتیاز: فقط مشتری‌ همون نوبت، فقط بعد از COMPLETED، و فقط یک بار برای هر نوبت.
 // status پیش‌فرض PENDING (تو schema تعریف شده) — امتیاز عددی فوری تو معدل
 // اثر می‌ذاره، ولی متن نظر تا تایید ادمین عمومی نمایش داده نمی‌شه.
 export async function createRating(customerId: string, input: CreateRatingInput) {
@@ -48,7 +48,7 @@ export async function createRating(customerId: string, input: CreateRatingInput)
 
   if (!booking) throw new AppError("نوبت پیدا نشد", 404);
   if (booking.customerId !== customerId) {
-    throw new AppError("شما فقط می‌تونید برای نوبت‌های خودتان امتیاز ثبت کنید", 403);
+    throw new AppError("شما فقط می‌توانید برای نوبت‌های خودتان امتیاز ثبت کنید", 403);
   }
   if (booking.status !== "COMPLETED") {
     throw new AppError("امتیازدهی فقط بعد از انجام سرویس امکان‌پذیر است", 400);
@@ -74,7 +74,7 @@ export async function createRating(customerId: string, input: CreateRatingInput)
   }
 }
 
-// لیست کامل امتیازها و نظرهای یه آرایشگر (همه‌ی وضعیت‌ها) — برای خودِ آرایشگر (GET /ratings/me)
+// لیست کامل امتیازها و نظرهای یه آرایشگر (همه‌ی وضعیت‌ها) — برای خودِآرایشگر (GET /ratings/me)
 export async function listBarberRatings(barberId: string) {
   const [summary, ratings] = await Promise.all([
     getRatingSummary(barberId),
@@ -154,7 +154,7 @@ export async function updateRatingStatus(id: string, status: "APPROVED" | "REJEC
   return prisma.rating.update({ where: { id }, data: { status } });
 }
 
-// نام مشتری برای نمایش عمومی: فقط نام کوچیک + حرف اول نام خانوادگی (مثلاً «رضا احمدی» -> «رضا ا.»)
+// نام مشتری برای نمایش عمومی: فقط نام کوچک + حرف اول نام‌خانوادگی (مثلاً «رضا احمدی» -> «رضا ا.»)
 function maskCustomerName(fullName: string): string {
   const parts = fullName.trim().split(/\s+/);
   if (parts.length === 1) return parts[0];
@@ -163,14 +163,22 @@ function maskCustomerName(fullName: string): string {
 }
 
 // عمومی (بدون نیاز به لاگین): معدل/تعداد آرا + فقط نظرهای تاییدشده — برای
-// مودال «مشاهده بیشتر» تو فلوی رزرو مشتری
+// مودال «مشاهده بیشتر» تو فلوی رزرو مشتری. serviceTitle هم برگردونده
+// می‌شه تا مشخص باشه مشتری برای کدوم سرویس این نظر رو داده (آیتم ۴.۱).
 export async function getPublicBarberReviews(barberId: string) {
   const [summary, ratings] = await Promise.all([
     getRatingSummary(barberId),
     prisma.rating.findMany({
       where: { barberId, status: "APPROVED" },
       orderBy: { createdAt: "desc" },
-      include: { booking: { select: { customer: { select: { name: true } } } } },
+      include: {
+        booking: {
+          select: {
+            customer: { select: { name: true } },
+            service: { select: { title: true } },
+          },
+        },
+      },
     }),
   ]);
 
@@ -184,6 +192,7 @@ export async function getPublicBarberReviews(barberId: string) {
         comment: r.comment,
         createdAt: r.createdAt,
         customerName: maskCustomerName(r.booking.customer.name),
+        serviceTitle: r.booking.service.title,
       })),
   };
 }

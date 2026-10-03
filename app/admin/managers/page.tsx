@@ -5,13 +5,14 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Pencil, Plus, Trash2, UserCog } from "lucide-react";
+import { Pencil, Plus, ShieldAlert, Trash2, UserCog } from "lucide-react";
 
 import {
   listManagersApi,
   createManagerApi,
   updateManagerApi,
   deleteManagerApi,
+  updateManagerStatusApi,
   ApiError,
   type ApiManager,
 } from "@/lib/api";
@@ -22,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
   DialogContent,
@@ -49,6 +51,14 @@ const editManagerSchema = z.object({
 });
 type EditManagerValues = z.infer<typeof editManagerSchema>;
 
+function formatDateFa(iso: string) {
+  return new Date(iso).toLocaleDateString("fa-IR", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+}
+
 export default function AdminManagersPage() {
   const admin = getCurrentAdmin();
   const isAdmin = admin?.role === "admin";
@@ -58,6 +68,7 @@ export default function AdminManagersPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingManager, setEditingManager] = useState<ApiManager | null>(null);
+  const [pendingStatusId, setPendingStatusId] = useState<string | null>(null);
 
   async function refresh() {
     try {
@@ -140,6 +151,34 @@ export default function AdminManagersPage() {
       toast.success("مدیر سالن حذف شد");
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "خطا در حذف مدیر سالن");
+    }
+  }
+
+  // فاز تکمیلی ۱.۲ — غیرفعال‌سازی کامل حساب به‌جای حذف. مدیر سالن نوبت
+  // نداره، پس برخلاف آرایشگر نیازی به چک نوبت‌های آینده/مودال نیست.
+  async function handleStatusChange(manager: ApiManager, nextValue: boolean) {
+    const token = getAuthToken();
+    if (!token) return;
+
+    let reason: string | undefined;
+    if (!nextValue) {
+      const input = window.prompt(
+        `دلیل غیرفعال‌کردن حساب «${manager.name}» را وارد کنید (اختیاری):`,
+        "",
+      );
+      if (input === null) return; // انصراف
+      reason = input.trim() || undefined;
+    }
+
+    setPendingStatusId(manager.id);
+    try {
+      await updateManagerStatusApi(manager.id, { isActive: nextValue, reason }, token);
+      await refresh();
+      toast.success(nextValue ? "حساب مدیر سالن فعال شد" : "حساب مدیر سالن غیرفعال شد");
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "خطا در تغییر وضعیت حساب");
+    } finally {
+      setPendingStatusId(null);
     }
   }
 
@@ -234,92 +273,117 @@ export default function AdminManagersPage() {
         <div className="flex flex-col gap-3">
           {managers.map((manager) => (
             <Card key={manager.id}>
-              <CardContent className="flex items-center justify-between gap-4 p-4">
-                <div>
-                  <p className="font-bold">{manager.name}</p>
-                  <p dir="ltr" className="text-left text-xs text-muted-foreground">
-                    {manager.mobile}
+              <CardContent className="flex flex-col gap-3 p-4">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="font-bold">{manager.name}</p>
+                    <p dir="ltr" className="text-left text-xs text-muted-foreground">
+                      {manager.mobile}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Dialog
+                      open={editDialogOpen && editingManager?.id === manager.id}
+                      onOpenChange={(open) => {
+                        setEditDialogOpen(open);
+                        if (open) setEditingManager(manager);
+                      }}
+                    >
+                      <DialogTrigger asChild>
+                        <Button type="button" variant="ghost" aria-label="ویرایش مدیر سالن">
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>ویرایش مدیر سالن</DialogTitle>
+                        </DialogHeader>
+                        <form
+                          onSubmit={handleEditSubmit(onEditManager)}
+                          className="flex flex-col gap-4"
+                          noValidate
+                        >
+                          <div className="flex flex-col gap-2">
+                            <Label htmlFor="edit-name">نام</Label>
+                            <Input id="edit-name" {...registerEdit("name")} />
+                            {editErrors.name && (
+                              <span className="text-xs text-destructive">
+                                {editErrors.name.message}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex flex-col gap-2">
+                            <Label htmlFor="edit-mobile">شماره موبایل</Label>
+                            <Input
+                              id="edit-mobile"
+                              dir="ltr"
+                              className="text-left"
+                              placeholder="09123456789"
+                              {...registerEdit("mobile")}
+                            />
+                            {editErrors.mobile && (
+                              <span className="text-xs text-destructive">
+                                {editErrors.mobile.message}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex flex-col gap-2">
+                            <Label htmlFor="edit-password">رمز جدید (اختیاری)</Label>
+                            <Input
+                              id="edit-password"
+                              dir="ltr"
+                              className="text-left"
+                              placeholder="خالی بذار تا تغییر نکنه"
+                              {...registerEdit("newPassword")}
+                            />
+                            {editErrors.newPassword && (
+                              <span className="text-xs text-destructive">
+                                {editErrors.newPassword.message}
+                              </span>
+                            )}
+                          </div>
+                          <DialogFooter>
+                            <Button type="submit" disabled={isEditSubmitting}>
+                              {isEditSubmitting ? "در حال ذخیره..." : "ذخیره تغییرات"}
+                            </Button>
+                          </DialogFooter>
+                        </form>
+                      </DialogContent>
+                    </Dialog>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="text-destructive hover:text-destructive"
+                      onClick={() => handleDelete(manager.id, manager.name)}
+                      aria-label="حذف مدیر سالن"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                {/* فاز تکمیلی ۱.۲ — غیرفعال‌سازی کامل حساب به‌جای حذف دائمی */}
+                <div className="flex items-center justify-between gap-3 rounded-lg bg-secondary/40 px-3 py-2.5">
+                  <div>
+                    <p className="text-sm font-medium">دسترسی به حساب</p>
+                    <p className="text-xs text-muted-foreground">
+                      غیرفعال یعنی این مدیر سالن دیگر نمی‌تواند وارد پنل خود شود
+                    </p>
+                  </div>
+                  <Switch
+                    checked={manager.isActive}
+                    onCheckedChange={(v) => handleStatusChange(manager, v)}
+                    disabled={pendingStatusId === manager.id}
+                    aria-label="فعال/غیرفعال"
+                  />
+                </div>
+                {!manager.isActive && manager.blockedReason && (
+                  <p className="flex items-center gap-1 text-xs text-destructive">
+                    <ShieldAlert className="h-3.5 w-3.5 shrink-0" />
+                    {manager.blockedReason}
+                    {manager.blockedAt && ` — ${formatDateFa(manager.blockedAt)}`}
                   </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Dialog
-                    open={editDialogOpen && editingManager?.id === manager.id}
-                    onOpenChange={(open) => {
-                      setEditDialogOpen(open);
-                      if (open) setEditingManager(manager);
-                    }}
-                  >
-                    <DialogTrigger asChild>
-                      <Button type="button" variant="ghost" aria-label="ویرایش مدیر سالن">
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>ویرایش مدیر سالن</DialogTitle>
-                      </DialogHeader>
-                      <form
-                        onSubmit={handleEditSubmit(onEditManager)}
-                        className="flex flex-col gap-4"
-                        noValidate
-                      >
-                        <div className="flex flex-col gap-2">
-                          <Label htmlFor="edit-name">نام</Label>
-                          <Input id="edit-name" {...registerEdit("name")} />
-                          {editErrors.name && (
-                            <span className="text-xs text-destructive">
-                              {editErrors.name.message}
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex flex-col gap-2">
-                          <Label htmlFor="edit-mobile">شماره موبایل</Label>
-                          <Input
-                            id="edit-mobile"
-                            dir="ltr"
-                            className="text-left"
-                            placeholder="09123456789"
-                            {...registerEdit("mobile")}
-                          />
-                          {editErrors.mobile && (
-                            <span className="text-xs text-destructive">
-                              {editErrors.mobile.message}
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex flex-col gap-2">
-                          <Label htmlFor="edit-password">رمز جدید (اختیاری)</Label>
-                          <Input
-                            id="edit-password"
-                            dir="ltr"
-                            className="text-left"
-                            placeholder="خالی بذار تا تغییر نکنه"
-                            {...registerEdit("newPassword")}
-                          />
-                          {editErrors.newPassword && (
-                            <span className="text-xs text-destructive">
-                              {editErrors.newPassword.message}
-                            </span>
-                          )}
-                        </div>
-                        <DialogFooter>
-                          <Button type="submit" disabled={isEditSubmitting}>
-                            {isEditSubmitting ? "در حال ذخیره..." : "ذخیره تغییرات"}
-                          </Button>
-                        </DialogFooter>
-                      </form>
-                    </DialogContent>
-                  </Dialog>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="text-destructive hover:text-destructive"
-                    onClick={() => handleDelete(manager.id, manager.name)}
-                    aria-label="حذف مدیر سالن"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
+                )}
               </CardContent>
             </Card>
           ))}

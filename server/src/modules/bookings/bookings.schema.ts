@@ -10,14 +10,17 @@ export const createBookingSchema = z.object({
   time: z.string().regex(timeRegex, "فرمت ساعت باید HH:mm باشد"),
   notes: z.string().optional(),
   // اختیاری: id هولدی که تو مرحله‌ی انتخاب ساعت ساخته شده. اگه بفرستی،
-  // سرور می‌فهمه این خودِ همون مشتریه که این ساعت رو نگه داشته بود، پس
-  // هولدِ خودش مانع ثبت نوبتش نمی‌شه.
+  // سرور می‌فهمه این خودهمون مشتریه که این ساعت رو نگه داشته بود، پس
+  // هولدِخودش مانع ثبت نوبتش نمی‌شه.
   holdId: z.string().optional(),
 });
 export type CreateBookingInput = z.infer<typeof createBookingSchema>;
 
 export const updateBookingStatusSchema = z.object({
   status: z.enum(["IN_PROGRESS", "COMPLETED", "CANCELLED"]),
+  // فقط برای status=CANCELLED معنا داره: دلیل لغو (اختیاری). مخصوصاً وقتی
+  // آرایشگر/ادمین لغو می‌کنه مفیده؛ برای لغوی خودِ مشتری معمولاً خالیه.
+  reason: z.string().optional(),
 });
 export type UpdateBookingStatusInput = z.infer<typeof updateBookingStatusSchema>;
 

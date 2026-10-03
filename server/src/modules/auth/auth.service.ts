@@ -20,6 +20,12 @@ export async function login(input: LoginInput) {
     throw new AppError("شماره موبایل یا رمز عبور اشتباه است", 401);
   }
 
+  // چک وضعیت حساب بعد از تایید رمز (نه قبلش)، تا پیام مسدودی صرفاً به
+  // کسی نشون داده بشه که واقعاً رمز درست رو داره
+  if (!user.isActive) {
+    throw new AppError(user.blockedReason ?? "حساب کاربری شما مسدود شده است", 403);
+  }
+
   const token = signToken({ userId: user.id, role: user.role });
   return { token, user: toPublicUser(user) };
 }
