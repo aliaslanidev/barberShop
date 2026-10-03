@@ -1,6 +1,7 @@
 import type { Prisma, Role, Weekday } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { AppError } from "@/utils/AppError";
+import { formatPersianDate, toPersianDigits } from "@/utils/persian-date";
 import { notifyUser } from "@/modules/notifications/notifications.service";
 import type {
   CreateBookingInput,
@@ -390,7 +391,7 @@ export async function createBooking(customerId: string, input: CreateBookingInpu
   notifyUser(booking.barber.user.id, {
     type: "BOOKING_CREATED",
     title: "نوبت جدید",
-    body: `${booking.customer.name} یک نوبت برای ${booking.date.toISOString().slice(0, 10)} ساعت ${booking.time} ثبت کرد`,
+    body: `${booking.customer.name} یک نوبت برای ${formatPersianDate(booking.date)} ساعت ${toPersianDigits(booking.time)} ثبت کرد`,
     link: "/barber/bookings",
   }).catch(() => {});
 
@@ -615,7 +616,7 @@ export async function updateBookingStatus(
       notifyUser(updated.barber.user.id, {
         type: "BOOKING_STATUS_CHANGED",
         title: "لغو نوبت",
-        body: `نوبت ${updated.date.toISOString().slice(0, 10)} ساعت ${updated.time} توسط مشتری لغو شد`,
+        body: `نوبت ${formatPersianDate(updated.date)} ساعت ${toPersianDigits(updated.time)} توسط مشتری لغو شد`,
         link: "/barber/bookings",
       }).catch(() => {});
     } else {
@@ -623,7 +624,7 @@ export async function updateBookingStatus(
       notifyUser(updated.customer.id, {
         type: "BOOKING_STATUS_CHANGED",
         title: "لغو نوبت",
-        body: `نوبت شما برای ${updated.date.toISOString().slice(0, 10)} ساعت ${updated.time} لغو شد`,
+        body: `نوبت شما برای ${formatPersianDate(updated.date)} ساعت ${toPersianDigits(updated.time)} لغو شد`,
         link: "/customer/bookings",
       }).catch(() => {});
     }

@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { AppError } from "@/utils/AppError";
+import { formatPersianDate } from "@/utils/persian-date";
 import { notifyUser } from "@/modules/notifications/notifications.service";
 import type {
   CreateTimeOffInput,
@@ -84,7 +85,7 @@ export async function createOwnTimeOff(userId: string, input: CreateTimeOffInput
       notifyUser(a.id, {
         type: "LEAVE_REQUEST_STATUS",
         title: "درخواست مرخصی جدید",
-        body: `${barberProfile.user.name} یک درخواست مرخصی برای ${input.date} ثبت کرد`,
+        body: `${barberProfile.user.name} یک درخواست مرخصی برای ${formatPersianDate(input.date)} ثبت کرد`,
         link: "/admin/leave-requests",
       }).catch(() => {})
     )
@@ -170,7 +171,7 @@ export async function approveLeaveRequest(id: string, adminUserId: string) {
     notifyUser(barberProfile.userId, {
       type: "LEAVE_REQUEST_STATUS",
       title: "مرخصی تایید شد",
-      body: `درخواست مرخصی شما برای ${request.date.toISOString().slice(0, 10)} تایید شد`,
+      body: `درخواست مرخصی شما برای ${formatPersianDate(request.date)} تایید شد`,
       link: "/barber/time-off",
     }).catch(() => {});
   }
@@ -198,7 +199,7 @@ export async function rejectLeaveRequest(id: string, adminUserId: string) {
     notifyUser(barberProfile.userId, {
       type: "LEAVE_REQUEST_STATUS",
       title: "مرخصی رد شد",
-      body: `درخواست مرخصی شما برای ${request.date.toISOString().slice(0, 10)} رد شد`,
+      body: `درخواست مرخصی شما برای ${formatPersianDate(request.date)} رد شد`,
       link: "/barber/time-off",
     }).catch(() => {});
   }

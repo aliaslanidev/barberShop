@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { AppError } from "@/utils/AppError";
+import { formatPersianDate, toPersianDigits } from "@/utils/persian-date";
 import { hashPassword } from "@/utils/password";
 import { notifyUser } from "@/modules/notifications/notifications.service";
 import type {
@@ -266,7 +267,7 @@ export async function updateBarberAccountStatus(
       notifyUser(booking.customerId, {
         type: "BOOKING_STATUS_CHANGED",
         title: "لغو نوبت",
-        body: `نوبت شما برای ${booking.date.toISOString().slice(0, 10)} ساعت ${booking.time} به دلیل در دسترس نبودن آرایشگر لغو شد`,
+        body: `نوبت شما برای ${formatPersianDate(booking.date)} ساعت ${toPersianDigits(booking.time)} به دلیل در دسترس نبودن آرایشگر لغو شد`,
         link: "/customer/bookings",
       }).catch(() => {});
     }

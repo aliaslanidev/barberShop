@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { notifyUser } from "@/modules/notifications/notifications.service";
+import { formatPersianDate, toPersianDigits } from "@/utils/persian-date";
 
 // چند دقیقه قبل از نوبت یادآوری بفرسته (برای تست موقت می‌تونی 1440 بذاری)
 const LEAD_MINUTES = 120;
@@ -7,12 +8,6 @@ const LEAD_MINUTES = 120;
 const CHECK_INTERVAL_MS = 60_000;
 // ایران بدون ساعت تابستانی: UTC+3:30
 const TEHRAN_OFFSET_MINUTES = 210;
-
-const PERSIAN_DIGITS = ["۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹"];
-
-function toPersianDigits(input: string) {
-  return input.replace(/[0-9]/g, (d) => PERSIAN_DIGITS[Number(d)]);
-}
 
 // date تو دیتابیس فقط «روز» رو نگه می‌داره و time رشته‌ی "14:00" هست؛
 // اینجا با هم ترکیبشون می‌کنیم تا زمان واقعی شروع نوبت (به وقت تهران) به‌دست بیاد
@@ -73,7 +68,7 @@ async function runReminderCheck() {
       await notifyUser(booking.customerId, {
         type: "BOOKING_REMINDER",
         title: "یادآوری نوبت",
-        body: `نوبت «${booking.service.title}» شما ساعت ${toPersianDigits(booking.time)} با ${booking.barber.user.name} است.`,
+        body: `نوبت «${booking.service.title}» شما در تاریخ ${formatPersianDate(booking.date)} ساعت ${toPersianDigits(booking.time)} با ${booking.barber.user.name} است.`,
         link: "/customer/bookings",
       });
     } catch (err) {

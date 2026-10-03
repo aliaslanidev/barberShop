@@ -126,12 +126,12 @@ export function Header() {
             <Button
               size="sm"
               variant="ghost"
-              className="hidden h-10 rounded-full px-4 text-xs text-gray-400 hover:bg-white/[0.04] hover:text-white sm:inline-flex"
+              className="inline-flex h-9 rounded-full px-3 text-xs text-gray-200 hover:bg-white/[0.08] hover:text-white sm:h-10 sm:px-4"
               asChild
             >
               <Link href="/login">
                 <LogIn className="h-4 w-4" />
-                <span>ورود</span>
+                <span>ورود / ثبت‌نام</span>
               </Link>
             </Button>
           )}
