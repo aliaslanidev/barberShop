@@ -43,6 +43,7 @@ async function runReminderCheck() {
       createdAt: true,
       barber: { select: { user: { select: { name: true } } } },
       service: { select: { title: true } },
+      bookingServices: { select: { service: { select: { title: true } } } },
     },
     orderBy: [{ date: "asc" }, { time: "asc" }],
   });
@@ -68,7 +69,7 @@ async function runReminderCheck() {
       await notifyUser(booking.customerId, {
         type: "BOOKING_REMINDER",
         title: "یادآوری نوبت",
-        body: `نوبت «${booking.service.title}» شما در تاریخ ${formatPersianDate(booking.date)} ساعت ${toPersianDigits(booking.time)} با ${booking.barber.user.name} است.`,
+        body: `نوبت «${booking.bookingServices.map((item) => item.service.title).join(" + ") || booking.service.title}» شما در تاریخ ${formatPersianDate(booking.date)} ساعت ${toPersianDigits(booking.time)} با ${booking.barber.user.name} است.`,
         link: "/customer/bookings",
       });
     } catch (err) {

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { StatusBadge } from "@/components/customer/status-badge";
 import { cn, formatToman } from "@/lib/utils";
-import type { ApiBooking } from "@/lib/api";
+import { getBookingServiceTitles, type ApiBooking } from "@/lib/api";
 
 interface BookingCardProps {
   booking: ApiBooking;
@@ -102,7 +102,7 @@ export function BookingCard({ booking, onCancel, onRate }: BookingCardProps) {
       <CardContent className="flex flex-col gap-3 p-5">
         <div className="flex items-start justify-between">
           <div>
-            <h3 className="text-sm font-medium">{booking.service.title}</h3>
+            <h3 className="text-sm font-medium">{getBookingServiceTitles(booking)}</h3>
             <p className="mt-1 text-xs text-muted-foreground">با {booking.barber.user.name}</p>
           </div>
           <StatusBadge status={booking.status} />

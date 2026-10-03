@@ -5,7 +5,8 @@ const timeRegex = /^([01]\d|2[0-3]):[0-5]\d$/; // HH:mm
 
 export const createBookingSchema = z.object({
   barberId: z.string().min(1, "آرایشگر مشخص نشده"),
-  serviceId: z.string().min(1, "سرویس مشخص نشده"),
+  serviceId: z.string().min(1, "سرویس مشخص نشده").optional(),
+  serviceIds: z.array(z.string().min(1)).min(1).max(2).optional(),
   date: z.string().regex(dateRegex, "فرمت تاریخ باید YYYY-MM-DD باشد"),
   time: z.string().regex(timeRegex, "فرمت ساعت باید HH:mm باشد"),
   notes: z.string().optional(),
@@ -13,6 +14,9 @@ export const createBookingSchema = z.object({
   // سرور می‌فهمه این خودهمون مشتریه که این ساعت رو نگه داشته بود، پس
   // هولدِخودش مانع ثبت نوبتش نمی‌شه.
   holdId: z.string().optional(),
+}).refine((input) => Boolean(input.serviceId || input.serviceIds?.length), {
+  message: "حداقل یک سرویس انتخاب کنید",
+  path: ["serviceIds"],
 });
 export type CreateBookingInput = z.infer<typeof createBookingSchema>;
 
@@ -70,3 +74,18 @@ export const createHoldSchema = z.object({
   time: z.string().regex(timeRegex, "فرمت ساعت باید HH:mm باشد"),
 });
 export type CreateHoldInput = z.infer<typeof createHoldSchema>;
+
+export const createWaitlistSchema = z.object({
+  barberId: z.string().min(1, "آرایشگر مشخص نشده"),
+  serviceId: z.string().min(1, "سرویس مشخص نشده").optional(),
+  serviceIds: z.array(z.string().min(1)).min(1).max(2).optional(),
+  date: z.string().regex(dateRegex, "فرمت تاریخ باید YYYY-MM-DD باشد"),
+  time: z.string().regex(timeRegex, "فرمت ساعت باید HH:mm باشد"),
+}).refine((input) => Boolean(input.serviceId || input.serviceIds?.length), {
+  message: "حداقل یک سرویس انتخاب کنید",
+  path: ["serviceIds"],
+});
+
+export const acceptWaitlistOfferSchema = z.object({
+  replaceBookingId: z.string().optional(),
+});

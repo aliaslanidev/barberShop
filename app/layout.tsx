@@ -3,6 +3,7 @@ import localFont from "next/font/local";
 import { Toaster } from "sonner";
 import { ScrollToTopButton } from "@/components/scroll-to-top-button";
 import { AuthProvider } from "@/lib/auth-context";
+import { WaitlistOfferDialog } from "@/components/waitlist-offer-dialog";
 import "./globals.css";
 
 const yekanBakh = localFont({
@@ -62,6 +63,7 @@ export default function RootLayout({
       <body className={`${yekanBakh.variable} font-sans antialiased`}>
         <AuthProvider>
           {children}
+          <WaitlistOfferDialog />
           <ScrollToTopButton />
           <Toaster position="top-center" richColors dir="rtl" />
         </AuthProvider>

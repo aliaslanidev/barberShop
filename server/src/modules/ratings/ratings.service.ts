@@ -87,6 +87,7 @@ export async function listBarberRatings(barberId: string) {
             date: true,
             time: true,
             service: { select: { title: true } },
+            bookingServices: { select: { service: { select: { title: true } } } },
             customer: { select: { name: true } },
           },
         },
@@ -104,7 +105,7 @@ export async function listBarberRatings(barberId: string) {
       createdAt: r.createdAt,
       date: r.booking.date,
       time: r.booking.time,
-      serviceTitle: r.booking.service.title,
+      serviceTitle: r.booking.bookingServices.map((item) => item.service.title).join(" + ") || r.booking.service.title,
       customerName: r.booking.customer.name,
     })),
   };
@@ -125,6 +126,7 @@ export async function listRatingsForAdmin(filter: { barberId?: string; status?: 
           date: true,
           time: true,
           service: { select: { title: true } },
+          bookingServices: { select: { service: { select: { title: true } } } },
           customer: { select: { name: true } },
         },
       },
@@ -141,7 +143,7 @@ export async function listRatingsForAdmin(filter: { barberId?: string; status?: 
     createdAt: r.createdAt,
     date: r.booking.date,
     time: r.booking.time,
-    serviceTitle: r.booking.service.title,
+    serviceTitle: r.booking.bookingServices.map((item) => item.service.title).join(" + ") || r.booking.service.title,
     customerName: r.booking.customer.name,
   }));
 }
@@ -176,6 +178,7 @@ export async function getPublicBarberReviews(barberId: string) {
           select: {
             customer: { select: { name: true } },
             service: { select: { title: true } },
+            bookingServices: { select: { service: { select: { title: true } } } },
           },
         },
       },
@@ -192,7 +195,7 @@ export async function getPublicBarberReviews(barberId: string) {
         comment: r.comment,
         createdAt: r.createdAt,
         customerName: maskCustomerName(r.booking.customer.name),
-        serviceTitle: r.booking.service.title,
+        serviceTitle: r.booking.bookingServices.map((item) => item.service.title).join(" + ") || r.booking.service.title,
       })),
   };
 }

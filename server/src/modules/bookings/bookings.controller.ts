@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import * as bookingsService from "@/modules/bookings/bookings.service";
+import * as waitlistService from "@/modules/bookings/waitlist.service";
 import * as barbersService from "@/modules/barbers/barbers.service";
 import {
   createBookingSchema,
@@ -8,6 +9,8 @@ import {
   availabilityRangeQuerySchema,
   listBookingsQuerySchema,
   createHoldSchema,
+  createWaitlistSchema,
+  acceptWaitlistOfferSchema,
 } from "@/modules/bookings/bookings.schema";
 import { AppError } from "@/utils/AppError";
 
@@ -82,6 +85,44 @@ export async function updateBookingStatusHandler(req: Request, res: Response) {
   const { status, reason } = updateBookingStatusSchema.parse(req.body);
   const booking = await bookingsService.updateBookingStatus(req.params.id, req.user!, status, reason);
   res.json(booking);
+}
+
+function requireCustomer(req: Request) {
+  if (req.user!.role !== "CUSTOMER") {
+    throw new AppError("این قابلیت فقط برای حساب مشتری فعال است", 403);
+  }
+  return req.user!.userId;
+}
+
+export async function createWaitlistHandler(req: Request, res: Response) {
+  const input = createWaitlistSchema.parse(req.body);
+  const request = await waitlistService.joinWaitlist(requireCustomer(req), input);
+  res.status(201).json(request);
+}
+
+export async function myWaitlistHandler(req: Request, res: Response) {
+  const state = await waitlistService.getMyWaitlist(requireCustomer(req));
+  res.json(state);
+}
+
+export async function cancelWaitlistHandler(req: Request, res: Response) {
+  await waitlistService.cancelWaitlistRequest(requireCustomer(req), req.params.id);
+  res.status(204).send();
+}
+
+export async function acceptWaitlistHandler(req: Request, res: Response) {
+  const { replaceBookingId } = acceptWaitlistOfferSchema.parse(req.body);
+  const booking = await waitlistService.acceptWaitlistOffer(
+    requireCustomer(req),
+    req.params.id,
+    replaceBookingId,
+  );
+  res.json(booking);
+}
+
+export async function declineWaitlistHandler(req: Request, res: Response) {
+  await waitlistService.cancelWaitlistRequest(requireCustomer(req), req.params.id);
+  res.status(204).send();
 }
 
 export async function myCustomersHandler(req: Request, res: Response) {

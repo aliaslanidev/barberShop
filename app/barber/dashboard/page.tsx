@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useCurrentBarberProfile } from "@/lib/hooks/use-current-barber";
-import { listBookingsApi, ApiError, type ApiBooking } from "@/lib/api";
+import { listBookingsApi, ApiError, getBookingServiceTitles, type ApiBooking } from "@/lib/api";
 import { getAuthToken } from "@/lib/data/mock-session";
 
 const UPCOMING_PREVIEW_COUNT = 5;
@@ -134,7 +134,7 @@ export default function BarberDashboardPage() {
               <div>
                 <p className="text-sm font-medium">{current.customer.name}</p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {current.service.title} — ساعت {toPersianDigits(current.time)}
+                  {getBookingServiceTitles(current)} — ساعت {toPersianDigits(current.time)}
                 </p>
               </div>
               <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
@@ -169,7 +169,7 @@ export default function BarberDashboardPage() {
                     <div>
                       <p className="text-sm font-medium">{a.customer.name}</p>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        {a.service.title} — ساعت {toPersianDigits(a.time)}
+                        {getBookingServiceTitles(a)} — ساعت {toPersianDigits(a.time)}
                       </p>
                     </div>
                     <span className="shrink-0 text-xs text-muted-foreground">

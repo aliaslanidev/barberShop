@@ -3,6 +3,10 @@ import { prisma } from "@/lib/prisma";
 import { AppError } from "@/utils/AppError";
 import { formatPersianDate, toPersianDigits } from "@/utils/persian-date";
 import { notifyUser } from "@/modules/notifications/notifications.service";
+import {
+  advanceWaitlistSlot,
+  lockWaitlistSlot,
+} from "@/modules/bookings/waitlist.service";
 import type {
   CreateBookingInput,
   ListBookingsQuery,
@@ -16,7 +20,6 @@ const CUSTOMER_CANCEL_BLOCK_THRESHOLD = 3;
 function parseDateOnly(dateStr: string): Date {
   return new Date(`${dateStr}T00:00:00.000Z`);
 }
-
 function dateRangeForDay(dateStr: string): { gte: Date; lt: Date } {
   const start = parseDateOnly(dateStr);
   const end = new Date(start);
@@ -39,6 +42,28 @@ const SLOT_DURATION_MINUTES = 60;
 // مدت زمانی که یه اسلات بعد از انتخاب‌شدن (قبل از ثبت نهایی) برای همون
 // مشتری نگه داشته می‌شه؛ تا این مدت بقیه نمی‌تونن همون ساعت رو انتخاب کنن.
 const HOLD_DURATION_MINUTES = 5;
+
+function isSlotInPast(dateStr: string, time: string, now = new Date()): boolean {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Tehran",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(now);
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((item) => item.type === type)?.value ?? "";
+  const today = `${part("year")}-${part("month")}-${part("day")}`;
+
+  if (dateStr < today) return true;
+  if (dateStr > today) return false;
+
+  const currentMinute = Number(part("hour")) * 60 + Number(part("minute"));
+  const [hours, minutes] = time.split(":").map(Number);
+  return hours * 60 + minutes <= currentMinute;
+}
 
 function generateSlotsInRange(openTime: string, closeTime: string): string[] {
   const slots: string[] = [];
@@ -115,7 +140,9 @@ export async function getAvailableSlots(
     ...holds.map((h) => h.time),
   ]);
   const allSlots = generateSlotsInRange(workingHours.openTime, workingHours.closeTime);
-  return allSlots.filter((slot) => !unavailableTimes.has(slot));
+  return allSlots.filter(
+    (slot) => !unavailableTimes.has(slot) && !isSlotInPast(dateStr, slot),
+  );
 }
 
 // نسخه‌ی «همه‌ی اسلات‌ها + وضعیت» — برای UI مشتری، تا اسلات‌های پر هم
@@ -123,6 +150,7 @@ export async function getAvailableSlots(
 export interface SlotStatus {
   time: string;
   available: boolean;
+  waitlistable: boolean;
 }
 
 export async function getSlotsWithStatus(
@@ -169,13 +197,18 @@ export async function getSlotsWithStatus(
   // مرخصی/تعطیلی یعنی کل روز بسته‌ست — بازم چیزی نشون نمی‌دیم
   if (holiday || timeOff) return [];
 
+  const bookedTimes = new Set(bookings.map((booking) => booking.time));
   const unavailableTimes = new Set([
-    ...bookings.map((b) => b.time),
+    ...bookedTimes,
     ...blockedSlots.map((s) => s.time),
     ...holds.map((h) => h.time),
   ]);
   const allSlots = generateSlotsInRange(workingHours.openTime, workingHours.closeTime);
-  return allSlots.map((time) => ({ time, available: !unavailableTimes.has(time) }));
+  return allSlots.map((time) => ({
+    time,
+    available: !unavailableTimes.has(time) && !isSlotInPast(dateStr, time),
+    waitlistable: bookedTimes.has(time) && !isSlotInPast(dateStr, time),
+  }));
 }
 
 export async function getAvailableDatesInRange(
@@ -235,7 +268,9 @@ export async function getAvailableDatesInRange(
     const barberWorksThisDay = barberWorksOnWeekday(barber.workingDays, weekday);
 
     if (wh?.isOpen && barberWorksThisDay && !holidaySet.has(dateStr) && !timeOffSet.has(dateStr)) {
-      const totalSlots = generateSlotsInRange(wh.openTime, wh.closeTime).length;
+      const totalSlots = generateSlotsInRange(wh.openTime, wh.closeTime).filter(
+        (time) => !isSlotInPast(dateStr, time),
+      ).length;
       const occupied = occupiedCountByDate.get(dateStr) ?? 0;
       if (occupied < totalSlots) result.push(dateStr);
     }
@@ -279,6 +314,9 @@ export async function createOrExtendHold(barberId: string, dateStr: string, time
         409
       );
     }
+    if (existing.waitlistRequestId) {
+      throw new AppError("این ساعت در حال بررسی صف انتظار است؛ لطفاً چند لحظه دیگر تلاش کنید", 409);
+    }
     // هولد قبلی منقضی شده — همون رکورد رو تمدید می‌کنیم
     return prisma.slotHold.update({
       where: { id: existing.id },
@@ -301,6 +339,9 @@ export async function extendHold(holdId: string) {
   if (!hold) {
     throw new AppError("زمان نگه‌داری این نوبت تمام شده، لطفاً دوباره انتخاب کنید", 410);
   }
+  if (hold.waitlistRequestId) {
+    throw new AppError("این زمان به پیشنهاد صف انتظار اختصاص دارد", 403);
+  }
   if (hold.expiresAt < new Date()) {
     await prisma.slotHold.delete({ where: { id: holdId } }).catch(() => {});
     throw new AppError("زمان نگه‌داری این نوبت تمام شده، لطفاً دوباره انتخاب کنید", 410);
@@ -311,12 +352,13 @@ export async function extendHold(holdId: string) {
 }
 
 export async function releaseHold(holdId: string) {
-  await prisma.slotHold.deleteMany({ where: { id: holdId } });
+  await prisma.slotHold.deleteMany({ where: { id: holdId, waitlistRequestId: null } });
 }
 
 const bookingIncludes = {
   barber: { include: { user: true } },
   service: true,
+  bookingServices: { include: { service: true } },
   customer: true,
   // امتیازِ ثبت‌شده برای این نوبت (یا null) — تا UI مشتری بدونه کدوم نوبت‌های
   // تمام‌شده هنوز امتیاز نگرفتن
@@ -324,6 +366,10 @@ const bookingIncludes = {
 } satisfies Prisma.BookingInclude;
 
 export async function createBooking(customerId: string, input: CreateBookingInput) {
+  const serviceIds = [...new Set(input.serviceIds ?? (input.serviceId ? [input.serviceId] : []))];
+  if (serviceIds.length === 0 || serviceIds.length > 2) {
+    throw new AppError("برای هر نوبت باید یک یا دو سرویس انتخاب کنید", 400);
+  }
   // اگه مشتری هولدهمین اسلات رو داره، تو چک زیر خودش مانع خودش نشه
   let ownHoldId: string | undefined;
   if (input.holdId) {
@@ -331,6 +377,7 @@ export async function createBooking(customerId: string, input: CreateBookingInpu
     const dateOnly = parseDateOnly(input.date);
     if (
       hold &&
+      !hold.waitlistRequestId &&
       hold.barberId === input.barberId &&
       hold.time === input.time &&
       hold.date.getTime() === dateOnly.getTime() &&
@@ -346,9 +393,50 @@ export async function createBooking(customerId: string, input: CreateBookingInpu
   }
 
   const booking = await prisma.$transaction(async (tx) => {
+    await lockWaitlistSlot(tx, input.barberId, input.date, input.time);
     // Deactivation locks this same row before checking/cancelling future
     // bookings, preventing a booking from slipping in during that decision.
     await tx.$queryRaw`SELECT id FROM barber_profiles WHERE id = ${input.barberId} FOR UPDATE`;
+
+    const [existingBooking, activeHold] = await Promise.all([
+      tx.booking.findFirst({
+        where: {
+          barberId: input.barberId,
+          date: parseDateOnly(input.date),
+          time: input.time,
+          status: { not: "CANCELLED" },
+        },
+        select: { id: true },
+      }),
+      tx.slotHold.findUnique({
+        where: {
+          barberId_date_time: {
+            barberId: input.barberId,
+            date: parseDateOnly(input.date),
+            time: input.time,
+          },
+        },
+      }),
+    ]);
+    if (existingBooking) {
+      throw new AppError("این اسلات زمانی دیگر در دسترس نیست، لطفاً زمان دیگری انتخاب کنید", 409);
+    }
+    if (
+      activeHold &&
+      activeHold.expiresAt > new Date() &&
+      activeHold.id !== ownHoldId
+    ) {
+      throw new AppError("این اسلات زمانی در حال رزرو است؛ لطفاً دوباره انتخاب کنید", 409);
+    }
+    if (
+      ownHoldId &&
+      (!activeHold ||
+        activeHold.id !== ownHoldId ||
+        activeHold.waitlistRequestId ||
+        activeHold.expiresAt <= new Date())
+    ) {
+      throw new AppError("زمان نگه‌داری این نوبت تمام شده، لطفاً دوباره انتخاب کنید", 409);
+    }
 
     const barberProfile = await tx.barberProfile.findUnique({
       where: { id: input.barberId },
@@ -366,28 +454,44 @@ export async function createBooking(customerId: string, input: CreateBookingInpu
       throw new AppError("این آرایشگر در حال حاضر نوبت جدید نمی‌پذیرد", 409);
     }
 
-    const barberService = await tx.barberService.findUnique({
-      where: { barberId_serviceId: { barberId: input.barberId, serviceId: input.serviceId } },
+    const barberServices = await tx.barberService.findMany({
+      where: { barberId: input.barberId, serviceId: { in: serviceIds }, isActive: true },
       include: { service: true },
     });
-    if (!barberService || !barberService.isActive) {
-      throw new AppError("این سرویس در حال حاضر توسط این آرایشگر ارائه نمی‌شود", 400);
+    if (barberServices.length !== serviceIds.length) {
+      throw new AppError("یکی از سرویس‌های انتخاب‌شده در حال حاضر توسط این آرایشگر ارائه نمی‌شود", 400);
     }
 
     // Snapshot current financial/privacy permissions at booking creation.
-    return tx.booking.create({
+    const priceByServiceId = new Map(
+      barberServices.map((item) => [
+        item.serviceId,
+        item.customPrice ?? item.service.priceValue,
+      ]),
+    );
+    const booking = await tx.booking.create({
       data: {
         customerId,
         barberId: input.barberId,
-        serviceId: input.serviceId,
+        serviceId: serviceIds[0],
         date: parseDateOnly(input.date),
         time: input.time,
         notes: input.notes,
-        price: barberService.customPrice ?? barberService.service.priceValue,
+        price: serviceIds.reduce((total, serviceId) => total + (priceByServiceId.get(serviceId) ?? 0), 0),
         status: "CONFIRMED",
         isBarberOwnRevenue: barberProfile.managePricing,
         isPrivateCustomer: barberProfile.exclusiveCustomers,
       },
+    });
+    await tx.bookingServiceItem.createMany({
+      data: serviceIds.map((serviceId) => ({
+        bookingId: booking.id,
+        serviceId,
+        price: priceByServiceId.get(serviceId)!,
+      })),
+    });
+    return tx.booking.findUniqueOrThrow({
+      where: { id: booking.id },
       include: bookingIncludes,
     });
   });
@@ -558,6 +662,7 @@ export async function updateBookingStatus(
     if (booking.status === "COMPLETED" || booking.status === "CANCELLED") {
       throw new AppError("این نوبت قبلاً بسته شده است", 400);
     }
+
   }
 
   // آپدیت وضعیت نوبت + ثبت لغو + احتمالاً مسدودسازی مشتری، همه تو یه
@@ -636,6 +741,11 @@ export async function updateBookingStatus(
         body: `نوبت شما برای ${formatPersianDate(updated.date)} ساعت ${toPersianDigits(updated.time)} لغو شد`,
         link: "/customer/bookings",
       }).catch(() => {});
+    }
+    try {
+      await advanceWaitlistSlot(updated.barberId, updated.date.toISOString().slice(0, 10), updated.time);
+    } catch (error) {
+      console.error("خطا در انتقال صف انتظار پس از لغو نوبت", updated.id, error);
     }
   }
 

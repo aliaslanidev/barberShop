@@ -12,6 +12,11 @@ import {
   getBookingHandler,
   updateBookingStatusHandler,
   myCustomersHandler,
+  createWaitlistHandler,
+  myWaitlistHandler,
+  cancelWaitlistHandler,
+  acceptWaitlistHandler,
+  declineWaitlistHandler,
 } from "@/modules/bookings/bookings.controller";
 
 export const bookingsRouter = Router();
@@ -27,6 +32,12 @@ bookingsRouter.delete("/hold/:id", asyncHandler(releaseHoldHandler));
 
 // از اینجا به بعد نیاز به لاگین
 bookingsRouter.use(requireAuth);
+
+bookingsRouter.get("/waitlist/me", asyncHandler(myWaitlistHandler));
+bookingsRouter.post("/waitlist", asyncHandler(createWaitlistHandler));
+bookingsRouter.delete("/waitlist/:id", asyncHandler(cancelWaitlistHandler));
+bookingsRouter.post("/waitlist/:id/accept", asyncHandler(acceptWaitlistHandler));
+bookingsRouter.post("/waitlist/:id/decline", asyncHandler(declineWaitlistHandler));
 
 bookingsRouter.get("/", asyncHandler(listBookingsHandler));
 bookingsRouter.get("/my-customers", asyncHandler(myCustomersHandler));

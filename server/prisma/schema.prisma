@@ -35,8 +35,17 @@ enum NotificationType {
   BOOKING_CREATED
   BOOKING_STATUS_CHANGED
   BOOKING_REMINDER
+  SLOT_WAITLIST_OFFER
   LEAVE_REQUEST_STATUS
   RATING_STATUS
+}
+
+enum WaitlistStatus {
+  WAITING
+  OFFERED
+  ACCEPTED
+  CANCELLED
+  EXPIRED
 }
 
 model User {
@@ -63,6 +72,7 @@ model User {
   bookings          Booking[]          @relation("CustomerBookings")
   notifications     Notification[]
   pushSubscriptions PushSubscription[]
+  waitlistRequests  SlotWaitlist[]
   // نوبت‌هایی که این کاربر (هر نقشی) لغو کرده — برای تاریخچه/گزارش لغوها
   cancellations     Cancellation[]
 
@@ -94,13 +104,14 @@ model BarberProfile {
   // فقط همین روزها کار می‌کنه، حتی اگه سالن اون روز بازتر باشه
   workingDays Weekday[] @default([])
 
-  services      BarberService[]
-  bookings      Booking[]
-  timeOffs      TimeOff[]
-  leaveRequests LeaveRequest[]
-  blockedSlots  BlockedSlot[]
-  slotHolds     SlotHold[]
-  ratings       Rating[]
+  services         BarberService[]
+  bookings         Booking[]
+  timeOffs         TimeOff[]
+  leaveRequests    LeaveRequest[]
+  blockedSlots     BlockedSlot[]
+  slotHolds        SlotHold[]
+  waitlistRequests SlotWaitlist[]
+  ratings          Rating[]
 
   @@map("barber_profiles")
 }
@@ -114,8 +125,10 @@ model Service {
   featured   Boolean  @default(false)
   createdAt  DateTime @default(now())
 
-  barbers  BarberService[]
-  bookings Booking[]
+  barbers          BarberService[]
+  bookings         Booking[]
+  bookingItems     BookingServiceItem[]
+  waitlistRequests SlotWaitlist[]
 
   @@map("services")
 }
@@ -134,21 +147,21 @@ model BarberService {
 }
 
 model Booking {
-  id         String        @id @default(cuid())
-  customerId String
-  barberId   String
-  serviceId  String
-  date       DateTime
-  time       String
-  status     BookingStatus @default(CONFIRMED)
-  notes      String?
+  id             String        @id @default(cuid())
+  customerId     String
+  barberId       String
+  serviceId      String
+  date           DateTime
+  time           String
+  status         BookingStatus @default(CONFIRMED)
+  notes          String?
   // قیمت نهاییِ ثبت‌شده موقع رزرو (customPrice آرایشگر یا قیمت پیش‌فرض سرویس).
   // nullable چون نوبت‌های قدیمی قیمت ندارن؛ فرانت برای اون‌ها از قیمت سرویس استفاده می‌کنه.
-  price      Int?
+  price          Int?
   // زمانی که یادآوری خودکار برای این نوبت فرستاده شده (null = هنوز نرفته)
   reminderSentAt DateTime?
-  createdAt  DateTime      @default(now())
-  updatedAt  DateTime      @updatedAt
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
   // ==================== Snapshot فیلدهای گزارش مالی (بند ۷.۱) ====================
   // تعیین‌کننده‌ی این دو فیلد، وضعیتِ پرمیشن آرایشگر *در لحظه‌ی ثبت این
@@ -165,17 +178,31 @@ model Booking {
   // /admin/bookings و از شمارش کلِ نوبت‌های سالن حذف می‌شه.
   isPrivateCustomer  Boolean @default(false)
 
-  customer     User          @relation("CustomerBookings", fields: [customerId], references: [id])
-  barber       BarberProfile @relation(fields: [barberId], references: [id])
-  service      Service       @relation(fields: [serviceId], references: [id])
-  rating       Rating?
+  customer        User                 @relation("CustomerBookings", fields: [customerId], references: [id])
+  barber          BarberProfile        @relation(fields: [barberId], references: [id])
+  service         Service              @relation(fields: [serviceId], references: [id])
+  bookingServices BookingServiceItem[]
+  rating          Rating?
   // فقط وقتی status=CANCELLED پر می‌شه — جزئیات اینکه کی و چرا لغو کرد
-  cancellation Cancellation?
+  cancellation    Cancellation?
 
   @@index([barberId, date])
   @@index([customerId])
   @@index([status, reminderSentAt, date])
   @@map("bookings")
+}
+
+model BookingServiceItem {
+  bookingId String
+  serviceId String
+  price     Int
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  service Service @relation(fields: [serviceId], references: [id])
+
+  @@id([bookingId, serviceId])
+  @@index([serviceId])
+  @@map("booking_service_items")
 }
 
 enum RatingStatus {
@@ -259,18 +286,44 @@ model BlockedSlot {
 // ۵ دقیقه)، خودکار در همه‌ی کوئری‌های availability نادیده گرفته می‌شه —
 // نیازی به job/cron جداگانه برای پاک‌سازی نیست.
 model SlotHold {
-  id        String   @id @default(cuid())
-  barberId  String
-  date      DateTime
-  time      String
-  expiresAt DateTime
-  createdAt DateTime @default(now())
+  id                String   @id @default(cuid())
+  barberId          String
+  date              DateTime
+  time              String
+  expiresAt         DateTime
+  createdAt         DateTime @default(now())
+  waitlistRequestId String?  @unique
 
-  barber BarberProfile @relation(fields: [barberId], references: [id], onDelete: Cascade)
+  barber          BarberProfile @relation(fields: [barberId], references: [id], onDelete: Cascade)
+  waitlistRequest SlotWaitlist? @relation(fields: [waitlistRequestId], references: [id], onDelete: Cascade)
 
   @@unique([barberId, date, time])
   @@index([expiresAt])
   @@map("slot_holds")
+}
+
+model SlotWaitlist {
+  id             String         @id @default(cuid())
+  customerId     String
+  barberId       String
+  serviceId      String
+  serviceIds     String[]       @default([])
+  date           DateTime
+  time           String
+  status         WaitlistStatus @default(WAITING)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  offerExpiresAt DateTime?
+
+  customer User          @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  barber   BarberProfile @relation(fields: [barberId], references: [id], onDelete: Cascade)
+  service  Service       @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  slotHold SlotHold?
+
+  @@unique([customerId, barberId, date, time])
+  @@index([barberId, date, time, status, createdAt])
+  @@index([customerId, status])
+  @@map("slot_waitlists")
 }
 
 // ثبت هر لغوِ نوبت — صرف‌نظر از اینکه چه نقشی لغو کرده. Cancellation

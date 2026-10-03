@@ -5,7 +5,7 @@ import { ArrowUpDown } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import type { ApiBooking, BookingStatus } from "@/lib/api";
+import { getBookingServiceTitles, type ApiBooking, type BookingStatus } from "@/lib/api";
 
 export const STATUS_LABELS: Record<BookingStatus, string> = {
   CONFIRMED: "در انتظار",
@@ -90,7 +90,7 @@ export function getBookingColumns({ onCancel }: BookingColumnsOptions): ColumnDe
     },
     {
       id: "serviceTitle",
-      accessorFn: (row) => row.service.title,
+      accessorFn: getBookingServiceTitles,
       header: "خدمت",
     },
     {

@@ -516,12 +516,19 @@ export interface ApiBooking {
   rating: ApiRating | null;
   barber: ApiBookingBarber;
   service: ApiService;
+  bookingServices?: Array<{ serviceId: string; price: number; service: ApiService }>;
   customer: { id: string; name: string; mobile: string };
+}
+
+export function getBookingServiceTitles(booking: Pick<ApiBooking, "service" | "bookingServices">) {
+  const titles = booking.bookingServices?.map((item) => item.service.title).filter(Boolean);
+  return titles?.length ? titles.join(" + ") : booking.service.title;
 }
 
 export interface ApiSlotStatus {
   time: string;
   available: boolean;
+  waitlistable: boolean;
 }
 
 export function getAvailability(barberId: string, date: string) {
@@ -573,7 +580,7 @@ export function releaseSlotHoldApi(holdId: string) {
 export function createBookingApi(
   data: {
     barberId: string;
-    serviceId: string;
+    serviceIds: string[];
     date: string;
     time: string;
     notes?: string;
@@ -623,6 +630,71 @@ export function listBookingsApi(
   });
   const qs = params.toString();
   return apiFetch<ApiBookingsPage>(`/bookings${qs ? `?${qs}` : ""}`, { token });
+}
+
+export type ApiWaitlistStatus = "WAITING" | "OFFERED" | "ACCEPTED" | "CANCELLED" | "EXPIRED";
+
+export interface ApiWaitlistRequest {
+  id: string;
+  barberId: string;
+  serviceId: string;
+  serviceIds: string[];
+  date: string;
+  time: string;
+  status: ApiWaitlistStatus;
+  offerExpiresAt: string | null;
+  barberName: string;
+  serviceTitle: string;
+}
+
+export interface ApiWaitlistState {
+  requests: ApiWaitlistRequest[];
+  futureBookings: Array<{
+    id: string;
+    date: string;
+    time: string;
+    barberName: string;
+    serviceTitle: string;
+  }>;
+}
+
+export function getMyWaitlistApi(token: string) {
+  return apiFetch<ApiWaitlistState>("/bookings/waitlist/me", { token });
+}
+
+export function createWaitlistApi(
+  data: { barberId: string; serviceIds: string[]; date: string; time: string },
+  token: string,
+) {
+  return apiFetch<ApiWaitlistRequest>("/bookings/waitlist", {
+    method: "POST",
+    body: data,
+    token,
+  });
+}
+
+export function cancelWaitlistApi(requestId: string, token: string) {
+  return apiFetch<void>(`/bookings/waitlist/${requestId}`, { method: "DELETE", token });
+}
+
+export function acceptWaitlistOfferApi(
+  requestId: string,
+  replaceBookingId: string | undefined,
+  token: string,
+) {
+  return apiFetch<ApiBooking>(`/bookings/waitlist/${requestId}/accept`, {
+    method: "POST",
+    body: replaceBookingId ? { replaceBookingId } : {},
+    token,
+  });
+}
+
+export function declineWaitlistOfferApi(requestId: string, token: string) {
+  return apiFetch<void>(`/bookings/waitlist/${requestId}/decline`, {
+    method: "POST",
+    body: {},
+    token,
+  });
 }
 
 export function getBookingApi(id: string, token: string) {

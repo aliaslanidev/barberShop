@@ -3,6 +3,7 @@ import { AppError } from "@/utils/AppError";
 import { formatPersianDate, toPersianDigits } from "@/utils/persian-date";
 import { hashPassword } from "@/utils/password";
 import { notifyUser } from "@/modules/notifications/notifications.service";
+import { advanceWaitlistSlot } from "@/modules/bookings/waitlist.service";
 import type {
   CreateBarberInput,
   UpdateBarberInput,
@@ -307,6 +308,15 @@ export async function updateBarberAccountStatus(
   });
 
   if (input.cancelFutureBookings) {
+    const waitlistAdvances = await Promise.allSettled(futureBookings.map((booking) =>
+      advanceWaitlistSlot(id, booking.date.toISOString().slice(0, 10), booking.time)
+    ));
+    waitlistAdvances.forEach((result, index) => {
+      if (result.status === "rejected") {
+        console.error("خطا در انتقال صف انتظار پس از لغو نوبت آرایشگر", futureBookings[index].id, result.reason);
+      }
+    });
+
     const notifications = await Promise.allSettled(futureBookings.map((booking) =>
       notifyUser(booking.customerId, {
         type: "BOOKING_STATUS_CHANGED",

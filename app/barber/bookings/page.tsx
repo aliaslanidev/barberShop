@@ -10,6 +10,7 @@ import {
   listBookingsApi,
   updateBookingStatusApi,
   ApiError,
+  getBookingServiceTitles,
   type ApiBooking,
   type BookingStatus,
 } from "@/lib/api";
@@ -210,7 +211,7 @@ export default function BarberBookingsPage() {
                     <div>
                       <p className="text-sm font-medium">{a.customer.name}</p>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        {a.service.title} — ساعت {toPersianDigits(a.time)} · {statusLabel[a.status]} ·{" "}
+                        {getBookingServiceTitles(a)} — ساعت {toPersianDigits(a.time)} · {statusLabel[a.status]} ·{" "}
                         {formatPrice(a.price ?? a.service.priceValue)}
                       </p>
                       {a.notes && (

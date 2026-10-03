@@ -86,7 +86,7 @@ export async function getDashboardSummary() {
     todaysBookingsCount,
     activeBarbersCount,
     servicesCount,
-    monthlyRevenueGroups,
+    monthlyRevenueItems,
   ] = await Promise.all([
     prisma.booking.count({
       where: {
@@ -96,28 +96,21 @@ export async function getDashboardSummary() {
     }),
     prisma.barberProfile.count({ where: { isActive: true } }),
     prisma.service.count(),
-    prisma.booking.groupBy({
-      by: ["serviceId"],
+    prisma.bookingServiceItem.findMany({
       where: {
-        status: "COMPLETED",
-        date: { gte: monthStart, lt: monthEnd },
-        isBarberOwnRevenue: false,
+        booking: {
+          is: {
+            status: "COMPLETED",
+            date: { gte: monthStart, lt: monthEnd },
+            isBarberOwnRevenue: false,
+          },
+        },
       },
-      _sum: { price: true },
-      _count: { _all: true, price: true },
+      select: { price: true },
     }),
   ]);
 
-  const monthlyServices = await prisma.service.findMany({
-    where: { id: { in: monthlyRevenueGroups.map((group) => group.serviceId) } },
-    select: { id: true, priceValue: true },
-  });
-  const monthlyPriceByServiceId = new Map(monthlyServices.map((service) => [service.id, service.priceValue]));
-  const revenueThisMonth = monthlyRevenueGroups.reduce((sum, group) => {
-    const missingPriceCount = group._count._all - group._count.price;
-    const fallbackPrice = monthlyPriceByServiceId.get(group.serviceId) ?? 0;
-    return sum + (group._sum.price ?? 0) + missingPriceCount * fallbackPrice;
-  }, 0);
+  const revenueThisMonth = monthlyRevenueItems.reduce((sum, item) => sum + item.price, 0);
 
   return {
     todaysBookingsCount,
@@ -138,88 +131,79 @@ export interface RevenueReportFilter {
 }
 
 export async function getSalonRevenueReport(filter: RevenueReportFilter = {}) {
-  const revenueGroups = await prisma.booking.groupBy({
-    by: ["barberId", "serviceId"],
+  const revenueItems = await prisma.bookingServiceItem.findMany({
     where: {
-      status: "COMPLETED",
-      isBarberOwnRevenue: false,
-      isPrivateCustomer: false,
-      ...(filter.barberId ? { barberId: filter.barberId } : {}),
-      ...(filter.dateFrom || filter.dateTo
-        ? {
-            date: {
-              ...(filter.dateFrom ? { gte: filter.dateFrom } : {}),
-              ...(filter.dateTo ? { lt: filter.dateTo } : {}),
-            },
-          }
-        : {}),
+      booking: {
+        is: {
+          status: "COMPLETED",
+          isBarberOwnRevenue: false,
+          isPrivateCustomer: false,
+          ...(filter.barberId ? { barberId: filter.barberId } : {}),
+          ...(filter.dateFrom || filter.dateTo
+            ? {
+                date: {
+                  ...(filter.dateFrom ? { gte: filter.dateFrom } : {}),
+                  ...(filter.dateTo ? { lt: filter.dateTo } : {}),
+                },
+              }
+            : {}),
+        },
+      },
     },
-    _sum: { price: true },
-    _count: { _all: true, price: true },
+    select: {
+      serviceId: true,
+      price: true,
+      service: { select: { title: true } },
+      booking: { select: { id: true, barberId: true } },
+    },
   });
 
-  let totalRevenue = 0;
-  let completedCount = 0;
-  const [services, barbers] = await Promise.all([
-    prisma.service.findMany({
-      where: { id: { in: revenueGroups.map((group) => group.serviceId) } },
-      select: { id: true, title: true, priceValue: true },
-    }),
-    prisma.barberProfile.findMany({
-      where: { id: { in: revenueGroups.map((group) => group.barberId) } },
-      select: { id: true, user: { select: { name: true } } },
-    }),
-  ]);
-  const serviceById = new Map(services.map((service) => [service.id, service]));
+  const barberIds = [...new Set(revenueItems.map((item) => item.booking.barberId))];
+  const barbers = await prisma.barberProfile.findMany({
+    where: { id: { in: barberIds } },
+    select: { id: true, user: { select: { name: true } } },
+  });
   const barberNameById = new Map(barbers.map((barber) => [barber.id, barber.user.name]));
-  const byBarber = new Map<
-    string,
-    { barberName: string; revenue: number; count: number }
-  >();
-  const byService = new Map<
-    string,
-    { serviceTitle: string; revenue: number; count: number }
-  >();
+  const byBarber = new Map<string, { barberName: string; revenue: number; bookingIds: Set<string> }>();
+  const byService = new Map<string, { serviceTitle: string; revenue: number; count: number }>();
+  const completedBookingIds = new Set<string>();
+  let totalRevenue = 0;
 
-  for (const group of revenueGroups) {
-    const service = serviceById.get(group.serviceId);
-    if (!service) continue;
+  for (const item of revenueItems) {
+    totalRevenue += item.price;
+    completedBookingIds.add(item.booking.id);
 
-    const count = group._count._all;
-    const missingPriceCount = count - group._count.price;
-    const amount = (group._sum.price ?? 0) + missingPriceCount * service.priceValue;
-    totalRevenue += amount;
-    completedCount += count;
+    const barberEntry = byBarber.get(item.booking.barberId) ?? {
+      barberName: barberNameById.get(item.booking.barberId) ?? "—",
+      revenue: 0,
+      bookingIds: new Set<string>(),
+    };
+    barberEntry.revenue += item.price;
+    barberEntry.bookingIds.add(item.booking.id);
+    byBarber.set(item.booking.barberId, barberEntry);
 
-    const barberEntry = byBarber.get(group.barberId) ?? {
-      barberName: barberNameById.get(group.barberId) ?? "—",
+    const serviceEntry = byService.get(item.serviceId) ?? {
+      serviceTitle: item.service.title,
       revenue: 0,
       count: 0,
     };
-    barberEntry.revenue += amount;
-    barberEntry.count += count;
-    byBarber.set(group.barberId, barberEntry);
-
-    const serviceEntry = byService.get(group.serviceId) ?? {
-      serviceTitle: service.title,
-      revenue: 0,
-      count: 0,
-    };
-    serviceEntry.revenue += amount;
-    serviceEntry.count += count;
-    byService.set(group.serviceId, serviceEntry);
+    serviceEntry.revenue += item.price;
+    serviceEntry.count += 1;
+    byService.set(item.serviceId, serviceEntry);
   }
 
   return {
     totalRevenue,
-    completedCount,
-    byBarber: Array.from(byBarber.entries()).map(([barberId, v]) => ({
+    completedCount: completedBookingIds.size,
+    byBarber: Array.from(byBarber.entries()).map(([barberId, entry]) => ({
       barberId,
-      ...v,
+      barberName: entry.barberName,
+      revenue: entry.revenue,
+      count: entry.bookingIds.size,
     })),
-    byService: Array.from(byService.entries()).map(([serviceId, v]) => ({
+    byService: Array.from(byService.entries()).map(([serviceId, entry]) => ({
       serviceId,
-      ...v,
+      ...entry,
     })),
   };
 }
@@ -241,60 +225,56 @@ export async function getBarberOwnRevenueReport(
     throw new AppError("آرایشگر پیدا نشد", 404);
   }
 
-  const revenueGroups = await prisma.booking.groupBy({
-    by: ["serviceId"],
+  const revenueItems = await prisma.bookingServiceItem.findMany({
     where: {
-      barberId,
-      status: "COMPLETED",
-      isBarberOwnRevenue: true,
-      ...(filter.dateFrom || filter.dateTo
-        ? {
-            date: {
-              ...(filter.dateFrom ? { gte: filter.dateFrom } : {}),
-              ...(filter.dateTo ? { lt: filter.dateTo } : {}),
-            },
-          }
-        : {}),
+      booking: {
+        is: {
+          barberId,
+          status: "COMPLETED",
+          isBarberOwnRevenue: true,
+          ...(filter.dateFrom || filter.dateTo
+            ? {
+                date: {
+                  ...(filter.dateFrom ? { gte: filter.dateFrom } : {}),
+                  ...(filter.dateTo ? { lt: filter.dateTo } : {}),
+                },
+              }
+            : {}),
+        },
+      },
     },
-    _sum: { price: true },
-    _count: { _all: true, price: true },
+    select: {
+      serviceId: true,
+      price: true,
+      service: { select: { title: true } },
+      booking: { select: { id: true } },
+    },
   });
 
-  const services = await prisma.service.findMany({
-    where: { id: { in: revenueGroups.map((group) => group.serviceId) } },
-    select: { id: true, title: true, priceValue: true },
-  });
-  const serviceById = new Map(services.map((service) => [service.id, service]));
   let totalRevenue = 0;
-  let completedCount = 0;
+  const completedBookingIds = new Set<string>();
   const byService = new Map<
     string,
     { serviceTitle: string; revenue: number; count: number }
   >();
 
-  for (const group of revenueGroups) {
-    const service = serviceById.get(group.serviceId);
-    if (!service) continue;
+  for (const item of revenueItems) {
+    totalRevenue += item.price;
+    completedBookingIds.add(item.booking.id);
 
-    const count = group._count._all;
-    const missingPriceCount = count - group._count.price;
-    const amount = (group._sum.price ?? 0) + missingPriceCount * service.priceValue;
-    totalRevenue += amount;
-    completedCount += count;
-
-    const entry = byService.get(service.title) ?? {
-      serviceTitle: service.title,
+    const entry = byService.get(item.serviceId) ?? {
+      serviceTitle: item.service.title,
       revenue: 0,
       count: 0,
     };
-    entry.revenue += amount;
-    entry.count += count;
-    byService.set(service.title, entry);
+    entry.revenue += item.price;
+    entry.count += 1;
+    byService.set(item.serviceId, entry);
   }
 
   return {
     totalRevenue,
-    completedCount,
+    completedCount: completedBookingIds.size,
     byService: Array.from(byService.values()),
   };
 }

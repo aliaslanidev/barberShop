@@ -6,7 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Check, CheckCircle2, Info, Star, User, Scissors, ChevronRight, ChevronLeft } from "lucide-react";
+import { Banknote, BellRing, Check, CheckCircle2, CreditCard, Info, Star, User, Scissors, ChevronRight, ChevronLeft } from "lucide-react";
 import type { DateObject } from "react-multi-date-picker";
 
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,9 @@ import {
   getAvailability,
   getAvailabilityRange,
   createBookingApi,
+  createWaitlistApi,
+  cancelWaitlistApi,
+  getMyWaitlistApi,
   createSlotHoldApi,
   extendSlotHoldApi,
   releaseSlotHoldApi,
@@ -30,6 +33,7 @@ import {
   type ApiService,
   type ApiBarber,
   type ApiSlotStatus,
+  type ApiWaitlistRequest,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { getAuthToken } from "@/lib/data/mock-session";
@@ -220,6 +224,25 @@ function toISODate(d: Date) {
   return `${y}-${m}-${day}`;
 }
 
+function getTehranDateTime(date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Tehran",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((item) => item.type === type)?.value ?? "";
+
+  return {
+    dateKey: `${part("year")}-${part("month")}-${part("day")}`,
+    minuteOfDay: Number(part("hour")) * 60 + Number(part("minute")),
+  };
+}
+
 export default function BookingPage() {
   const { user, login, register: registerUser } = useAuth();
 
@@ -246,11 +269,14 @@ export default function BookingPage() {
 
   const [step, setStep] = useState<Step>("entry");
   const [entryPath, setEntryPath] = useState<EntryPath | null>(null);
-  const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
+  const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
   const [selectedBarberId, setSelectedBarberId] = useState<string | null>(null);
   const [date, setDate] = useState<DateObject | null>(null);
   const [time, setTime] = useState<string | null>(null);
+  const [now, setNow] = useState(() => new Date());
   const [notes, setNotes] = useState("");
+  const [pendingWaitlistTime, setPendingWaitlistTime] = useState<string | null>(null);
+  const [waitlistRequests, setWaitlistRequests] = useState<ApiWaitlistRequest[]>([]);
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
   const [isFinalSubmitting, setIsFinalSubmitting] = useState(false);
   const [confirmedBooking, setConfirmedBooking] = useState<ConfirmedBooking | null>(null);
@@ -265,6 +291,40 @@ export default function BookingPage() {
   const [holdId, setHoldId] = useState<string | null>(null);
   const [holdExpiresAt, setHoldExpiresAt] = useState<number | null>(null); // timestamp (ms)
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (step !== "time" || user?.role !== "customer") {
+      setWaitlistRequests([]);
+      return;
+    }
+
+    const token = getAuthToken();
+    if (!token) return;
+    let active = true;
+    let hasReportedError = false;
+    const load = async () => {
+      try {
+        const result = await getMyWaitlistApi(token);
+        if (active) {
+          setWaitlistRequests(result.requests);
+          hasReportedError = false;
+        }
+      } catch (error) {
+        if (active && !hasReportedError) {
+          hasReportedError = true;
+          console.error("خطا در دریافت درخواست‌های صف انتظار", error);
+          toast.error(error instanceof ApiError ? error.message : "دریافت وضعیت صف انتظار ناموفق بود");
+        }
+      }
+    };
+
+    void load();
+    const interval = window.setInterval(() => void load(), 15_000);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+    };
+  }, [step, user?.id, user?.role]);
 
   // هر بار holdId عوض می‌شه (یا کامپوننت آنماونت می‌شه)، هولدِ قبلی آزاد
   // می‌شه. این cleanup هم مسیر «برگشتن به مرحله‌ی قبل»، هم «ترک صفحه» رو
@@ -317,6 +377,20 @@ export default function BookingPage() {
   }, [selectedBarberId, calendarMaxDate]);
 
   const dateKey = date ? toISODate(date.toDate()) : null;
+  const tehranNow = getTehranDateTime(now);
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(new Date()), 15_000);
+    return () => clearInterval(interval);
+  }, []);
+
+  function isSlotInPast(slot: string, selectedDateKey = dateKey) {
+    if (!selectedDateKey) return false;
+    if (selectedDateKey < tehranNow.dateKey) return true;
+    if (selectedDateKey > tehranNow.dateKey) return false;
+    const [hours, minutes] = slot.split(":").map(Number);
+    return hours * 60 + minutes <= tehranNow.minuteOfDay;
+  }
 
   useEffect(() => {
     if (!selectedBarberId || !dateKey) {
@@ -377,17 +451,24 @@ export default function BookingPage() {
   }, [entryPath, selectedBarberId, barbers, services]);
 
   const barbersToShow = useMemo(() => {
-    if (entryPath === "service" && selectedServiceId) {
-      return barbers.filter((b) => activeRows(b).some((r) => r.serviceId === selectedServiceId));
+    if (entryPath === "service" && selectedServiceIds.length > 0) {
+      return barbers.filter((barber) => {
+        const availableServiceIds = new Set(activeRows(barber).map((row) => row.serviceId));
+        return selectedServiceIds.every((serviceId) => availableServiceIds.has(serviceId));
+      });
     }
     return barbers;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [entryPath, selectedServiceId, barbers]);
+  }, [entryPath, selectedServiceIds, barbers]);
 
-  const selectedService = selectedServiceId ? services.find((s) => s.id === selectedServiceId) ?? null : null;
+  const selectedServices = selectedServiceIds
+    .map((serviceId) => services.find((service) => service.id === serviceId))
+    .filter((service): service is ApiService => Boolean(service));
   const selectedBarber = selectedBarberId ? barbers.find((b) => b.id === selectedBarberId) ?? null : null;
   const selectedPrice =
-    selectedBarberId && selectedServiceId ? getPrice(selectedBarberId, selectedServiceId) : null;
+    selectedBarberId && selectedServiceIds.length > 0
+      ? selectedServiceIds.reduce((total, serviceId) => total + (getPrice(selectedBarberId, serviceId) ?? 0), 0)
+      : null;
 
   const stepIndex = stepOrder.indexOf(step);
 
@@ -400,13 +481,31 @@ export default function BookingPage() {
   // انتخاب آرایشگر تو مسیر «اول آرایشگر»: سرویس قبلی ممکنه دیگه توسط
   // این آرایشگر ارائه نشه، پس پاک می‌شه
   function pickBarberFirst(barberId: string) {
-    if (selectedBarberId !== barberId) setSelectedServiceId(null);
+    if (selectedBarberId !== barberId) setSelectedServiceIds([]);
     setSelectedBarberId(barberId);
+  }
+
+  function toggleServiceSelection(serviceId: string) {
+    if (selectedServiceIds.includes(serviceId)) {
+      setSelectedServiceIds((current) => current.filter((id) => id !== serviceId));
+      if (entryPath === "service") setSelectedBarberId(null);
+      return;
+    }
+    if (selectedServiceIds.length >= 2) {
+      toast.info("حداکثر دو سرویس می‌توانید انتخاب کنید");
+      return;
+    }
+    setSelectedServiceIds((current) => [...current, serviceId]);
+    if (entryPath === "service") setSelectedBarberId(null);
   }
 
   // انتخاب ساعت: به‌جای فقط setTime، یه هولد ۵ دقیقه‌ای روی سرور می‌سازه
   async function handleSelectTime(slot: string) {
     if (!selectedBarberId || !dateKey || time === slot) return;
+    if (isSlotInPast(slot, dateKey)) {
+      toast.error("این ساعت گذشته است؛ لطفاً یک ساعت آینده را انتخاب کنید");
+      return;
+    }
 
     const previousHoldId = holdId;
     setTime(null);
@@ -470,10 +569,10 @@ export default function BookingPage() {
     if (step === "entry") return entryPath !== null;
     if (step === "pick")
       return entryPath === "barber"
-        ? selectedBarberId !== null && selectedServiceId !== null
-        : selectedServiceId !== null && selectedBarberId !== null;
+        ? selectedBarberId !== null && selectedServiceIds.length > 0
+        : selectedServiceIds.length > 0 && selectedBarberId !== null;
     if (step === "date") return date !== null;
-    if (step === "time") return time !== null;
+    if (step === "time") return time !== null && !isSlotInPast(time);
     return true;
   }
 
@@ -482,7 +581,7 @@ export default function BookingPage() {
     setConfirmedBooking(null);
     setStep("entry");
     setEntryPath(null);
-    setSelectedServiceId(null);
+    setSelectedServiceIds([]);
     setSelectedBarberId(null);
     setDate(null);
     setTime(null);
@@ -503,10 +602,86 @@ export default function BookingPage() {
     formState: { errors: quickErrors, isSubmitting: isQuickSubmitting },
   } = useForm<QuickRegisterValues>({ resolver: zodResolver(quickRegisterSchema) });
 
+  async function resumeAfterAuth() {
+    if (!pendingWaitlistTime) {
+      setStep("confirm");
+      return;
+    }
+    setStep("time");
+    const token = getAuthToken();
+    if (!token || !selectedBarberId || selectedServiceIds.length === 0 || !dateKey) {
+      toast.error("اطلاعات درخواست کامل نیست؛ لطفاً دوباره ساعت را انتخاب کنید");
+      setPendingWaitlistTime(null);
+      return;
+    }
+    try {
+      await createWaitlistApi(
+        {
+          barberId: selectedBarberId,
+          serviceIds: selectedServiceIds,
+          date: dateKey,
+          time: pendingWaitlistTime,
+        },
+        token,
+      );
+      toast.success("درخواست شما با موفقیت در صف انتظار ثبت شد");
+      setPendingWaitlistTime(null);
+      const result = await getMyWaitlistApi(token);
+      setWaitlistRequests(result.requests);
+    } catch (error) {
+      toast.error(error instanceof ApiError ? error.message : "ثبت درخواست صف انتظار ناموفق بود");
+      setPendingWaitlistTime(null);
+    }
+  }
+
+  async function handleWaitlistClick(slot: string) {
+    if (!selectedBarberId || selectedServiceIds.length === 0 || !dateKey) return;
+    if (user && user.role !== "customer") {
+      toast.error("ثبت درخواست صف انتظار فقط با حساب مشتری امکان‌پذیر است");
+      return;
+    }
+    if (!user) {
+      setPendingWaitlistTime(slot);
+      setAuthMode("login");
+      setStep("auth");
+      toast.info("برای ثبت درخواست صف انتظار ابتدا وارد حساب مشتری شوید");
+      return;
+    }
+
+    const token = getAuthToken();
+    if (!token) {
+      toast.error("نشست شما معتبر نیست؛ لطفاً دوباره وارد شوید");
+      return;
+    }
+    try {
+      await createWaitlistApi(
+        { barberId: selectedBarberId, serviceIds: selectedServiceIds, date: dateKey, time: slot },
+        token,
+      );
+      toast.success("درخواست شما در صف انتظار ثبت شد");
+      const result = await getMyWaitlistApi(token);
+      setWaitlistRequests(result.requests);
+    } catch (error) {
+      toast.error(error instanceof ApiError ? error.message : "ثبت درخواست صف انتظار ناموفق بود");
+    }
+  }
+
+  async function handleCancelWaitlist(requestId: string) {
+    const token = getAuthToken();
+    if (!token) return;
+    try {
+      await cancelWaitlistApi(requestId, token);
+      setWaitlistRequests((current) => current.filter((request) => request.id !== requestId));
+      toast.info("درخواست صف انتظار لغو شد");
+    } catch (error) {
+      toast.error(error instanceof ApiError ? error.message : "لغو درخواست ناموفق بود");
+    }
+  }
+
   async function onLoginSubmit(values: LoginValues) {
     try {
       await login(values.mobile, values.password);
-      setStep("confirm");
+      await resumeAfterAuth();
     } catch (err) {
       toast.error(
         err instanceof ApiError
@@ -521,7 +696,7 @@ export default function BookingPage() {
   async function onQuickRegisterSubmit(values: QuickRegisterValues) {
     try {
       await registerUser(values.name, values.mobile, values.password);
-      setStep("confirm");
+      await resumeAfterAuth();
     } catch (err) {
       toast.error(
         err instanceof ApiError
@@ -535,13 +710,20 @@ export default function BookingPage() {
 
   async function handleFinalConfirm() {
     const token = getAuthToken();
-    if (!token || !selectedBarberId || !selectedServiceId || !dateKey || !time) return;
+    if (!token || !selectedBarberId || selectedServiceIds.length === 0 || !dateKey || !time) return;
+    if (isSlotInPast(time, dateKey)) {
+      toast.error("زمان انتخاب‌شده گذشته است؛ لطفاً ساعت دیگری انتخاب کنید");
+      setTime(null);
+      setStep("time");
+      refreshSlots();
+      return;
+    }
     setIsFinalSubmitting(true);
     try {
       const booking = await createBookingApi(
         {
           barberId: selectedBarberId,
-          serviceId: selectedServiceId,
+          serviceIds: selectedServiceIds,
           date: dateKey,
           time,
           notes: notes || undefined,
@@ -556,7 +738,7 @@ export default function BookingPage() {
         code: booking.id.slice(-8).toUpperCase(),
         customerName: user?.name ?? "",
         barberName: selectedBarber?.user.name ?? "",
-        serviceTitle: selectedService?.title ?? "",
+        serviceTitle: selectedServices.map((service) => service.title).join(" + "),
         dateKey,
         time,
         // قیمتی که سرور تو نوبت ذخیره کرده، مرجع اصلیه؛ محاسبه‌ی فرانت فقط جایگزینه
@@ -646,6 +828,10 @@ export default function BookingPage() {
             <div className="flex justify-between">
               <span className="text-muted-foreground">ساعت</span>
               <span className="font-medium">{toPersianDigits(c.time)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">روش پرداخت</span>
+              <span className="font-medium">نقدی در سالن</span>
             </div>
             {c.notes && (
               <div className="flex justify-between gap-4">
@@ -781,16 +967,21 @@ export default function BookingPage() {
 
           {selectedBarberId && (
             <div className="mt-6 space-y-3">
-              <Label>انتخاب سرویس</Label>
+              <div className="flex items-center justify-between gap-3">
+                <Label>انتخاب سرویس (حداکثر دو مورد)</Label>
+                <span className="text-xs text-muted-foreground">
+                  {toPersianDigits(String(selectedServiceIds.length))} از ۲
+                </span>
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 {servicesToShow.map((s) => {
-                  const isSelected = selectedServiceId === s.id;
+                  const isSelected = selectedServiceIds.includes(s.id);
                   const price = getPrice(selectedBarberId, s.id);
                   return (
                     <button
                       key={s.id}
                       type="button"
-                      onClick={() => setSelectedServiceId(s.id)}
+                      onClick={() => toggleServiceSelection(s.id)}
                       className={cn(
                         "flex flex-col items-start gap-2 rounded-xl border p-4 text-right transition-colors",
                         isSelected ? "border-primary bg-primary/10" : "border-border bg-card hover:border-primary/40",
@@ -811,7 +1002,12 @@ export default function BookingPage() {
 
       {step === "pick" && entryPath === "service" && (
         <div className="space-y-3">
-          <Label>انتخاب سرویس</Label>
+          <div className="flex items-center justify-between gap-3">
+            <Label>انتخاب سرویس (حداکثر دو مورد)</Label>
+            <span className="text-xs text-muted-foreground">
+              {toPersianDigits(String(selectedServiceIds.length))} از ۲
+            </span>
+          </div>
           {servicesToShow.length === 0 && (
             <p className="rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground">
               در حال حاضر سرویسی برای رزرو در دسترس نیست.
@@ -819,16 +1015,12 @@ export default function BookingPage() {
           )}
           <div className="grid grid-cols-2 gap-3">
             {servicesToShow.map((s) => {
-              const isSelected = selectedServiceId === s.id;
+              const isSelected = selectedServiceIds.includes(s.id);
               return (
                 <button
                   key={s.id}
                   type="button"
-                  onClick={() => {
-                    // عوض‌کردن سرویس: آرایشگر قبلی ممکنه این سرویس رو نداشته باشه
-                    if (selectedServiceId !== s.id) setSelectedBarberId(null);
-                    setSelectedServiceId(s.id);
-                  }}
+                  onClick={() => toggleServiceSelection(s.id)}
                   className={cn(
                     "flex flex-col items-start gap-2 rounded-xl border p-4 text-right transition-colors",
                     isSelected ? "border-primary bg-primary/10" : "border-border bg-card hover:border-primary/40",
@@ -841,15 +1033,18 @@ export default function BookingPage() {
             })}
           </div>
 
-          {selectedServiceId && (
+          {selectedServiceIds.length > 0 && (
             <div className="mt-6 space-y-3">
               <Label>انتخاب آرایشگر</Label>
               <p className="text-xs text-muted-foreground">
-                قیمت این سرویس ممکن است نزد هر آرایشگر متفاوت باشد؛ قیمت هر کدام پایین کارتش آمده.
+                هر دو سرویس باید نزد آرایشگر انتخابی ارائه شوند؛ مجموع قیمت کنار کارت او نمایش داده می‌شود.
               </p>
               <div className="grid gap-3 sm:grid-cols-2">
                 {barbersToShow.map((b) => {
-                  const price = getPrice(b.id, selectedServiceId);
+                  const price = selectedServiceIds.reduce(
+                    (total, serviceId) => total + (getPrice(b.id, serviceId) ?? 0),
+                    0,
+                  );
                   return (
                     <BarberCard
                       key={b.id}
@@ -924,31 +1119,78 @@ export default function BookingPage() {
           ) : (
             <>
               <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">
-                {availableSlots.map(({ time: slot, available }) => {
+                {availableSlots.map(({ time: slot, available, waitlistable }) => {
                   const isSelected = time === slot;
+                  const isPast = isSlotInPast(slot);
+                  const isUnavailable = !available || isPast;
+                  const waitlistRequest = waitlistRequests.find(
+                    (request) =>
+                      request.barberId === selectedBarberId &&
+                      request.date === dateKey &&
+                      request.time === slot,
+                  );
+                  const hasWaitlistRequest = waitlistRequest?.status === "WAITING";
+                  const isWaitlistOfferPending = waitlistRequest?.status === "OFFERED";
+                  const canRequestWaitlist = waitlistable && !isPast && !isWaitlistOfferPending;
+                  const canManageWaitlist = Boolean(hasWaitlistRequest || canRequestWaitlist);
                   return (
-                    <button
-                      key={slot}
-                      type="button"
-                      disabled={!available}
-                      onClick={() => available && handleSelectTime(slot)}
-                      className={cn(
-                        "rounded-lg border py-2.5 text-xs font-medium transition-colors",
-                        !available
-                          ? "cursor-not-allowed border-red-500/40 bg-red-500/10 text-red-400 line-through"
-                          : isSelected
-                            ? "border-primary bg-primary text-primary-foreground"
-                            : "border-border bg-card text-muted-foreground hover:border-primary/40",
-                      )}
-                    >
-                      {toPersianDigits(slot)}
-                    </button>
+                    <div key={slot} className="min-w-0">
+                      <button
+                        type="button"
+                        disabled={
+                          (isUnavailable && !canManageWaitlist) ||
+                          Boolean(user && user.role !== "customer" && canManageWaitlist)
+                        }
+                        onClick={() => {
+                          if (!isUnavailable) {
+                            void handleSelectTime(slot);
+                          } else if (waitlistRequest?.status === "WAITING") {
+                            void handleCancelWaitlist(waitlistRequest.id);
+                          } else if (canRequestWaitlist) {
+                            void handleWaitlistClick(slot);
+                          }
+                        }}
+                        aria-label={
+                          hasWaitlistRequest
+                            ? `لغو درخواست ساعت ${toPersianDigits(slot)}`
+                            : isWaitlistOfferPending
+                              ? `پیشنهاد صف انتظار برای ساعت ${toPersianDigits(slot)} ارسال شد`
+                              : canRequestWaitlist
+                                ? `ثبت درخواست خبرم کن برای ساعت ${toPersianDigits(slot)}`
+                                : `ساعت ${toPersianDigits(slot)} در دسترس نیست`
+                        }
+                        title={
+                          hasWaitlistRequest
+                            ? "برای لغو درخواست صف انتظار کلیک کنید"
+                            : isWaitlistOfferPending
+                              ? "پیشنهاد صف انتظار برای شما ارسال شده"
+                              : canRequestWaitlist
+                                ? "برای ثبت درخواست خبرم کن کلیک کنید"
+                                : undefined
+                        }
+                        className={cn(
+                          "flex h-12 w-full items-center justify-center gap-1.5 rounded-lg border px-1.5 text-xs font-medium transition-colors",
+                          isUnavailable
+                            ? canManageWaitlist
+                              ? "border-red-500/40 bg-red-500/10 text-red-400 hover:border-primary/50"
+                              : "cursor-not-allowed border-red-500/40 bg-red-500/10 text-red-400"
+                            : isSelected
+                              ? "border-primary bg-primary text-primary-foreground"
+                              : "border-border bg-card text-muted-foreground hover:border-primary/40",
+                        )}
+                      >
+                        {toPersianDigits(slot)}
+                        {canRequestWaitlist && <BellRing className="h-3 w-3 shrink-0 text-primary" />}
+                        {hasWaitlistRequest && <Check className="h-3 w-3 shrink-0 text-primary" />}
+                        {isWaitlistOfferPending && <BellRing className="h-3 w-3 shrink-0 text-primary" />}
+                      </button>
+                      </div>
                   );
                 })}
               </div>
               <p className="text-xs text-muted-foreground">
-                ساعت‌های قرمز/خط‌خورده یعنی قبلاً رزرو شدن، بلاک‌شدن یا همین الان
-                توسط یک مشتری دیگر در حال رزرو هستن.
+                ساعت‌های قرمز یعنی رزرو یا مسدود شده‌اند. آیکون زنگ کنار ساعت
+                یعنی می‌توانید برای آزادشدنش درخواست ثبت کنید.
               </p>
             </>
           )}
@@ -969,6 +1211,11 @@ export default function BookingPage() {
 
       {step === "auth" && (
         <div className="space-y-4">
+          {pendingWaitlistTime && (
+            <p className="rounded-lg border border-primary/30 bg-primary/10 p-3 text-sm leading-6">
+              برای ثبت درخواست اطلاع‌رسانی ساعت {toPersianDigits(pendingWaitlistTime)}، وارد حساب مشتری شوید یا ثبت‌نام کنید.
+            </p>
+          )}
           <div className="flex gap-2 rounded-lg bg-secondary p-1">
             <button
               type="button"
@@ -1054,7 +1301,7 @@ export default function BookingPage() {
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">سرویس</span>
-              <span className="font-medium">{selectedService?.title}</span>
+              <span className="font-medium">{selectedServices.map((service) => service.title).join(" + ")}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">تاریخ</span>
@@ -1063,6 +1310,10 @@ export default function BookingPage() {
             <div className="flex justify-between">
               <span className="text-muted-foreground">ساعت</span>
               <span className="font-medium">{time ? toPersianDigits(time) : ""}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">روش پرداخت</span>
+              <span className="font-medium">نقدی در سالن</span>
             </div>
             {notes && (
               <div className="flex justify-between gap-4">
@@ -1076,6 +1327,29 @@ export default function BookingPage() {
                 <span className="font-bold text-primary">{formatPrice(selectedPrice)}</span>
               </div>
             )}
+            <div className="space-y-2 border-t border-border pt-3">
+              <p className="font-medium">روش پرداخت</p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <div className="flex items-center gap-3 rounded-lg border border-primary bg-primary/10 p-3">
+                  <Banknote className="h-5 w-5 shrink-0 text-primary" />
+                  <div>
+                    <p className="text-sm font-medium">پرداخت نقدی</p>
+                    <p className="text-xs text-muted-foreground">پرداخت در سالن پس از دریافت خدمات</p>
+                  </div>
+                  <CheckCircle2 className="mr-auto h-4 w-4 shrink-0 text-primary" />
+                </div>
+                <div
+                  aria-disabled="true"
+                  className="flex cursor-not-allowed items-center gap-3 rounded-lg border border-border bg-secondary/40 p-3 opacity-55"
+                >
+                  <CreditCard className="h-5 w-5 shrink-0 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">پرداخت آنلاین با کارت بانکی</p>
+                    <p className="text-xs text-muted-foreground">فعلاً غیرفعال است؛ به‌زودی فعال می‌شود</p>
+                  </div>
+                </div>
+              </div>
+            </div>
             {user && (
               <div className="flex justify-between border-t border-border pt-3">
                 <span className="text-muted-foreground">نام</span>
