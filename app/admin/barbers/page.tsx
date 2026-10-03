@@ -65,6 +65,9 @@ const OPTIONAL_PERMISSIONS: {
   { key: "blockSlots", label: "بلاک کردن اسلات" },
   { key: "cancelOwnBookings", label: "کنسل کردن نوبت تاییدشده" },
   { key: "viewCustomers", label: "دیدن لیست مشتری‌ها" },
+  // پرمیشن جدید بند ۷.۱: مشتری‌ها/نوبت‌های این آرایشگر کاملاً خصوصی
+  // می‌شن (نه ادمین، نه مدیر سالن می‌بینتشون) — مستقل از managePricing
+  { key: "exclusiveCustomers", label: "مشتری اختصاصی (خصوصی‌سازی مشتری‌ها)" },
 ];
 
 const createBarberSchema = z.object({
@@ -177,6 +180,7 @@ export default function AdminBarbersPage() {
         blockSlots: found.blockSlots,
         cancelOwnBookings: found.cancelOwnBookings,
         viewCustomers: found.viewCustomers,
+        exclusiveCustomers: found.exclusiveCustomers,
       });
       setDraftServiceIds(found.services.map((s) => s.serviceId));
     } else {
@@ -337,6 +341,7 @@ export default function AdminBarbersPage() {
       blockSlots: selectedBarber.blockSlots,
       cancelOwnBookings: selectedBarber.cancelOwnBookings,
       viewCustomers: selectedBarber.viewCustomers,
+      exclusiveCustomers: selectedBarber.exclusiveCustomers,
     });
   }
 
