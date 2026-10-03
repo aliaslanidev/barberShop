@@ -177,6 +177,7 @@ export default function AdminBarbersPage() {
         blockSlots: found.blockSlots,
         cancelOwnBookings: found.cancelOwnBookings,
         viewCustomers: found.viewCustomers,
+        exclusiveCustomers: found.exclusiveCustomers,
       });
       setDraftServiceIds(found.services.map((s) => s.serviceId));
     } else {
@@ -337,6 +338,7 @@ export default function AdminBarbersPage() {
       blockSlots: selectedBarber.blockSlots,
       cancelOwnBookings: selectedBarber.cancelOwnBookings,
       viewCustomers: selectedBarber.viewCustomers,
+      exclusiveCustomers: selectedBarber.exclusiveCustomers,
     });
   }
 
