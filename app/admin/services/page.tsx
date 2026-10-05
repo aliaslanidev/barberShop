@@ -5,9 +5,10 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Plus, Search, Trash2, X, type LucideIcon } from "lucide-react";
+import { Pencil, Plus, Search, Trash2, X, type LucideIcon } from "lucide-react";
 
 import { Card, CardContent } from "@/components/ui/card";
+import { StatusCard } from "@/components/ui/status-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -49,6 +50,12 @@ const serviceSchema = z.object({
   ),
 });
 type ServiceFormValues = z.infer<typeof serviceSchema>;
+type ServiceEditDraft = {
+  title: string;
+  desc: string;
+  icon: ServiceIconKey;
+  priceValue: number;
+};
 
 const ICON_LABELS: Record<ServiceIconKey, string> = {
   scissors: "قیچی",
@@ -65,12 +72,18 @@ function getServiceIcon(icon: string): LucideIcon {
   return SERVICE_ICONS[icon as ServiceIconKey] ?? SERVICE_ICONS.scissors;
 }
 
+function isServiceIconKey(icon: string): icon is ServiceIconKey {
+  return Object.prototype.hasOwnProperty.call(SERVICE_ICONS, icon);
+}
+
 export default function AdminServicesPage() {
   const [services, setServices] = useState<ApiService[] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingService, setEditingService] = useState<ApiService | null>(null);
+  const [editDraft, setEditDraft] = useState<ServiceEditDraft | null>(null);
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [priceDrafts, setPriceDrafts] = useState<Record<string, number>>({});
 
   async function refresh() {
     try {
@@ -122,34 +135,56 @@ export default function AdminServicesPage() {
     }
   }
 
-  function getDraftPrice(service: ApiService) {
-    return priceDrafts[service.id] ?? service.priceValue;
-  }
-
-  function isPriceDirty(service: ApiService) {
-    return (
-      service.id in priceDrafts && priceDrafts[service.id] !== service.priceValue
-    );
-  }
-
-  async function handleSavePrice(service: ApiService) {
-    const token = getAuthToken();
-    if (!token) return;
-    try {
-      await updateServiceApi(service.id, { priceValue: getDraftPrice(service) }, token);
-      await refresh();
-      toast.success(`قیمت «${service.title}» به‌روزرسانی شد`);
-    } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "خطا در ذخیره‌ی قیمت");
-    }
-  }
-
-  function handleCancelPrice(service: ApiService) {
-    setPriceDrafts((p) => {
-      const next = { ...p };
-      delete next[service.id];
-      return next;
+  function handleStartEditing(service: ApiService) {
+    setEditingService(service);
+    setEditDraft({
+      title: service.title,
+      desc: service.desc,
+      icon: isServiceIconKey(service.icon) ? service.icon : "scissors",
+      priceValue: service.priceValue,
     });
+  }
+
+  function handleCancelEditing() {
+    setEditingService(null);
+    setEditDraft(null);
+  }
+
+  async function handleSaveService() {
+    if (!editingService || !editDraft) return;
+    const token = getAuthToken();
+    if (!token) {
+      toast.error("ابتدا دوباره وارد حساب کاربری شوید");
+      return;
+    }
+
+    const validation = serviceSchema.safeParse(editDraft);
+    if (!validation.success) {
+      toast.error(validation.error.issues[0]?.message ?? "اطلاعات سرویس معتبر نیست");
+      return;
+    }
+
+    if (
+      editDraft.title === editingService.title &&
+      editDraft.desc === editingService.desc &&
+      editDraft.icon === editingService.icon &&
+      editDraft.priceValue === editingService.priceValue
+    ) {
+      handleCancelEditing();
+      return;
+    }
+
+    setIsSavingEdit(true);
+    try {
+      await updateServiceApi(editingService.id, validation.data, token);
+      await refresh();
+      handleCancelEditing();
+      toast.success(`سرویس «${validation.data.title}» به‌روزرسانی شد`);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "خطا در ذخیره‌ی سرویس");
+    } finally {
+      setIsSavingEdit(false);
+    }
   }
 
   async function handleDelete(service: ApiService) {
@@ -175,10 +210,10 @@ export default function AdminServicesPage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
+        <div className="min-w-0 flex-1">
           <h1 className="text-xl font-bold">خدمات و قیمت‌گذاری</h1>
           <p className="text-sm text-muted-foreground">
-            افزودن، ویرایش قیمت و حذف خدمات سالن
+            افزودن و مدیریت خدمات سالن
           </p>
         </div>
 
@@ -205,7 +240,10 @@ export default function AdminServicesPage() {
 
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <Button size="sm" className="shrink-0 gap-2">
+              <Button
+                size="sm"
+                className="shrink-0 gap-2"
+              >
                 <Plus className="h-4 w-4" />
                 سرویس جدید
               </Button>
@@ -285,73 +323,168 @@ export default function AdminServicesPage() {
         <div className="grid gap-4 sm:grid-cols-2">
           {visibleServices.map((service) => {
             const Icon = getServiceIcon(service.icon);
-            const dirty = isPriceDirty(service);
             return (
-              <Card key={service.id}>
-                <CardContent className="space-y-4 p-5">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                        <Icon className="h-5 w-5" />
-                      </span>
-                      <div>
-                        <div className="font-bold">{service.title}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {service.desc}
-                        </div>
+              <StatusCard
+                key={service.id}
+                tone="success"
+                contentClassName="space-y-4 p-5"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex min-w-0 flex-1 items-start gap-3">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                      <Icon className="h-5 w-5" />
+                    </span>
+                    <div className="min-w-0 flex-1 space-y-2">
+                      <div className="font-bold">{service.title}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {service.desc}
                       </div>
                     </div>
+                  </div>
+                  <div className="flex items-center gap-2">
                     <Button
                       variant="destructive"
                       size="sm"
                       onClick={() => handleDelete(service)}
+                      aria-label={`حذف سرویس ${service.title}`}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label htmlFor={`price-${service.id}`} className="text-xs">
-                      قیمت (تومان) — {formatPriceLabel(service.priceValue)}
-                    </Label>
-                    <Input
-                      id={`price-${service.id}`}
-                      type="number"
-                      value={getDraftPrice(service)}
-                      onChange={(e) =>
-                        setPriceDrafts((p) => ({
-                          ...p,
-                          [service.id]: Number(e.target.value),
-                        }))
-                      }
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-end gap-2 border-t border-border pt-3">
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
-                      disabled={!dirty}
-                      onClick={() => handleCancelPrice(service)}
+                      onClick={() => handleStartEditing(service)}
                     >
-                      لغو
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      disabled={!dirty}
-                      onClick={() => handleSavePrice(service)}
-                    >
-                      ذخیره
+                      <Pencil className="h-4 w-4" />
+                      ویرایش
                     </Button>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+
+                <div className="space-y-1 border-t border-border pt-3">
+                  <Label htmlFor={`price-${service.id}`} className="text-xs">
+                    قیمت (تومان) — {formatPriceLabel(service.priceValue)}
+                  </Label>
+                  <div className="font-bold">
+                    {service.priceValue.toLocaleString("fa-IR")}
+                  </div>
+                </div>
+              </StatusCard>
             );
           })}
         </div>
       )}
+
+      <Dialog
+        open={editingService !== null}
+        onOpenChange={(open) => {
+          if (!open && !isSavingEdit) handleCancelEditing();
+        }}
+      >
+        <DialogContent className="max-h-[85dvh] overflow-y-auto border-r-2 border-r-primary bg-card shadow-2xl sm:max-w-lg">
+          <DialogHeader className="border-b border-border pb-3">
+            <DialogTitle>ویرایش سرویس</DialogTitle>
+          </DialogHeader>
+          {editDraft && (
+            <div className="space-y-4">
+              <div className="space-y-2 rounded-lg border border-border/80 bg-secondary/40 p-3">
+                <Label htmlFor="edit-service-title">عنوان سرویس</Label>
+                <Input
+                  id="edit-service-title"
+                  value={editDraft.title}
+                  disabled={isSavingEdit}
+                  onChange={(e) =>
+                    setEditDraft({ ...editDraft, title: e.target.value })
+                  }
+                />
+                {editDraft.title.trim().length < 2 && (
+                  <p className="text-xs text-red-400">
+                    عنوان باید حداقل ۲ حرف باشد
+                  </p>
+                )}
+              </div>
+              <div className="space-y-2 rounded-lg border border-border/80 bg-secondary/40 p-3">
+                <Label htmlFor="edit-service-desc">توضیحات</Label>
+                <Textarea
+                  id="edit-service-desc"
+                  value={editDraft.desc}
+                  disabled={isSavingEdit}
+                  onChange={(e) =>
+                    setEditDraft({ ...editDraft, desc: e.target.value })
+                  }
+                />
+                {editDraft.desc.trim().length < 5 && (
+                  <p className="text-xs text-red-400">
+                    توضیحات باید حداقل ۵ حرف باشد
+                  </p>
+                )}
+              </div>
+              <div className="space-y-2 rounded-lg border border-border/80 bg-secondary/40 p-3">
+                <Label htmlFor="edit-service-price">قیمت (تومان)</Label>
+                <Input
+                  id="edit-service-price"
+                  type="number"
+                  min={1000}
+                  value={editDraft.priceValue}
+                  disabled={isSavingEdit}
+                  onChange={(e) =>
+                    setEditDraft({
+                      ...editDraft,
+                      priceValue: Number(e.target.value),
+                    })
+                  }
+                />
+              </div>
+              <div className="space-y-2 rounded-lg border border-border/80 bg-secondary/40 p-3">
+                <Label>آیکون</Label>
+                <Select
+                  value={editDraft.icon}
+                  disabled={isSavingEdit}
+                  onValueChange={(value: string) => {
+                    if (isServiceIconKey(value)) {
+                      setEditDraft({ ...editDraft, icon: value });
+                    }
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="انتخاب آیکون" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(Object.keys(SERVICE_ICONS) as ServiceIconKey[]).map(
+                      (key) => (
+                        <SelectItem key={key} value={key}>
+                          {ICON_LABELS[key]}
+                        </SelectItem>
+                      ),
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+              <DialogFooter className="border-t border-border pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={isSavingEdit}
+                  onClick={handleCancelEditing}
+                >
+                  لغو
+                </Button>
+                <Button
+                  type="button"
+                  disabled={
+                    isSavingEdit ||
+                    !serviceSchema.safeParse(editDraft).success
+                  }
+                  onClick={handleSaveService}
+                >
+                  {isSavingEdit ? "در حال ثبت..." : "ثبت"}
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
