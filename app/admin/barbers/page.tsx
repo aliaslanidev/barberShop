@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
 import {
+  ChevronDown,
   Pencil,
   Plus,
   Search,
@@ -94,6 +95,12 @@ type EditBarberValues = z.infer<typeof editBarberSchema>;
 
 const PERMISSIONS_BOX_MIN_HEIGHT = "min-h-[350px]";
 
+// فاصله‌ی نوار چسبیده‌ی ذخیره/لغو از پایین صفحه در موبایل؛ باید برابر ارتفاع
+// نوار ناوبری پایین باشه. اگه نوار روی منو افتاد یا فاصله داشت، فقط همین رو تغییر بده.
+const STICKY_BAR_BOTTOM = "bottom-16";
+
+type SectionKey = "permissions" | "services";
+
 function sameIdSet(a: string[], b: string[]) {
   if (a.length !== b.length) return false;
   const setB = new Set(b);
@@ -106,6 +113,89 @@ function formatDateFa(iso: string) {
     month: "long",
     day: "numeric",
   });
+}
+
+// وضعیت کلی آرایشگر برای نوار رنگی و نشان متنی کارت
+function getBarberStatus(barber: ApiBarber) {
+  if (!barber.user.isActive) {
+    return {
+      label: "حساب غیرفعال",
+      bar: "bg-red-500/80",
+      chip: "bg-red-500/15 text-red-300 ring-red-500/30",
+    };
+  }
+  if (!barber.isActive) {
+    return {
+      label: "نوبت جدید نمی‌پذیرد",
+      bar: "bg-amber-500",
+      chip: "bg-amber-500/15 text-amber-300 ring-amber-500/30",
+    };
+  }
+  return {
+    label: "فعال",
+    bar: "bg-emerald-500",
+    chip: "bg-emerald-500/15 text-emerald-300 ring-emerald-500/30",
+  };
+}
+
+// بخش آکاردئونی: در موبایل با کلیک روی تیتر باز/بسته می‌شه، در دسکتاپ همیشه
+// باز و تیتر فقط یک عنوان ساده‌ست. محتوا حتی وقتی بسته‌ست در DOM می‌مونه.
+function AccordionSection({
+  title,
+  summary,
+  isDirty,
+  isOpen,
+  onToggle,
+  children,
+}: {
+  title: string;
+  summary: string;
+  isDirty: boolean;
+  isOpen: boolean;
+  onToggle: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <section className="rounded-xl border border-border bg-secondary/20 md:rounded-none md:border-0 md:border-t md:bg-transparent md:pt-4">
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={isOpen}
+        className="flex min-h-12 w-full items-center justify-between gap-3 px-4 py-3 text-right md:pointer-events-none md:min-h-0 md:px-0 md:py-0 md:pb-3"
+      >
+        <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="text-sm font-semibold">{title}</span>
+          {isDirty && (
+            <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-medium text-amber-300 ring-1 ring-inset ring-amber-500/30">
+              ذخیره نشده
+            </span>
+          )}
+        </span>
+        <span className="flex shrink-0 items-center gap-2">
+          <span className="text-xs text-muted-foreground">{summary}</span>
+          <ChevronDown
+            className={cn(
+              "h-4 w-4 text-muted-foreground transition-transform duration-200 md:hidden",
+              isOpen && "rotate-180",
+            )}
+          />
+        </span>
+      </button>
+
+      <div
+        className={cn(
+          "grid transition-[grid-template-rows,visibility] duration-200 ease-out",
+          isOpen
+            ? "grid-rows-[1fr]"
+            : "invisible grid-rows-[0fr] md:visible md:grid-rows-[1fr]",
+        )}
+      >
+        <div className="min-h-0 overflow-hidden md:overflow-visible">
+          <div className="px-4 pb-4 md:px-0 md:pb-0">{children}</div>
+        </div>
+      </div>
+    </section>
+  );
 }
 
 export default function AdminBarbersPage() {
@@ -131,6 +221,9 @@ export default function AdminBarbersPage() {
     useState<ApiBarberPermissions | null>(null);
   const [draftServiceIds, setDraftServiceIds] = useState<string[] | null>(null);
   const [isSavingServices, setIsSavingServices] = useState(false);
+  const [isSavingAll, setIsSavingAll] = useState(false);
+  // آکاردئون موبایل: هر بار فقط یک بخش باز می‌مونه
+  const [openSection, setOpenSection] = useState<SectionKey | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // ==================== غیرفعال‌سازی کامل حساب (فاز تکمیلی ۱.۲) ====================
@@ -144,6 +237,7 @@ export default function AdminBarbersPage() {
     useState<ApiBarber | null>(null);
 
   const selectedBarber = barbers.find((b) => b.id === selectedBarberId) ?? null;
+  const barberStatus = selectedBarber ? getBarberStatus(selectedBarber) : null;
 
   async function refresh() {
     try {
@@ -165,6 +259,11 @@ export default function AdminBarbersPage() {
   useEffect(() => {
     refresh();
   }, []);
+
+  // با عوض شدن آرایشگر، آکاردئون‌ها دوباره بسته بشن
+  useEffect(() => {
+    setOpenSection(null);
+  }, [selectedBarberId]);
 
   useEffect(() => {
     const found = barbers.find((b) => b.id === selectedBarberId) ?? null;
@@ -203,6 +302,12 @@ export default function AdminBarbersPage() {
       draftServiceIds,
       selectedBarber.services.map((s) => s.serviceId),
     );
+
+  const hasUnsavedChanges = isPermissionsDirty || isServicesDirty;
+
+  const enabledPermissionsCount = OPTIONAL_PERMISSIONS.filter(
+    (perm) => draftPermissions?.[perm.key],
+  ).length;
 
   const statusFilteredBarbers = barbers.filter((barber) => {
     if (barberStatusFilter === "all") return true;
@@ -396,6 +501,22 @@ export default function AdminBarbersPage() {
     setDraftServiceIds(selectedBarber.services.map((s) => s.serviceId));
   }
 
+  // نوار چسبیده‌ی موبایل: ذخیره/لغوِ هر دو بخش با هم
+  async function handleSaveAll() {
+    setIsSavingAll(true);
+    try {
+      if (isPermissionsDirty) await handleSavePermissions();
+      if (isServicesDirty) await handleSaveServices();
+    } finally {
+      setIsSavingAll(false);
+    }
+  }
+
+  function handleCancelAll() {
+    handleCancelPermissions();
+    handleCancelServices();
+  }
+
   // «پذیرش نوبت جدید» (BarberProfile.isActive) — همون سوییچ قدیمی، فقط
   // لیبلش واضح‌تر شد؛ اثری روی «دسترسی به حساب» نداره.
   async function handleActiveChange(barberId: string, value: boolean) {
@@ -530,6 +651,10 @@ export default function AdminBarbersPage() {
     }
   }
 
+  function toggleSection(key: SectionKey) {
+    setOpenSection((prev) => (prev === key ? null : key));
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-10 text-sm text-muted-foreground">
@@ -539,7 +664,13 @@ export default function AdminBarbersPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div
+      className={cn(
+        "flex flex-col gap-6",
+        // جا برای نوار چسبیده‌ی ذخیره/لغو در موبایل، تا روی محتوا نیفته
+        isAdmin && hasUnsavedChanges && "pb-24 md:pb-0",
+      )}
+    >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl font-bold">مدیریت آرایشگرها</h1>
@@ -753,30 +884,51 @@ export default function AdminBarbersPage() {
         </div>
       </div>
 
-      {selectedBarber ? (
+      {selectedBarber && barberStatus ? (
         <Card
           key={selectedBarber.id}
-          className={cn(PERMISSIONS_BOX_MIN_HEIGHT, "flex flex-col")}
+          className={cn(
+            PERMISSIONS_BOX_MIN_HEIGHT,
+            "relative flex flex-col overflow-hidden",
+          )}
         >
-          <CardContent className="flex flex-1 flex-col gap-4 p-5">
+          {/* نوار رنگی وضعیت آرایشگر */}
+          <span
+            className={cn(
+              "absolute inset-y-0 right-0 w-1.5",
+              barberStatus.bar,
+            )}
+          />
+
+          <CardContent className="flex flex-1 flex-col gap-4 p-5 pr-6">
             <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
+              <div className="flex min-w-0 items-center gap-3">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary text-sm font-bold">
                   {selectedBarber.initials}
                 </div>
-                <div>
-                  <p className="font-bold">{selectedBarber.user.name}</p>
+                <div className="min-w-0">
+                  <p className="truncate font-bold">
+                    {selectedBarber.user.name}
+                  </p>
                   <p
                     dir="ltr"
                     className="text-left text-xs text-muted-foreground"
                   >
                     {selectedBarber.user.mobile}
                   </p>
+                  <span
+                    className={cn(
+                      "mt-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset",
+                      barberStatus.chip,
+                    )}
+                  >
+                    {barberStatus.label}
+                  </span>
                 </div>
               </div>
 
               {isAdmin && (
-                <div className="flex items-center gap-3">
+                <div className="flex shrink-0 items-center gap-1 sm:gap-3">
                   <Dialog
                     open={editDialogOpen}
                     onOpenChange={setEditDialogOpen}
@@ -922,51 +1074,64 @@ export default function AdminBarbersPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-3 border-t border-border pt-4 sm:grid-cols-2">
-              {OPTIONAL_PERMISSIONS.map((perm) => (
-                <div
-                  key={perm.key}
-                  className="flex items-center justify-between gap-3 rounded-lg bg-secondary/40 px-3 py-2"
-                >
-                  <span className="text-sm">{perm.label}</span>
-                  <Switch
-                    checked={draftPermissions?.[perm.key] ?? false}
-                    onCheckedChange={(v) =>
-                      handlePermissionDraftChange(perm.key, v)
-                    }
-                    disabled={!isAdmin}
-                    aria-label={perm.label}
-                  />
-                </div>
-              ))}
-            </div>
-
-            {isAdmin && (
-              <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={!isPermissionsDirty}
-                  onClick={handleCancelPermissions}
-                >
-                  لغو
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  disabled={!isPermissionsDirty}
-                  onClick={handleSavePermissions}
-                >
-                  ذخیره تغییرات
-                </Button>
+            {/* دسترسی‌های آرایشگر — آکاردئون در موبایل */}
+            <AccordionSection
+              title="دسترسی‌های آرایشگر"
+              summary={`${toPersianCount(enabledPermissionsCount)} از ${toPersianCount(OPTIONAL_PERMISSIONS.length)} فعال`}
+              isDirty={!!isPermissionsDirty}
+              isOpen={openSection === "permissions"}
+              onToggle={() => toggleSection("permissions")}
+            >
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {OPTIONAL_PERMISSIONS.map((perm) => (
+                  <div
+                    key={perm.key}
+                    className="flex items-center justify-between gap-3 rounded-lg bg-secondary/40 px-3 py-2"
+                  >
+                    <span className="text-sm">{perm.label}</span>
+                    <Switch
+                      checked={draftPermissions?.[perm.key] ?? false}
+                      onCheckedChange={(v) =>
+                        handlePermissionDraftChange(perm.key, v)
+                      }
+                      disabled={!isAdmin}
+                      aria-label={perm.label}
+                    />
+                  </div>
+                ))}
               </div>
-            )}
 
-            <div className="flex flex-col gap-3 border-t border-border pt-4">
-              <p className="text-sm font-medium">
-                خدماتی که این آرایشگر انجام می‌دهد
-              </p>
+              {isAdmin && (
+                <div className="hidden items-center justify-end gap-2 pt-4 md:flex">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={!isPermissionsDirty}
+                    onClick={handleCancelPermissions}
+                  >
+                    لغو
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={!isPermissionsDirty}
+                    onClick={handleSavePermissions}
+                  >
+                    ذخیره تغییرات
+                  </Button>
+                </div>
+              )}
+            </AccordionSection>
+
+            {/* خدمات — آکاردئون در موبایل */}
+            <AccordionSection
+              title="خدماتی که این آرایشگر انجام می‌دهد"
+              summary={`${toPersianCount(draftServiceIds?.length ?? 0)} از ${toPersianCount(services.length)}`}
+              isDirty={!!isServicesDirty}
+              isOpen={openSection === "services"}
+              onToggle={() => toggleSection("services")}
+            >
               {services.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
                   هنوز هیچ سرویسی تعریف نشده. اول از صفحه‌ی «خدمات» چند سرویس
@@ -994,7 +1159,7 @@ export default function AdminBarbersPage() {
               )}
 
               {isAdmin && (
-                <div className="flex items-center justify-end gap-2 pt-2">
+                <div className="hidden items-center justify-end gap-2 pt-4 md:flex">
                   <Button
                     type="button"
                     variant="outline"
@@ -1014,7 +1179,7 @@ export default function AdminBarbersPage() {
                   </Button>
                 </div>
               )}
-            </div>
+            </AccordionSection>
           </CardContent>
         </Card>
       ) : (
@@ -1035,6 +1200,41 @@ export default function AdminBarbersPage() {
             </p>
           </CardContent>
         </Card>
+      )}
+
+      {/* نوار چسبیده‌ی ذخیره/لغو — فقط موبایل، وقتی تغییر ذخیره‌نشده داریم */}
+      {isAdmin && hasUnsavedChanges && (
+        <div
+          className={cn(
+            "fixed inset-x-0 z-30 border-t border-amber-500/30 bg-background/95 px-4 py-3 shadow-[0_-4px_16px_rgba(0,0,0,0.4)] backdrop-blur md:hidden",
+            STICKY_BAR_BOTTOM,
+          )}
+        >
+          <div className="mx-auto flex max-w-md items-center gap-2">
+            <span className="flex-1 text-xs font-medium text-amber-300">
+              تغییرات ذخیره‌نشده
+            </span>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-10"
+              disabled={isSavingAll}
+              onClick={handleCancelAll}
+            >
+              لغو
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              className="h-10 px-5"
+              disabled={isSavingAll}
+              onClick={handleSaveAll}
+            >
+              {isSavingAll ? "در حال ذخیره..." : "ذخیره"}
+            </Button>
+          </div>
+        </div>
       )}
 
       {/* مودال نوبت‌های آینده — فقط وقتی آرایشگر نوبت CONFIRMED آینده داره */}
