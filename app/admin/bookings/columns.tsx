@@ -32,7 +32,7 @@ export function formatPersianDate(iso: string): string {
       weekday: "long",
     });
   } catch {
-    return iso;
+    return toPersianDigits(iso);
   }
 }
 
@@ -74,7 +74,7 @@ export function getBookingColumns({ onCancel }: BookingColumnsOptions): ColumnDe
     {
       accessorKey: "time",
       header: ({ column }) => <SortableHeader label="ساعت" column={column} />,
-      cell: ({ row }) => <span className="font-mono">{row.original.time}</span>,
+      cell: ({ row }) => <span className="font-mono">{toPersianDigits(row.original.time)}</span>,
     },
     {
       id: "customerName",
@@ -87,7 +87,7 @@ export function getBookingColumns({ onCancel }: BookingColumnsOptions): ColumnDe
       header: "شماره تماس",
       cell: ({ row }) => (
         <span className="font-mono" dir="ltr">
-          {row.original.customer.mobile}
+          {toPersianDigits(row.original.customer.mobile)}
         </span>
       ),
     },

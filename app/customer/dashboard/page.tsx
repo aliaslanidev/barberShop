@@ -9,6 +9,7 @@ import { BookingCard } from "@/components/customer/booking-card";
 import { getCurrentCustomer } from "@/lib/data/customer-session";
 import { listBookingsApi, ApiError, type ApiBooking } from "@/lib/api";
 import { getAuthToken } from "@/lib/data/mock-session";
+import { toPersianDigits } from "@/lib/utils";
 
 export default function CustomerDashboardPage() {
   const router = useRouter();
@@ -66,13 +67,13 @@ export default function CustomerDashboardPage() {
         <Card>
           <CardContent className="p-5">
             <p className="text-xs text-muted-foreground">نوبت‌های آینده</p>
-            <p className="mt-1 text-2xl font-bold text-primary">{upcomingCount}</p>
+            <p className="mt-1 text-2xl font-bold text-primary">{toPersianDigits(upcomingCount)}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-5">
             <p className="text-xs text-muted-foreground">تعداد کل نوبت‌های قبلی</p>
-            <p className="mt-1 text-2xl font-bold">{historyCount}</p>
+            <p className="mt-1 text-2xl font-bold">{toPersianDigits(historyCount)}</p>
           </CardContent>
         </Card>
       </div>

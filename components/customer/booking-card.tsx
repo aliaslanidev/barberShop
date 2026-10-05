@@ -31,7 +31,7 @@ function toPersianDigits(input: string) {
 // می‌خونیم و Date محلی می‌سازیم تا مشکل جابه‌جایی منطقه‌ی زمانی پیش نیاد.
 function formatDate(iso: string) {
   const [y, m, d] = iso.slice(0, 10).split("-").map(Number);
-  if (!y || !m || !d) return iso;
+  if (!y || !m || !d) return toPersianDigits(iso);
   return new Date(y, m - 1, d).toLocaleDateString("fa-IR", {
     year: "numeric",
     month: "long",
@@ -213,7 +213,7 @@ export function BookingCard({ booking, onCancel, onRate, autoOpenRating = false 
                   rows={3}
                 />
                 <p className="text-left text-[11px] text-muted-foreground" dir="ltr">
-                  {comment.length}/{COMMENT_MAX_LENGTH}
+                  {toPersianDigits(String(comment.length))}/{toPersianDigits(String(COMMENT_MAX_LENGTH))}
                 </p>
 
                 <div className="flex gap-2">

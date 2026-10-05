@@ -11,7 +11,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { JalaliDatePicker } from "@/components/ui/jalali-date-picker";
-import { cn } from "@/lib/utils";
+import { cn, toPersianDigits } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
 import { getAuthToken } from "@/lib/data/mock-session";
 import {
@@ -137,7 +137,7 @@ export default function BlockSlotsPage() {
           createMyBlockedSlotApi({ date: selectedDateStr, time }, token)
         )
       );
-      toast.success(`${selectedTimes.size} اسلات بلاک شد`);
+      toast.success(`${toPersianDigits(selectedTimes.size)} اسلات بلاک شد`);
       setSelectedTimes(new Set());
       await refresh();
     } catch (err) {
@@ -197,7 +197,7 @@ export default function BlockSlotsPage() {
                               : "border-border bg-secondary/40 text-foreground hover:bg-secondary"
                         )}
                       >
-                        {time}
+                        {toPersianDigits(time)}
                       </button>
                     );
                   })}
@@ -210,7 +210,7 @@ export default function BlockSlotsPage() {
               {selectedTimes.size > 0 && (
                 <div className="flex items-center justify-between gap-2 border-t border-border pt-3">
                   <span className="text-sm text-muted-foreground">
-                    {selectedTimes.size} اسلات انتخاب شده
+                    {toPersianDigits(selectedTimes.size)} اسلات انتخاب شده
                   </span>
                   <div className="flex gap-2">
                     <Button type="button" variant="outline" size="sm" onClick={handleCancel}>
@@ -240,7 +240,7 @@ export default function BlockSlotsPage() {
               className="flex items-center justify-between rounded-lg bg-secondary/40 px-3 py-2"
             >
               <span className="text-sm">
-                {formatJalali(slot.date.slice(0, 10))} — ساعت {slot.time}
+                {formatJalali(slot.date.slice(0, 10))} — ساعت {toPersianDigits(slot.time)}
               </span>
               <Button
                 type="button"

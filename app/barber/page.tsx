@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { StatusCard, StatusChip } from "@/components/ui/status-card";
 import { accountStatusTone } from "@/lib/status-tones";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn, toPersianDigits } from "@/lib/utils";
 import {
   getAllBarbers,
   updateBarberPermissions,
@@ -86,7 +86,7 @@ export default function AdminBarbersPage() {
                     </StatusChip>
                   </div>
                   {barber.mobile && (
-                    <p className="text-xs text-muted-foreground">{barber.mobile}</p>
+                    <p className="text-xs text-muted-foreground">{toPersianDigits(barber.mobile)}</p>
                   )}
                 </div>
 

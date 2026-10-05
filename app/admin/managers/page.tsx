@@ -18,6 +18,7 @@ import {
 } from "@/lib/api";
 import { getAuthToken } from "@/lib/data/mock-session";
 import { getCurrentAdmin } from "@/lib/data/admin-session";
+import { toEnglishDigits, toPersianDigits } from "@/lib/utils";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -37,14 +38,20 @@ import {
 
 const createManagerSchema = z.object({
   name: z.string().min(2, "نام باید حداقل ۲ حرف باشد"),
-  mobile: z.string().regex(/^09\d{9}$/, "شماره موبایل معتبر نیست (مثال: 09123456789)"),
+  mobile: z
+    .string()
+    .transform(toEnglishDigits)
+    .pipe(z.string().regex(/^09\d{9}$/, "شماره موبایل معتبر نیست (مثال: ۰۹۱۲۳۴۵۶۷۸۹)")),
   password: z.string().min(4, "رمز عبور باید حداقل ۴ کاراکتر باشد"),
 });
 type CreateManagerValues = z.infer<typeof createManagerSchema>;
 
 const editManagerSchema = z.object({
   name: z.string().min(2, "نام باید حداقل ۲ حرف باشد"),
-  mobile: z.string().regex(/^09\d{9}$/, "شماره موبایل معتبر نیست (مثال: 09123456789)"),
+  mobile: z
+    .string()
+    .transform(toEnglishDigits)
+    .pipe(z.string().regex(/^09\d{9}$/, "شماره موبایل معتبر نیست (مثال: ۰۹۱۲۳۴۵۶۷۸۹)")),
   newPassword: z
     .string()
     .min(4, "رمز جدید باید حداقل ۴ کاراکتر باشد")
@@ -259,7 +266,7 @@ export default function AdminManagersPage() {
                   id="mobile"
                   dir="ltr"
                   className="text-left"
-                  placeholder="09123456789"
+                  placeholder="۰۹۱۲۳۴۵۶۷۸۹"
                   {...register("mobile")}
                 />
                 {errors.mobile && (
@@ -312,7 +319,7 @@ export default function AdminManagersPage() {
                       </StatusChip>
                     </div>
                     <p dir="ltr" className="text-left text-xs text-muted-foreground">
-                      {manager.mobile}
+                      {toPersianDigits(manager.mobile)}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -352,7 +359,7 @@ export default function AdminManagersPage() {
                               id="edit-mobile"
                               dir="ltr"
                               className="text-left"
-                              placeholder="09123456789"
+                              placeholder="۰۹۱۲۳۴۵۶۷۸۹"
                               {...registerEdit("mobile")}
                             />
                             {editErrors.mobile && (

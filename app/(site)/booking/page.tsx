@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { JalaliDatePicker } from "@/components/ui/jalali-date-picker";
-import { cn } from "@/lib/utils";
+import { cn, toEnglishDigits } from "@/lib/utils";
 import { BarberProfileModal, type BarberProfileModalState } from "@/components/barber-profile-modal";
 
 import {
@@ -44,14 +44,14 @@ type Step = "entry" | "pick" | "date" | "time" | "notes" | "auth" | "confirm";
 const ALL_STEPS: Step[] = ["entry", "pick", "date", "time", "notes", "auth", "confirm"];
 
 const loginSchema = z.object({
-  mobile: z.string().regex(/^09\d{9}$/, "شماره موبایل معتبر نیست"),
+  mobile: z.string().transform(toEnglishDigits).pipe(z.string().regex(/^09\d{9}$/, "شماره موبایل معتبر نیست")),
   password: z.string().min(4, "رمز عبور باید حداقل ۴ کاراکتر باشد"),
 });
 type LoginValues = z.infer<typeof loginSchema>;
 
 const quickRegisterSchema = z.object({
   name: z.string().min(3, "نام باید حداقل ۳ حرف باشد"),
-  mobile: z.string().regex(/^09\d{9}$/, "شماره موبایل معتبر نیست"),
+  mobile: z.string().transform(toEnglishDigits).pipe(z.string().regex(/^09\d{9}$/, "شماره موبایل معتبر نیست")),
   password: z.string().min(4, "رمز عبور باید حداقل ۴ کاراکتر باشد"),
 });
 type QuickRegisterValues = z.infer<typeof quickRegisterSchema>;
@@ -1247,7 +1247,7 @@ export default function BookingPage() {
                   id="login-mobile"
                   dir="ltr"
                   className="text-left"
-                  placeholder="09123456789"
+                  placeholder="۰۹۱۲۳۴۵۶۷۸۹"
                   {...registerLogin("mobile")}
                 />
                 {loginErrors.mobile && <p className="text-xs text-red-400">{loginErrors.mobile.message}</p>}
@@ -1274,7 +1274,7 @@ export default function BookingPage() {
                   id="reg-mobile"
                   dir="ltr"
                   className="text-left"
-                  placeholder="09123456789"
+                  placeholder="۰۹۱۲۳۴۵۶۷۸۹"
                   {...registerQuick("mobile")}
                 />
                 {quickErrors.mobile && <p className="text-xs text-red-400">{quickErrors.mobile.message}</p>}

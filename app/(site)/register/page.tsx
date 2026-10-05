@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 
 import { useAuth } from "@/lib/auth-context";
 import { ApiError } from "@/lib/api";
+import { toEnglishDigits } from "@/lib/utils";
 
 const registerSchema = z
   .object({
@@ -23,7 +24,8 @@ const registerSchema = z
     mobile: z
       .string()
       .min(1, "شماره موبایل را وارد کنید")
-      .regex(/^09\d{9}$/, "شماره موبایل معتبر نیست (مثال: 09123456789)"),
+      .transform(toEnglishDigits)
+      .pipe(z.string().regex(/^09\d{9}$/, "شماره موبایل معتبر نیست (مثال: ۰۹۱۲۳۴۵۶۷۸۹)")),
     password: z.string().min(4, "رمز عبور باید حداقل ۴ کاراکتر باشد"),
     confirmPassword: z.string().min(4, "تکرار رمز عبور را وارد کنید"),
   })
@@ -115,7 +117,7 @@ export default function RegisterPage() {
                   type="tel"
                   inputMode="numeric"
                   dir="ltr"
-                  placeholder="09123456789"
+                  placeholder="۰۹۱۲۳۴۵۶۷۸۹"
                   className="pr-9 text-left"
                   {...register("mobile")}
                 />

@@ -243,7 +243,7 @@ export default function BarberCustomersPage() {
                     </td>
                     <td className="p-3">
                       <span dir="ltr" className="inline-block text-muted-foreground">
-                        {customer.phone}
+                        {toPersianDigits(customer.phone)}
                       </span>
                     </td>
                   </tr>
@@ -264,7 +264,7 @@ export default function BarberCustomersPage() {
                     <div>
                       <p className="font-medium">{customer.name}</p>
                       <p dir="ltr" className="text-right text-xs text-muted-foreground">
-                        {customer.phone}
+                        {toPersianDigits(customer.phone)}
                       </p>
                     </div>
                   </div>

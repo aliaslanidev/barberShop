@@ -434,7 +434,7 @@ export default function AdminCustomersPage() {
                     </td>
                     <td className="p-3">
                       <span dir="ltr" className="inline-block text-muted-foreground">
-                        {customer.mobile}
+                        {toPersianDigits(customer.mobile)}
                       </span>
                     </td>
                     <td className="p-3 text-muted-foreground">
@@ -482,7 +482,7 @@ export default function AdminCustomersPage() {
                       <div>
                         <p className="font-medium">{customer.name}</p>
                         <p dir="ltr" className="text-right text-xs text-muted-foreground">
-                          {customer.mobile}
+                          {toPersianDigits(customer.mobile)}
                         </p>
                       </div>
                     </div>

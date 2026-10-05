@@ -34,7 +34,7 @@ import {
 import { getAuthToken } from "@/lib/data/mock-session";
 import { getCurrentAdmin } from "@/lib/data/admin-session";
 
-import { cn } from "@/lib/utils";
+import { cn, toEnglishDigits } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { StatusCard, StatusChip } from "@/components/ui/status-card";
@@ -75,7 +75,8 @@ const createBarberSchema = z.object({
   name: z.string().min(2, "نام باید حداقل ۲ حرف باشد"),
   mobile: z
     .string()
-    .regex(/^09\d{9}$/, "شماره موبایل معتبر نیست (مثال: 09123456789)"),
+    .transform(toEnglishDigits)
+    .pipe(z.string().regex(/^09\d{9}$/, "شماره موبایل معتبر نیست (مثال: ۰۹۱۲۳۴۵۶۷۸۹)")),
   password: z.string().min(4, "رمز عبور باید حداقل ۴ کاراکتر باشد"),
   bio: z.string().optional(),
 });
@@ -85,7 +86,8 @@ const editBarberSchema = z.object({
   name: z.string().min(2, "نام باید حداقل ۲ حرف باشد"),
   mobile: z
     .string()
-    .regex(/^09\d{9}$/, "شماره موبایل معتبر نیست (مثال: 09123456789)"),
+    .transform(toEnglishDigits)
+    .pipe(z.string().regex(/^09\d{9}$/, "شماره موبایل معتبر نیست (مثال: ۰۹۱۲۳۴۵۶۷۸۹)")),
   bio: z.string().optional(),
   newPassword: z
     .string()
@@ -844,7 +846,7 @@ export default function AdminBarbersPage() {
                       id="mobile"
                       dir="ltr"
                       className="text-left"
-                      placeholder="09123456789"
+                      placeholder="۰۹۱۲۳۴۵۶۷۸۹"
                       {...register("mobile")}
                     />
                     {errors.mobile && (
@@ -907,7 +909,7 @@ export default function AdminBarbersPage() {
                     dir="ltr"
                     className="text-left text-xs text-muted-foreground"
                   >
-                    {selectedBarber.user.mobile}
+                    {toPersianCount(selectedBarber.user.mobile)}
                   </p>
                   <StatusChip
                     tone={barberStatus.tone}
@@ -958,7 +960,7 @@ export default function AdminBarbersPage() {
                             id="edit-mobile"
                             dir="ltr"
                             className="text-left"
-                            placeholder="09123456789"
+                            placeholder="۰۹۱۲۳۴۵۶۷۸۹"
                             {...registerEdit("mobile")}
                           />
                           {editErrors.mobile && (
@@ -1258,7 +1260,7 @@ export default function AdminBarbersPage() {
                 </div>
                 <div className="text-left text-xs text-muted-foreground">
                   <p>{formatDateFa(b.date)}</p>
-                  <p dir="ltr">{b.time}</p>
+                  <p dir="ltr">{toPersianCount(b.time)}</p>
                 </div>
               </div>
             ))}
@@ -1310,7 +1312,7 @@ export default function AdminBarbersPage() {
   );
 }
 
-function toPersianCount(n: number) {
+function toPersianCount(n: string | number) {
   const persianDigits = ["۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹"];
   return String(n).replace(/[0-9]/g, (d) => persianDigits[Number(d)]);
 }

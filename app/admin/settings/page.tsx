@@ -356,7 +356,7 @@ export default function AdminSettingsPage() {
       <div className="grid gap-6 lg:grid-cols-2">
         <SettingsSection
           title="ساعات کاری"
-          summary={`${hours.filter((hour) => hour.isOpen).length} روز فعال`}
+          summary={`${toPersianDigits(hours.filter((hour) => hour.isOpen).length)} روز فعال`}
           hasChanges={hasUnsavedHours}
         >
           <div className="flex flex-col gap-4">

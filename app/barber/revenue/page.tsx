@@ -23,6 +23,7 @@ import {
   type ApiBarber,
   type ApiBarberOwnRevenueReport,
 } from "@/lib/api";
+import { toPersianDigits } from "@/lib/utils";
 
 function formatToman(amount: number): string {
   return `${amount.toLocaleString("fa-IR")} تومان`;
@@ -211,7 +212,7 @@ export default function BarberRevenuePage() {
             </Card>
             <Card>
               <CardContent className="flex flex-col items-center gap-2 p-5">
-                <span className="text-lg font-bold">{report?.completedCount ?? 0}</span>
+                <span className="text-lg font-bold">{toPersianDigits(report?.completedCount ?? 0)}</span>
                 <span className="text-xs text-muted-foreground">نوبت تکمیل‌شده</span>
               </CardContent>
             </Card>
@@ -231,7 +232,7 @@ export default function BarberRevenuePage() {
                   <div className="text-left text-sm">
                     <span className="font-medium">{formatToman(s.revenue)}</span>
                     <span className="mx-2 text-muted-foreground">·</span>
-                    <span className="text-muted-foreground">{s.count} نوبت</span>
+                    <span className="text-muted-foreground">{toPersianDigits(s.count)} نوبت</span>
                   </div>
                 </div>
               ))

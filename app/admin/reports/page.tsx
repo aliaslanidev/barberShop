@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/select";
 import { JalaliDatePicker } from "@/components/ui/jalali-date-picker";
 import DateObject from "react-date-object";
-import { cn } from "@/lib/utils";
+import { cn, toPersianDigits } from "@/lib/utils";
 
 import { getAuthToken } from "@/lib/data/mock-session";
 import {
@@ -45,7 +45,7 @@ const STATUS_STYLES: Record<BookingStatus, string> = {
 };
 
 function formatToman(amount: number): string {
-  return `${amount.toLocaleString("fa-IR")} تومان`;
+  return `${toPersianDigits(amount.toLocaleString("en-US"))} تومان`;
 }
 
 function toISODate(d: Date): string {
@@ -257,7 +257,7 @@ export default function AdminReportsPage() {
         <Card className="col-span-2 sm:col-span-1">
           <CardContent className="flex flex-col gap-1 p-4">
             <span className="text-sm text-muted-foreground">کل نوبت‌ها</span>
-            <span className="text-2xl font-bold">{totalCount}</span>
+            <span className="text-2xl font-bold">{toPersianDigits(totalCount)}</span>
           </CardContent>
         </Card>
 
@@ -265,7 +265,7 @@ export default function AdminReportsPage() {
           <Card key={status}>
             <CardContent className="flex flex-col gap-1 p-4">
               <span className="text-sm text-muted-foreground">{STATUS_LABELS[status]}</span>
-              <span className="text-2xl font-bold">{summary.byStatus[status]}</span>
+              <span className="text-2xl font-bold">{toPersianDigits(summary.byStatus[status])}</span>
             </CardContent>
           </Card>
         ))}
@@ -273,7 +273,7 @@ export default function AdminReportsPage() {
 
       <ReportAccordion
         title="نوبت‌ها به تفکیک آرایشگر"
-        summary={`${summary.byBarber.length} آرایشگر`}
+        summary={`${toPersianDigits(summary.byBarber.length)} آرایشگر`}
       >
         {summary.byBarber.length === 0 ? (
           <p className="text-sm text-muted-foreground">هنوز آرایشگری ثبت نشده</p>
@@ -283,7 +283,7 @@ export default function AdminReportsPage() {
               <div key={b.barberId} className="space-y-1.5">
                 <div className="flex items-center justify-between gap-3">
                   <span className="min-w-0 truncate text-sm">{b.barberName}</span>
-                  <span className="shrink-0 text-sm font-medium">{b.count} نوبت</span>
+                  <span className="shrink-0 text-sm font-medium">{toPersianDigits(b.count)} نوبت</span>
                 </div>
                 <div
                   className="h-2.5 overflow-hidden rounded-full bg-muted"
@@ -306,7 +306,7 @@ export default function AdminReportsPage() {
 
       <ReportAccordion
         title="نوبت‌ها به تفکیک وضعیت"
-        summary={`${totalCount} نوبت`}
+        summary={`${toPersianDigits(totalCount)} نوبت`}
       >
         {totalCount === 0 ? (
           <p className="text-sm text-muted-foreground">هنوز نوبتی ثبت نشده</p>
@@ -442,13 +442,13 @@ export default function AdminReportsPage() {
                 </div>
                 <div className="rounded-lg bg-secondary/40 p-4">
                   <span className="block text-sm text-muted-foreground">نوبت تکمیل‌شده</span>
-                  <span className="text-xl font-bold">{revenue.completedCount}</span>
+                  <span className="text-xl font-bold">{toPersianDigits(revenue.completedCount)}</span>
                 </div>
               </div>
 
               <ReportAccordion
                 title="جزئیات درآمد"
-                summary={`${revenue.byBarber.length + revenue.byService.length} مورد`}
+                summary={`${toPersianDigits(revenue.byBarber.length + revenue.byService.length)} مورد`}
               >
                 <div className="grid gap-5 lg:grid-cols-2">
                   <div className="space-y-2">
@@ -465,7 +465,7 @@ export default function AdminReportsPage() {
                           <div className="shrink-0 text-left text-sm">
                             <span className="font-medium">{formatToman(b.revenue)}</span>
                             <span className="mx-2 text-muted-foreground">·</span>
-                            <span className="text-muted-foreground">{b.count} نوبت</span>
+                            <span className="text-muted-foreground">{toPersianDigits(b.count)} نوبت</span>
                           </div>
                         </div>
                       ))
@@ -486,7 +486,7 @@ export default function AdminReportsPage() {
                           <div className="shrink-0 text-left text-sm">
                             <span className="font-medium">{formatToman(s.revenue)}</span>
                             <span className="mx-2 text-muted-foreground">·</span>
-                            <span className="text-muted-foreground">{s.count} نوبت</span>
+                            <span className="text-muted-foreground">{toPersianDigits(s.count)} نوبت</span>
                           </div>
                         </div>
                       ))

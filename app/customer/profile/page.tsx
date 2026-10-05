@@ -8,10 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { currentCustomer } from "@/lib/data/customer";
+import { toEnglishDigits } from "@/lib/utils";
 
 const profileSchema = z.object({
   name: z.string().min(3, "نام باید حداقل ۳ حرف باشد"),
-  phone: z.string().regex(/^09\d{9}$/, "شماره موبایل معتبر نیست"),
+  phone: z.string().transform(toEnglishDigits).pipe(z.string().regex(/^09\d{9}$/, "شماره موبایل معتبر نیست")),
 });
 type ProfileValues = z.infer<typeof profileSchema>;
 
