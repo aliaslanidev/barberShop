@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import {
   type ColumnDef,
   type SortingState,
@@ -41,6 +41,11 @@ interface DataTableProps<TData, TValue> {
   data: TData[];
   emptyMessage?: string;
   initialPageSize?: number;
+  // اگه پاس داده بشه، در موبایل (زیر md) به جای جدول، برای هر ردیف یک کارت
+  // نمایش داده می‌شه. در این حالت صفحه‌بندیِ داخلیِ جدول در موبایل مخفیه و همه‌ی
+  // داده‌ی ورودی (مثلاً یک صفحه‌ی سمت سرور) پشت‌سرهم نمایش داده می‌شه.
+  // اگه پاس داده نشه، رفتار قبلی (جدول با اسکرول افقی) حفظ می‌شه.
+  renderMobileCard?: (item: TData) => ReactNode;
 }
 
 export function DataTable<TData, TValue>({
@@ -48,6 +53,7 @@ export function DataTable<TData, TValue>({
   data,
   emptyMessage = "داده‌ای پیدا نشد",
   initialPageSize = 10,
+  renderMobileCard,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([]);
 
@@ -63,12 +69,36 @@ export function DataTable<TData, TValue>({
   });
 
   const rows = table.getRowModel().rows;
+  // ردیف‌ها قبل از صفحه‌بندی داخلی (برای کارت‌های موبایل)
+  const mobileRows = table.getPrePaginationRowModel().rows;
   const pageCount = table.getPageCount();
   const pageIndex = table.getState().pagination.pageIndex;
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="overflow-x-auto rounded-lg border border-border">
+      {/* موبایل: کارت‌ها */}
+      {renderMobileCard && (
+        <div className="flex flex-col gap-3 md:hidden">
+          {mobileRows.length ? (
+            mobileRows.map((row) => (
+              <div key={row.id}>{renderMobileCard(row.original)}</div>
+            ))
+          ) : (
+            <div className="rounded-lg border border-border p-6 text-center text-sm text-muted-foreground">
+              {emptyMessage}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* دسکتاپ (یا همه‌ی سایزها اگه renderMobileCard نداریم): جدول */}
+      <div
+        className={
+          renderMobileCard
+            ? "hidden overflow-x-auto rounded-lg border border-border md:block"
+            : "overflow-x-auto rounded-lg border border-border"
+        }
+      >
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -114,8 +144,15 @@ export function DataTable<TData, TValue>({
         </Table>
       </div>
 
+      {/* صفحه‌بندی داخلی: اگه کارت موبایل داریم، فقط در دسکتاپ نمایش داده می‌شه */}
       {rows.length > 0 && (
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div
+          className={
+            renderMobileCard
+              ? "hidden flex-wrap items-center justify-between gap-3 md:flex"
+              : "flex flex-wrap items-center justify-between gap-3"
+          }
+        >
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <span>تعداد در صفحه:</span>
             <Select

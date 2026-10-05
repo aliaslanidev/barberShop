@@ -29,7 +29,12 @@ import {
   type BookingStatus,
 } from "@/lib/api";
 import { getAuthToken } from "@/lib/data/mock-session";
-import { STATUS_LABELS, formatPersianDate, getBookingColumns } from "./columns";
+import {
+  STATUS_LABELS,
+  formatPersianDate,
+  getBookingColumns,
+  BookingMobileCard,
+} from "./columns";
 
 type DayFilter = "today" | "tomorrow" | "upcoming7" | "history" | "all" | "custom";
 
@@ -246,7 +251,14 @@ export default function AdminBookingsPage() {
             </Select>
           </div>
 
-          <DataTable columns={columns} data={bookings} emptyMessage="نوبتی با این فیلترها پیدا نشد" />
+          <DataTable
+            columns={columns}
+            data={bookings}
+            emptyMessage="نوبتی با این فیلترها پیدا نشد"
+            renderMobileCard={(booking) => (
+              <BookingMobileCard booking={booking} onCancel={handleCancel} />
+            )}
+          />
           <BookingPagination page={page} totalPages={totalPages} total={total} onPageChange={setPage} />
         </CardContent>
       </Card>
