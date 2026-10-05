@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Star } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,8 @@ interface BookingCardProps {
   // اگه پاس داده بشه، برای نوبت‌های تمام‌شده‌ی بدون امتیاز فرم امتیازدهی نمایش داده می‌شه.
   // اگه ثبت با خطا مواجه بشه باید throw کنه (تا فرم باز بمونه).
   onRate?: (bookingId: string, score: number, comment: string) => Promise<void>;
+  // وقتی کاربر از روی نوتیف میاد: فرم امتیازدهی از اول باز باشه و صفحه تا اونجا اسکرول بشه
+  autoOpenRating?: boolean;
 }
 
 const COMMENT_MAX_LENGTH = 300;
@@ -53,15 +55,16 @@ function StarsDisplay({ value }: { value: number }) {
   );
 }
 
-export function BookingCard({ booking, onCancel, onRate }: BookingCardProps) {
+export function BookingCard({ booking, onCancel, onRate, autoOpenRating = false }: BookingCardProps) {
   const [isConfirmingCancel, setIsConfirmingCancel] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
 
-  const [isRatingOpen, setIsRatingOpen] = useState(false);
+  const [isRatingOpen, setIsRatingOpen] = useState(autoOpenRating);
   const [score, setScore] = useState(0);
   const [hoverScore, setHoverScore] = useState(0);
   const [comment, setComment] = useState("");
   const [isSubmittingRating, setIsSubmittingRating] = useState(false);
+  const ratingFormRef = useRef<HTMLDivElement>(null);
 
   // قیمت ثبت‌شده موقع رزرو؛ برای نوبت‌های قدیمی (price = null) قیمت سرویس
   const price = booking.price ?? booking.service.priceValue;
@@ -70,6 +73,18 @@ export function BookingCard({ booking, onCancel, onRate }: BookingCardProps) {
   // نوبت‌های قدیمی/پاسخ‌های بدون فیلد rating رو هم null حساب می‌کنیم
   const existingRating = booking.rating ?? null;
   const canRate = booking.status === "COMPLETED" && !existingRating && !!onRate;
+
+  // اگه کارت از قبل رندر شده بود و بعداً از نوتیف اومدیم
+  useEffect(() => {
+    if (autoOpenRating) setIsRatingOpen(true);
+  }, [autoOpenRating]);
+
+  // اسکرول به فرم امتیازدهی وقتی از نوتیف اومدیم
+  useEffect(() => {
+    if (autoOpenRating && canRate) {
+      ratingFormRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [autoOpenRating, canRate]);
 
   async function handleConfirmCancel() {
     if (!onCancel) return;
@@ -154,7 +169,10 @@ export function BookingCard({ booking, onCancel, onRate }: BookingCardProps) {
                 امتیاز به این آرایشگر
               </Button>
             ) : (
-              <div className="mt-1 space-y-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
+              <div
+                ref={ratingFormRef}
+                className="mt-1 space-y-3 rounded-lg border border-primary/30 bg-primary/5 p-3"
+              >
                 <p className="text-xs text-muted-foreground">
                   خدمات {booking.barber.user.name} چطور بود؟
                 </p>
