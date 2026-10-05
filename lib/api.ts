@@ -87,6 +87,16 @@ export function listServices() {
   return apiFetch<ApiService[]>("/services");
 }
 
+export interface ApiPublicStats {
+  barberCount: number;
+  customerCount: number;
+  experienceYears: number;
+}
+
+export function getPublicStatsApi() {
+  return apiFetch<ApiPublicStats>("/stats");
+}
+
 export function createServiceApi(
   data: {
     title: string;
@@ -861,6 +871,7 @@ export interface ApiSalonSettings {
   name: string;
   address: string;
   phone: string;
+  experienceYears: number;
 }
 
 export interface ApiWorkingHours {

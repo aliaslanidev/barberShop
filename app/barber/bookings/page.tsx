@@ -3,9 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
+import { StatusCard, StatusChip } from "@/components/ui/status-card";
 import { Button } from "@/components/ui/button";
 import { BookingPagination } from "@/components/booking-pagination";
 import { cn } from "@/lib/utils";
+import { bookingStatusTone } from "@/lib/status-tones";
 import {
   listBookingsApi,
   updateBookingStatusApi,
@@ -206,14 +208,22 @@ export default function BarberBookingsPage() {
               </h2>
 
               {bookings.map((a) => (
-                <Card key={a.id}>
-                  <CardContent className="flex flex-wrap items-center justify-between gap-3 p-5">
+                <StatusCard
+                  key={a.id}
+                  tone={bookingStatusTone(a.status)}
+                  contentClassName="flex flex-wrap items-center justify-between gap-3 pe-5 py-5"
+                >
                     <div>
                       <p className="text-sm font-medium">{a.customer.name}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {getBookingServiceTitles(a)} — ساعت {toPersianDigits(a.time)} · {statusLabel[a.status]} ·{" "}
-                        {formatPrice(a.price ?? a.service.priceValue)}
-                      </p>
+                      <div className="mt-1 flex flex-wrap items-center gap-2">
+                        <StatusChip tone={bookingStatusTone(a.status)}>
+                          {statusLabel[a.status]}
+                        </StatusChip>
+                        <p className="text-xs text-muted-foreground">
+                          {getBookingServiceTitles(a)} — ساعت {toPersianDigits(a.time)} ·{" "}
+                          {formatPrice(a.price ?? a.service.priceValue)}
+                        </p>
+                      </div>
                       {a.notes && (
                         <p className="mt-1 text-xs text-muted-foreground">توضیحات: {a.notes}</p>
                       )}
@@ -233,8 +243,7 @@ export default function BarberBookingsPage() {
                         )}
                       </div>
                     )}
-                  </CardContent>
-                </Card>
+                </StatusCard>
               ))}
             </div>
           ))}

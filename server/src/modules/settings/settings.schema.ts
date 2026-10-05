@@ -16,6 +16,7 @@ export const updateSalonInfoSchema = z.object({
   name: z.string().trim().min(2, "نام سالن باید حداقل ۲ کاراکتر باشد").max(60).optional(),
   address: z.string().trim().max(200, "آدرس خیلی طولانی است").optional(),
   phone: z.string().trim().max(20, "شماره تماس خیلی طولانی است").optional(),
+  experienceYears: z.number().int().min(0).max(2_147_483_647).optional(),
 });
 
 export const updateWorkingHoursSchema = z.object({

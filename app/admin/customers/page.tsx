@@ -26,6 +26,7 @@ import { getCurrentAdmin } from "@/lib/data/admin-session";
 
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
+import { StatusCard, StatusChip } from "@/components/ui/status-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -468,8 +469,11 @@ export default function AdminCustomersPage() {
           {/* کارت (موبایل) */}
           <div className="flex flex-col gap-3 md:hidden">
             {customers.map((customer) => (
-              <Card key={customer.id}>
-                <CardContent className="flex flex-col gap-3 p-4">
+              <StatusCard
+                key={customer.id}
+                tone={customer.isActive ? "success" : "danger"}
+                contentClassName="flex flex-col gap-3 pe-4 py-4"
+              >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3">
                       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-secondary text-sm font-bold">
@@ -482,7 +486,12 @@ export default function AdminCustomersPage() {
                         </p>
                       </div>
                     </div>
-                    <StatusBadge isActive={customer.isActive} />
+                    <StatusChip
+                      tone={customer.isActive ? "success" : "danger"}
+                      className="px-2 py-0.5"
+                    >
+                      {customer.isActive ? "فعال" : "مسدود"}
+                    </StatusChip>
                   </div>
 
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
@@ -506,8 +515,7 @@ export default function AdminCustomersPage() {
                       {customer.isActive ? "مسدود کردن" : "فعال کردن"}
                     </Button>
                   )}
-                </CardContent>
-              </Card>
+              </StatusCard>
             ))}
           </div>
 

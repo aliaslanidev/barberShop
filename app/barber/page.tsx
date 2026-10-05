@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { Card, CardContent } from "@/components/ui/card";
+import { StatusCard, StatusChip } from "@/components/ui/status-card";
+import { accountStatusTone } from "@/lib/status-tones";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -67,22 +68,22 @@ export default function AdminBarbersPage() {
 
       <div className="space-y-4">
         {barbers.map((barber) => (
-          <Card key={barber.id} className={cn(!barber.isActive && "opacity-60")}>
-            <CardContent className="space-y-4 p-5">
+          <StatusCard
+            key={barber.id}
+            tone={accountStatusTone(barber.isActive)}
+            dimmed={!barber.isActive}
+            contentClassName="space-y-4 pe-5 py-5"
+          >
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="font-bold">{barber.name}</span>
-                    <span
-                      className={cn(
-                        "rounded-full px-2 py-0.5 text-xs font-medium",
-                        barber.isActive
-                          ? "bg-primary/10 text-primary"
-                          : "bg-muted text-muted-foreground"
-                      )}
+                    <StatusChip
+                      tone={accountStatusTone(barber.isActive)}
+                      className="px-2 py-0.5"
                     >
                       {barber.isActive ? "فعال" : "غیرفعال"}
-                    </span>
+                    </StatusChip>
                   </div>
                   {barber.mobile && (
                     <p className="text-xs text-muted-foreground">{barber.mobile}</p>
@@ -132,8 +133,7 @@ export default function AdminBarbersPage() {
                   })}
                 </div>
               </div>
-            </CardContent>
-          </Card>
+          </StatusCard>
         ))}
       </div>
     </div>

@@ -357,10 +357,11 @@ model SalonHoliday {
 }
 
 model SalonSettings {
-  id      String @id @default("main")
-  name    String @default("سالن آرایشی")
-  address String @default("")
-  phone   String @default("")
+  id              String @id @default("main")
+  name            String @default("سالن آرایشی")
+  address         String @default("")
+  phone           String @default("")
+  experienceYears Int    @default(12)
 
   @@map("salon_settings")
 }

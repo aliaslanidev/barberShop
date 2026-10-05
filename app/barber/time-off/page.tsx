@@ -8,6 +8,8 @@ import persian from "react-date-object/calendars/persian";
 import persian_fa from "react-date-object/locales/persian_fa";
 
 import { Card, CardContent } from "@/components/ui/card";
+import { StatusCard, StatusChip } from "@/components/ui/status-card";
+import { leaveRequestStatusTone } from "@/lib/status-tones";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -203,24 +205,20 @@ export default function BarberTimeOffPage() {
         <div className="space-y-2">
           <p className="text-sm font-medium">درخواست‌های مرخصی</p>
           {leaveRequests.map((r) => (
-            <div
+            <StatusCard
               key={r.id}
-              className="flex items-center justify-between rounded-lg bg-secondary/40 px-3 py-2"
+              tone={leaveRequestStatusTone(r.status)}
+              contentClassName="flex items-center justify-between gap-3 pe-3 py-2"
             >
               <div className="text-sm">
                 <span>{formatJalali(r.date.slice(0, 10))}</span>
                 <span className="mx-2 text-muted-foreground">—</span>
-                <span
-                  className={
-                    r.status === "PENDING"
-                      ? "text-yellow-500"
-                      : r.status === "APPROVED"
-                        ? "text-green-500"
-                        : "text-destructive"
-                  }
+                <StatusChip
+                  tone={leaveRequestStatusTone(r.status)}
+                  className="px-2 py-0.5"
                 >
                   {STATUS_LABELS[r.status]}
-                </span>
+                </StatusChip>
               </div>
               {r.status === "PENDING" && (
                 <Button
@@ -234,7 +232,7 @@ export default function BarberTimeOffPage() {
                   <Trash2 className="h-4 w-4" />
                 </Button>
               )}
-            </div>
+            </StatusCard>
           ))}
         </div>
       )}

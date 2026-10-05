@@ -2,11 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Star } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { StatusCard } from "@/components/ui/status-card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { StatusBadge } from "@/components/customer/status-badge";
 import { cn, formatToman } from "@/lib/utils";
+import { bookingStatusTone } from "@/lib/status-tones";
 import { getBookingServiceTitles, type ApiBooking } from "@/lib/api";
 
 interface BookingCardProps {
@@ -113,8 +114,10 @@ export function BookingCard({ booking, onCancel, onRate, autoOpenRating = false 
   const activeStars = hoverScore || score;
 
   return (
-    <Card>
-      <CardContent className="flex flex-col gap-3 p-5">
+    <StatusCard
+      tone={bookingStatusTone(booking.status)}
+      contentClassName="flex flex-col gap-3 pe-5 py-5"
+    >
         <div className="flex items-start justify-between">
           <div>
             <h3 className="text-sm font-medium">{getBookingServiceTitles(booking)}</h3>
@@ -279,7 +282,6 @@ export function BookingCard({ booking, onCancel, onRate, autoOpenRating = false 
             )}
           </>
         )}
-      </CardContent>
-    </Card>
+    </StatusCard>
   );
 }

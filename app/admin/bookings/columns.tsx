@@ -5,7 +5,9 @@ import type { ColumnDef, Column } from "@tanstack/react-table";
 import { ArrowUpDown, Clock, Phone, Scissors, User } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { StatusCard, StatusChip } from "@/components/ui/status-card";
 import { cn } from "@/lib/utils";
+import { bookingStatusTone } from "@/lib/status-tones";
 import { getBookingServiceTitles, type ApiBooking, type BookingStatus } from "@/lib/api";
 
 export const STATUS_LABELS: Record<BookingStatus, string> = {
@@ -126,37 +128,6 @@ export function getBookingColumns({ onCancel }: BookingColumnsOptions): ColumnDe
 
 // ==================== کارت موبایل ====================
 
-// رنگ‌بندی کارت بر اساس وضعیت (مناسب تم تیره): نوار کناری، سایه‌ی ملایم پس‌زمینه و نشان وضعیت
-const CARD_THEME: Record<
-  BookingStatus,
-  { accent: string; tint: string; badge: string; time: string }
-> = {
-  CONFIRMED: {
-    accent: "bg-blue-500",
-    tint: "bg-blue-500/[0.07]",
-    badge: "bg-blue-500/15 text-blue-300 ring-1 ring-inset ring-blue-500/30",
-    time: "text-blue-300",
-  },
-  IN_PROGRESS: {
-    accent: "bg-amber-500",
-    tint: "bg-amber-500/[0.07]",
-    badge: "bg-amber-500/15 text-amber-300 ring-1 ring-inset ring-amber-500/30",
-    time: "text-amber-300",
-  },
-  COMPLETED: {
-    accent: "bg-emerald-500",
-    tint: "bg-emerald-500/[0.06]",
-    badge: "bg-emerald-500/15 text-emerald-300 ring-1 ring-inset ring-emerald-500/30",
-    time: "text-emerald-300",
-  },
-  CANCELLED: {
-    accent: "bg-red-500/70",
-    tint: "bg-red-500/[0.05]",
-    badge: "bg-red-500/15 text-red-300 ring-1 ring-inset ring-red-500/30",
-    time: "text-muted-foreground",
-  },
-};
-
 // کارت موبایلِ هر نوبت — جایگزین ردیف جدول در صفحه‌های کوچک
 export function BookingMobileCard({
   booking,
@@ -168,7 +139,6 @@ export function BookingMobileCard({
   const [isConfirming, setIsConfirming] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
 
-  const theme = CARD_THEME[booking.status];
   const canCancel = booking.status === "CONFIRMED" || booking.status === "IN_PROGRESS";
   const isCancelled = booking.status === "CANCELLED";
   const initial = booking.customer.name.trim().charAt(0) || "؟";
@@ -184,44 +154,32 @@ export function BookingMobileCard({
   }
 
   return (
-    <div
-      className={cn(
-        "relative overflow-hidden rounded-xl border border-border bg-card py-4 pl-4 pr-5 shadow-sm",
-        isCancelled && "opacity-80",
-      )}
+    <StatusCard
+      tone={bookingStatusTone(booking.status)}
+      dimmed={isCancelled}
+      contentClassName="flex flex-col gap-3.5"
     >
-      {/* نوار رنگی وضعیت (سمت شروع در RTL) و سایه‌ی ملایم پس‌زمینه */}
-      <span className={cn("pointer-events-none absolute inset-0", theme.tint)} />
-      <span className={cn("absolute inset-y-0 right-0 w-1.5", theme.accent)} />
-
-      <div className="relative flex flex-col gap-3.5">
         {/* ردیف اول: ساعت و تاریخ + وضعیت */}
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2">
-            <Clock className={cn("h-4 w-4 shrink-0", theme.time)} />
-            <span className={cn("text-lg font-bold leading-none", theme.time)}>
+            <Clock className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <span className="text-lg font-bold leading-none">
               {toPersianDigits(booking.time)}
             </span>
             <span className="truncate text-xs text-muted-foreground">
               {formatPersianDate(booking.date)}
             </span>
           </div>
-          <span
-            className={cn(
-              "shrink-0 rounded-full px-2.5 py-1 text-xs font-medium",
-              theme.badge,
-            )}
-          >
+          <StatusChip tone={bookingStatusTone(booking.status)} className="shrink-0">
             {STATUS_LABELS[booking.status]}
-          </span>
+          </StatusChip>
         </div>
 
         {/* مشتری */}
         <div className="flex items-center gap-3">
           <div
             className={cn(
-              "flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-base font-bold text-white/90",
-              theme.accent,
+              "flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary text-base font-bold text-secondary-foreground",
             )}
             aria-hidden
           >
@@ -301,7 +259,6 @@ export function BookingMobileCard({
             )}
           </div>
         )}
-      </div>
-    </div>
+    </StatusCard>
   );
 }

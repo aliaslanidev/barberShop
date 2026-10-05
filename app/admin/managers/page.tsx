@@ -21,6 +21,8 @@ import { getCurrentAdmin } from "@/lib/data/admin-session";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { StatusCard, StatusChip } from "@/components/ui/status-card";
+import { accountStatusTone } from "@/lib/status-tones";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -293,11 +295,22 @@ export default function AdminManagersPage() {
       ) : (
         <div className="flex flex-col gap-3">
           {managers.map((manager) => (
-            <Card key={manager.id}>
-              <CardContent className="flex flex-col gap-3 p-4">
+            <StatusCard
+              key={manager.id}
+              tone={accountStatusTone(manager.isActive)}
+              contentClassName="flex flex-col gap-3 pe-4 py-4"
+            >
                 <div className="flex items-center justify-between gap-4">
                   <div>
-                    <p className="font-bold">{manager.name}</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-bold">{manager.name}</p>
+                      <StatusChip
+                        tone={accountStatusTone(manager.isActive)}
+                        className="px-2 py-0.5"
+                      >
+                        {manager.isActive ? "فعال" : "غیرفعال"}
+                      </StatusChip>
+                    </div>
                     <p dir="ltr" className="text-left text-xs text-muted-foreground">
                       {manager.mobile}
                     </p>
@@ -405,8 +418,7 @@ export default function AdminManagersPage() {
                     {manager.blockedAt && ` — ${formatDateFa(manager.blockedAt)}`}
                   </p>
                 )}
-              </CardContent>
-            </Card>
+            </StatusCard>
           ))}
         </div>
       )}

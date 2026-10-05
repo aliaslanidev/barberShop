@@ -30,8 +30,18 @@ const JS_DAY_TO_WEEKDAY: Weekday[] = [
   "SATURDAY",
 ];
 
-function toSalonDto(s: { name: string; address: string; phone: string }) {
-  return { name: s.name, address: s.address, phone: s.phone };
+function toSalonDto(s: {
+  name: string;
+  address: string;
+  phone: string;
+  experienceYears: number;
+}) {
+  return {
+    name: s.name,
+    address: s.address,
+    phone: s.phone,
+    experienceYears: s.experienceYears,
+  };
 }
 
 function toHoursDto(w: { day: Weekday; isOpen: boolean; openTime: string; closeTime: string }) {

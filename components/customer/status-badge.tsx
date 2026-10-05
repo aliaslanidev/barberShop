@@ -1,18 +1,16 @@
-import { cn } from "@/lib/utils";
+import { StatusChip } from "@/components/ui/status-card";
+import { bookingStatusTone } from "@/lib/status-tones";
 import type { BookingStatus } from "@/lib/api";
 
-const statusConfig: Record<BookingStatus, { label: string; className: string }> = {
-  CONFIRMED: { label: "تایید‌شده", className: "bg-primary/10 text-primary" },
-  IN_PROGRESS: { label: "در حال انجام", className: "bg-amber-500/10 text-amber-400" },
-  COMPLETED: { label: "انجام‌شده", className: "bg-secondary text-secondary-foreground" },
-  CANCELLED: { label: "لغوشده", className: "bg-red-500/10 text-red-400" },
+const statusLabels: Record<BookingStatus, string> = {
+  CONFIRMED: "تایید‌شده",
+  IN_PROGRESS: "در حال انجام",
+  COMPLETED: "انجام‌شده",
+  CANCELLED: "لغوشده",
 };
 
 export function StatusBadge({ status }: { status: BookingStatus }) {
-  const config = statusConfig[status];
   return (
-    <span className={cn("rounded-full px-2.5 py-1 text-xs font-medium", config.className)}>
-      {config.label}
-    </span>
+    <StatusChip tone={bookingStatusTone(status)}>{statusLabels[status]}</StatusChip>
   );
 }

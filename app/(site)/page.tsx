@@ -19,6 +19,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { SiteStats } from "@/components/site-stats";
 
 import { services } from "@/lib/data/services";
 import { HeroGlow } from "@/components/hero-glow";
@@ -28,25 +29,6 @@ import buzzCut from "../../public/images/buzz-cut.png";
 import classic from "../../public/images/classic.png";
 import frenchCrop from "../../public/images/french-crop.jpg.png";
 import sidePart from "../../public/images/side-part.png";
-
-/* =====================================================
-   Stats
-===================================================== */
-
-const stats = [
-  {
-    value: "۱۲+",
-    label: "سال سابقه",
-  },
-  {
-    value: "۴۰۰۰+",
-    label: "مشتری راضی",
-  },
-  {
-    value: "۶",
-    label: "آرایشگر متخصص",
-  },
-];
 
 /* =====================================================
    Gallery
@@ -202,43 +184,7 @@ export default function Home() {
             to-[#090909]
           "
         >
-          <div
-            className="
-              container
-              grid
-              grid-cols-3
-              divide-x
-              divide-x-reverse
-              divide-primary/20
-              py-10
-              text-center
-            "
-          >
-            {stats.map((s) => (
-              <div key={s.label}>
-                <div
-                  className="
-                    text-2xl
-                    font-bold
-                    text-primary
-                    md:text-3xl
-                  "
-                >
-                  {s.value}
-                </div>
-
-                <div
-                  className="
-                    mt-1
-                    text-sm
-                    text-muted-foreground
-                  "
-                >
-                  {s.label}
-                </div>
-              </div>
-            ))}
-          </div>
+          <SiteStats />
         </section>
 
         {/* =====================================================

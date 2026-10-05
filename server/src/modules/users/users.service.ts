@@ -42,6 +42,15 @@ const salonCustomerFilter: Prisma.UserWhereInput = {
   ],
 };
 
+export function countSalonCustomers() {
+  return prisma.user.count({
+    where: {
+      role: "CUSTOMER",
+      AND: [salonCustomerFilter],
+    },
+  });
+}
+
 // لیست مشتری‌ها برای پنل ادمین — همراه وضعیت فعال/مسدود و تعداد
 // لغوهای خودشون (cancelCount)، تا ادمین بدونه چرا کسی مسدود شده.
 export async function listCustomers(query: ListCustomersQuery) {

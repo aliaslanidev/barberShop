@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
+import type { ReactNode } from "react";
+import { ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -79,6 +81,70 @@ const PERIOD_LABELS: Record<PeriodKey, string> = {
   YEAR: "امسال",
   CUSTOM: "بازه دلخواه",
 };
+
+function ReportAccordion({
+  title,
+  summary,
+  children,
+}: {
+  title: string;
+  summary: string;
+  children: ReactNode;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
+  const panelId = useId();
+  const titleId = useId();
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(min-width: 1024px)");
+    const updateDesktopState = () => setIsDesktop(mediaQuery.matches);
+    updateDesktopState();
+    mediaQuery.addEventListener("change", updateDesktopState);
+    return () => mediaQuery.removeEventListener("change", updateDesktopState);
+  }, []);
+
+  return (
+    <section className="overflow-hidden rounded-xl border border-border bg-card">
+      <button
+        type="button"
+        onClick={() => setIsOpen((open) => !open)}
+        id={titleId}
+        aria-controls={panelId}
+        aria-expanded={isOpen || isDesktop}
+        tabIndex={isDesktop ? -1 : undefined}
+        className="flex min-h-14 w-full items-center justify-between gap-3 px-4 py-3 text-right lg:pointer-events-none"
+      >
+        <span className="font-semibold">{title}</span>
+        <span className="flex shrink-0 items-center gap-2 text-xs text-muted-foreground">
+          {summary}
+          <ChevronDown
+            aria-hidden="true"
+            className={cn(
+              "h-4 w-4 transition-transform duration-200 lg:hidden",
+              isOpen && "rotate-180",
+            )}
+          />
+        </span>
+      </button>
+      <div
+        id={panelId}
+        role="region"
+        aria-labelledby={titleId}
+        className={cn(
+          "grid transition-[grid-template-rows,visibility] duration-200 ease-out",
+          isOpen
+            ? "grid-rows-[1fr]"
+            : "invisible grid-rows-[0fr] lg:visible lg:grid-rows-[1fr]",
+        )}
+      >
+        <div className="min-h-0 overflow-hidden">
+          <div className="border-t border-border p-4">{children}</div>
+        </div>
+      </div>
+    </section>
+  );
+}
 
 export default function AdminReportsPage() {
   const [isLoading, setIsLoading] = useState(true);
@@ -184,8 +250,11 @@ export default function AdminReportsPage() {
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card>
+      <section
+        aria-label="خلاصه نوبت‌ها"
+        className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5"
+      >
+        <Card className="col-span-2 sm:col-span-1">
           <CardContent className="flex flex-col gap-1 p-4">
             <span className="text-sm text-muted-foreground">کل نوبت‌ها</span>
             <span className="text-2xl font-bold">{totalCount}</span>
@@ -200,73 +269,116 @@ export default function AdminReportsPage() {
             </CardContent>
           </Card>
         ))}
-      </div>
+      </section>
 
-      <Card>
-        <CardContent className="flex flex-col gap-4 p-4">
-          <h2 className="font-semibold">نوبت‌ها به تفکیک آرایشگر</h2>
-
-          {summary.byBarber.length === 0 && (
-            <p className="text-sm text-muted-foreground">هنوز آرایشگری ثبت نشده</p>
-          )}
-
-          <div className="flex flex-col gap-3">
+      <ReportAccordion
+        title="نوبت‌ها به تفکیک آرایشگر"
+        summary={`${summary.byBarber.length} آرایشگر`}
+      >
+        {summary.byBarber.length === 0 ? (
+          <p className="text-sm text-muted-foreground">هنوز آرایشگری ثبت نشده</p>
+        ) : (
+          <div className="flex flex-col gap-4">
             {summary.byBarber.map((b) => (
-              <div key={b.barberId} className="flex items-center gap-3">
-                <span className="w-24 shrink-0 truncate text-sm">{b.barberName}</span>
-                <div className="h-3 flex-1 overflow-hidden rounded-full bg-muted">
+              <div key={b.barberId} className="space-y-1.5">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="min-w-0 truncate text-sm">{b.barberName}</span>
+                  <span className="shrink-0 text-sm font-medium">{b.count} نوبت</span>
+                </div>
+                <div
+                  className="h-2.5 overflow-hidden rounded-full bg-muted"
+                  role="progressbar"
+                  aria-label={`نوبت‌های ${b.barberName}`}
+                  aria-valuemin={0}
+                  aria-valuemax={maxBarberCount}
+                  aria-valuenow={b.count}
+                >
                   <div
                     className="h-full rounded-full bg-primary"
                     style={{ width: `${(b.count / maxBarberCount) * 100}%` }}
                   />
                 </div>
-                <span className="w-8 shrink-0 text-left text-sm font-medium">{b.count}</span>
               </div>
             ))}
           </div>
-        </CardContent>
-      </Card>
+        )}
+      </ReportAccordion>
 
-      <Card>
-        <CardContent className="flex flex-col gap-4 p-4">
-          <h2 className="font-semibold">نوبت‌ها به تفکیک وضعیت</h2>
+      <ReportAccordion
+        title="نوبت‌ها به تفکیک وضعیت"
+        summary={`${totalCount} نوبت`}
+      >
+        {totalCount === 0 ? (
+          <p className="text-sm text-muted-foreground">هنوز نوبتی ثبت نشده</p>
+        ) : (
+          <>
+            <div
+              className="flex h-3 w-full overflow-hidden rounded-full"
+              role="img"
+              aria-label="نمودار توزیع نوبت‌ها بر اساس وضعیت"
+            >
+              {STATUS_ORDER.map((status) =>
+                summary.byStatus[status] > 0 ? (
+                  <div
+                    key={status}
+                    className={cn(STATUS_STYLES[status])}
+                    style={{
+                      width: `${(summary.byStatus[status] / totalCount) * 100}%`,
+                    }}
+                    title={`${STATUS_LABELS[status]}: ${summary.byStatus[status]}`}
+                  />
+                ) : null,
+              )}
+            </div>
 
-          <div className="flex h-4 w-full overflow-hidden rounded-full">
-            {STATUS_ORDER.map((status) =>
-              summary.byStatus[status] > 0 ? (
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {STATUS_ORDER.map((status) => (
                 <div
                   key={status}
-                  className={cn(STATUS_STYLES[status])}
-                  style={{
-                    width: `${(summary.byStatus[status] / Math.max(1, totalCount)) * 100}%`,
-                  }}
-                  title={`${STATUS_LABELS[status]}: ${summary.byStatus[status]}`}
-                />
-              ) : null,
-            )}
-          </div>
-
-          <div className="flex flex-wrap gap-4">
-            {STATUS_ORDER.map((status) => (
-              <div key={status} className="flex items-center gap-2 text-sm">
-                <span className={cn("h-3 w-3 rounded-full", STATUS_STYLES[status])} />
-                {STATUS_LABELS[status]} ({summary.byStatus[status]})
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+                  className="flex items-center justify-between gap-3 rounded-lg bg-secondary/40 px-3 py-2.5 text-sm"
+                >
+                  <span className="flex items-center gap-2">
+                    <span
+                      className={cn(
+                        "h-2.5 w-2.5 shrink-0 rounded-full",
+                        STATUS_STYLES[status],
+                      )}
+                    />
+                    {STATUS_LABELS[status]}
+                  </span>
+                  <span className="font-medium">{summary.byStatus[status]}</span>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </ReportAccordion>
 
       {/* گزارش مالی — طبق بند ۷.۱، سرور خودش نوبت‌های isBarberOwnRevenue و
           isPrivateCustomer رو حذف می‌کنه، اینجا فقط فیلتر آرایشگر و بازه‌ی
           زمانی رو می‌فرستیم */}
       <Card>
         <CardContent className="flex flex-col gap-4 p-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
             <h2 className="font-semibold">گزارش مالی سالن</h2>
-            <div className="flex flex-wrap gap-2">
-              <Select value={period} onValueChange={(v) => setPeriod(v as PeriodKey)}>
-                <SelectTrigger className="w-36">
+            <p className="mt-1 text-xs text-muted-foreground">
+              {PERIOD_LABELS[period]} ·{" "}
+              {revenueBarberId === "ALL"
+                ? "همه‌ی آرایشگرها"
+                : barbers.find((barber) => barber.id === revenueBarberId)?.user.name}
+            </p>
+          </div>
+
+          <ReportAccordion
+            title="تنظیم فیلترهای گزارش"
+            summary={PERIOD_LABELS[period]}
+          >
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Select
+                value={period}
+                onValueChange={(v) => setPeriod(v as PeriodKey)}
+              >
+                <SelectTrigger aria-label="بازه زمانی گزارش">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -279,7 +391,7 @@ export default function AdminReportsPage() {
               </Select>
 
               <Select value={revenueBarberId} onValueChange={setRevenueBarberId}>
-                <SelectTrigger className="w-48">
+                <SelectTrigger aria-label="فیلتر بر اساس آرایشگر">
                   <SelectValue placeholder="همه‌ی آرایشگرها" />
                 </SelectTrigger>
                 <SelectContent>
@@ -292,20 +404,28 @@ export default function AdminReportsPage() {
                 </SelectContent>
               </Select>
             </div>
-          </div>
 
-          {period === "CUSTOM" && (
-            <div className="flex flex-wrap items-end gap-3">
-              <div className="flex flex-col gap-1">
-                <span className="text-xs text-muted-foreground">از تاریخ</span>
-                <JalaliDatePicker value={customFrom} onChange={setCustomFrom} placeholder="از" />
+            {period === "CUSTOM" && (
+              <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs text-muted-foreground">از تاریخ</span>
+                  <JalaliDatePicker
+                    value={customFrom}
+                    onChange={setCustomFrom}
+                    placeholder="از"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs text-muted-foreground">تا تاریخ</span>
+                  <JalaliDatePicker
+                    value={customTo}
+                    onChange={setCustomTo}
+                    placeholder="تا"
+                  />
+                </div>
               </div>
-              <div className="flex flex-col gap-1">
-                <span className="text-xs text-muted-foreground">تا تاریخ</span>
-                <JalaliDatePicker value={customTo} onChange={setCustomTo} placeholder="تا" />
-              </div>
-            </div>
-          )}
+            )}
+          </ReportAccordion>
 
           {period === "CUSTOM" && (!customFrom || !customTo) ? (
             <p className="text-sm text-muted-foreground">هر دو تاریخ «از» و «تا» را انتخاب کنید.</p>
@@ -326,47 +446,54 @@ export default function AdminReportsPage() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <p className="text-sm font-medium">به تفکیک آرایشگر</p>
-                {revenue.byBarber.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">داده‌ای موجود نیست</p>
-                ) : (
-                  revenue.byBarber.map((b) => (
-                    <div
-                      key={b.barberId}
-                      className="flex items-center justify-between rounded-lg bg-secondary/40 px-3 py-2"
-                    >
-                      <span className="text-sm">{b.barberName}</span>
-                      <div className="text-left text-sm">
-                        <span className="font-medium">{formatToman(b.revenue)}</span>
-                        <span className="mx-2 text-muted-foreground">·</span>
-                        <span className="text-muted-foreground">{b.count} نوبت</span>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
+              <ReportAccordion
+                title="جزئیات درآمد"
+                summary={`${revenue.byBarber.length + revenue.byService.length} مورد`}
+              >
+                <div className="grid gap-5 lg:grid-cols-2">
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">به تفکیک آرایشگر</p>
+                    {revenue.byBarber.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">داده‌ای موجود نیست</p>
+                    ) : (
+                      revenue.byBarber.map((b) => (
+                        <div
+                          key={b.barberId}
+                          className="flex items-center justify-between gap-3 rounded-lg bg-secondary/40 px-3 py-2"
+                        >
+                          <span className="min-w-0 truncate text-sm">{b.barberName}</span>
+                          <div className="shrink-0 text-left text-sm">
+                            <span className="font-medium">{formatToman(b.revenue)}</span>
+                            <span className="mx-2 text-muted-foreground">·</span>
+                            <span className="text-muted-foreground">{b.count} نوبت</span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
 
-              <div className="space-y-2">
-                <p className="text-sm font-medium">به تفکیک سرویس</p>
-                {revenue.byService.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">داده‌ای موجود نیست</p>
-                ) : (
-                  revenue.byService.map((s) => (
-                    <div
-                      key={s.serviceId}
-                      className="flex items-center justify-between rounded-lg bg-secondary/40 px-3 py-2"
-                    >
-                      <span className="text-sm">{s.serviceTitle}</span>
-                      <div className="text-left text-sm">
-                        <span className="font-medium">{formatToman(s.revenue)}</span>
-                        <span className="mx-2 text-muted-foreground">·</span>
-                        <span className="text-muted-foreground">{s.count} نوبت</span>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">به تفکیک سرویس</p>
+                    {revenue.byService.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">داده‌ای موجود نیست</p>
+                    ) : (
+                      revenue.byService.map((s) => (
+                        <div
+                          key={s.serviceId}
+                          className="flex items-center justify-between gap-3 rounded-lg bg-secondary/40 px-3 py-2"
+                        >
+                          <span className="min-w-0 truncate text-sm">{s.serviceTitle}</span>
+                          <div className="shrink-0 text-left text-sm">
+                            <span className="font-medium">{formatToman(s.revenue)}</span>
+                            <span className="mx-2 text-muted-foreground">·</span>
+                            <span className="text-muted-foreground">{s.count} نوبت</span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </ReportAccordion>
             </>
           )}
         </CardContent>

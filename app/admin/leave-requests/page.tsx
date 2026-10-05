@@ -8,6 +8,8 @@ import persian from "react-date-object/calendars/persian";
 import persian_fa from "react-date-object/locales/persian_fa";
 
 import { Card, CardContent } from "@/components/ui/card";
+import { StatusCard, StatusChip } from "@/components/ui/status-card";
+import { leaveRequestStatusTone } from "@/lib/status-tones";
 import { Button } from "@/components/ui/button";
 import { getAuthToken } from "@/lib/data/mock-session";
 import {
@@ -102,10 +104,21 @@ export default function AdminLeaveRequestsPage() {
       ) : (
         <div className="space-y-3">
           {requests.map((r) => (
-            <Card key={r.id}>
-              <CardContent className="flex items-center justify-between gap-4 p-4">
+            <StatusCard
+              key={r.id}
+              tone={leaveRequestStatusTone(r.status)}
+              contentClassName="flex items-center justify-between gap-4 pe-4 py-4"
+            >
                 <div>
-                  <p className="font-medium">{r.barber.user.name}</p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-medium">{r.barber.user.name}</p>
+                    <StatusChip
+                      tone={leaveRequestStatusTone(r.status)}
+                      className="px-2 py-0.5"
+                    >
+                      در انتظار تایید
+                    </StatusChip>
+                  </div>
                   <p className="text-sm text-muted-foreground">
                     {formatJalali(r.date.slice(0, 10))}
                     {r.reason && <span> — {r.reason}</span>}
@@ -131,8 +144,7 @@ export default function AdminLeaveRequestsPage() {
                     <Check className="h-4 w-4" />
                   </Button>
                 </div>
-              </CardContent>
-            </Card>
+            </StatusCard>
           ))}
         </div>
       )}

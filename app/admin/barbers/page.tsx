@@ -37,6 +37,8 @@ import { getCurrentAdmin } from "@/lib/data/admin-session";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { StatusCard, StatusChip } from "@/components/ui/status-card";
+import { barberStatusTone } from "@/lib/status-tones";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -117,24 +119,22 @@ function formatDateFa(iso: string) {
 
 // وضعیت کلی آرایشگر برای نوار رنگی و نشان متنی کارت
 function getBarberStatus(barber: ApiBarber) {
+  const tone = barberStatusTone(barber.user.isActive, barber.isActive);
   if (!barber.user.isActive) {
     return {
       label: "حساب غیرفعال",
-      bar: "bg-red-500/80",
-      chip: "bg-red-500/15 text-red-300 ring-red-500/30",
+      tone,
     };
   }
   if (!barber.isActive) {
     return {
       label: "نوبت جدید نمی‌پذیرد",
-      bar: "bg-amber-500",
-      chip: "bg-amber-500/15 text-amber-300 ring-amber-500/30",
+      tone,
     };
   }
   return {
     label: "فعال",
-    bar: "bg-emerald-500",
-    chip: "bg-emerald-500/15 text-emerald-300 ring-emerald-500/30",
+    tone,
   };
 }
 
@@ -885,22 +885,15 @@ export default function AdminBarbersPage() {
       </div>
 
       {selectedBarber && barberStatus ? (
-        <Card
+        <StatusCard
           key={selectedBarber.id}
+          tone={barberStatus.tone}
           className={cn(
             PERMISSIONS_BOX_MIN_HEIGHT,
-            "relative flex flex-col overflow-hidden",
+            "flex flex-col",
           )}
+          contentClassName="flex flex-1 flex-col gap-4 ps-6 pe-5 py-5"
         >
-          {/* نوار رنگی وضعیت آرایشگر */}
-          <span
-            className={cn(
-              "absolute inset-y-0 right-0 w-1.5",
-              barberStatus.bar,
-            )}
-          />
-
-          <CardContent className="flex flex-1 flex-col gap-4 p-5 pr-6">
             <div className="flex items-center justify-between gap-4">
               <div className="flex min-w-0 items-center gap-3">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary text-sm font-bold">
@@ -916,14 +909,12 @@ export default function AdminBarbersPage() {
                   >
                     {selectedBarber.user.mobile}
                   </p>
-                  <span
-                    className={cn(
-                      "mt-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset",
-                      barberStatus.chip,
-                    )}
+                  <StatusChip
+                    tone={barberStatus.tone}
+                    className="mt-1 px-2 py-0.5 text-[11px]"
                   >
                     {barberStatus.label}
-                  </span>
+                  </StatusChip>
                 </div>
               </div>
 
@@ -1180,8 +1171,7 @@ export default function AdminBarbersPage() {
                 </div>
               )}
             </AccordionSection>
-          </CardContent>
-        </Card>
+        </StatusCard>
       ) : (
         <Card
           className={cn(

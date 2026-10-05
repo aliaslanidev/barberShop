@@ -1,15 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { ChevronDown, ChevronUp, Eye, EyeOff } from "lucide-react";
 
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { toPersianDigits } from "@/lib/utils";
+import { cn, toPersianDigits } from "@/lib/utils";
 
 import { getAuthToken } from "@/lib/data/mock-session";
 import { getCurrentAdmin } from "@/lib/data/admin-session";
@@ -35,6 +34,81 @@ const WEEKDAY_LABELS: Record<ApiWeekday, string> = {
   FRIDAY: "جمعه",
 };
 
+function SettingsSection({
+  title,
+  summary,
+  initialOpen = false,
+  hasChanges = false,
+  children,
+}: {
+  title: string;
+  summary: string;
+  initialOpen?: boolean;
+  hasChanges?: boolean;
+  children: ReactNode;
+}) {
+  const [isOpen, setIsOpen] = useState(initialOpen);
+  const [isDesktop, setIsDesktop] = useState(false);
+  const buttonId = useId();
+  const contentId = useId();
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(min-width: 1024px)");
+    const updateDesktopState = () => setIsDesktop(mediaQuery.matches);
+    updateDesktopState();
+    mediaQuery.addEventListener("change", updateDesktopState);
+    return () => mediaQuery.removeEventListener("change", updateDesktopState);
+  }, []);
+
+  return (
+    <section className="overflow-hidden rounded-xl border border-border bg-card">
+      <button
+        id={buttonId}
+        type="button"
+        aria-controls={contentId}
+        aria-expanded={isOpen || isDesktop}
+        tabIndex={isDesktop ? -1 : undefined}
+        onClick={() => setIsOpen((open) => !open)}
+        className="flex min-h-14 w-full items-center justify-between gap-3 px-4 py-3 text-right lg:pointer-events-none"
+      >
+        <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="font-semibold">{title}</span>
+          {hasChanges && (
+            <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-medium text-amber-300 ring-1 ring-inset ring-amber-500/30">
+              ذخیره‌نشده
+            </span>
+          )}
+        </span>
+        <span className="flex shrink-0 items-center gap-2 text-xs text-muted-foreground">
+          {summary}
+          <ChevronDown
+            aria-hidden="true"
+            className={cn(
+              "h-4 w-4 transition-transform duration-200 lg:hidden",
+              isOpen && "rotate-180",
+            )}
+          />
+        </span>
+      </button>
+      <div
+        id={contentId}
+        role="region"
+        aria-labelledby={buttonId}
+        className={cn(
+          "grid transition-[grid-template-rows,visibility] duration-200 ease-out",
+          isOpen
+            ? "grid-rows-[1fr]"
+            : "invisible grid-rows-[0fr] lg:visible lg:grid-rows-[1fr]",
+        )}
+      >
+        <div className="min-h-0 overflow-hidden">
+          <div className="border-t border-border p-4">{children}</div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function AdminSettingsPage() {
   // تنظیمات کلی سالن فقط در اختیار ادمین اصلیه؛ مدیر سالن حتی با زدن
   // مستقیم URL هم نباید ببینتش (تصمیم پروژه — لینکش هم از سایدبار/بات‌نو
@@ -47,7 +121,12 @@ export default function AdminSettingsPage() {
   const [isSavingHours, setIsSavingHours] = useState(false);
 
   // --- اطلاعات سالن ---
-  const [salon, setSalon] = useState<ApiSalonSettings>({ name: "", address: "", phone: "" });
+  const [salon, setSalon] = useState<ApiSalonSettings>({
+    name: "",
+    address: "",
+    phone: "",
+    experienceYears: 12,
+  });
 
   // --- ساعات کاری ---
   const [hours, setHours] = useState<ApiWorkingHours[]>([]);
@@ -217,10 +296,12 @@ export default function AdminSettingsPage() {
         </p>
       </div>
 
-      <Card>
-        <CardContent className="flex flex-col gap-4 p-4">
-          <h2 className="font-semibold">اطلاعات سالن</h2>
-
+      <SettingsSection
+        title="اطلاعات سالن"
+        summary={salon.name || "نام سالن ثبت نشده"}
+        initialOpen
+      >
+        <div className="flex flex-col gap-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-2">
               <Label htmlFor="salon-name">نام سالن</Label>
@@ -239,6 +320,23 @@ export default function AdminSettingsPage() {
                 onChange={(e) => setSalon((s) => ({ ...s, phone: e.target.value }))}
               />
             </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="salon-experience-years">سال سابقه</Label>
+              <Input
+                id="salon-experience-years"
+                type="number"
+                min={0}
+                step={1}
+                inputMode="numeric"
+                value={salon.experienceYears}
+                onChange={(e) =>
+                  setSalon((current) => ({
+                    ...current,
+                    experienceYears: Number(e.target.value),
+                  }))
+                }
+              />
+            </div>
             <div className="flex flex-col gap-2 sm:col-span-2">
               <Label htmlFor="salon-address">آدرس</Label>
               <Input
@@ -252,13 +350,16 @@ export default function AdminSettingsPage() {
           <Button onClick={handleSaveSalon} disabled={isSavingSalon} className="w-full">
             {isSavingSalon ? "..." : "ذخیره اطلاعات سالن"}
           </Button>
-        </CardContent>
-      </Card>
+        </div>
+      </SettingsSection>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardContent className="flex flex-col gap-4 p-4">
-            <h2 className="font-semibold">ساعات کاری</h2>
+        <SettingsSection
+          title="ساعات کاری"
+          summary={`${hours.filter((hour) => hour.isOpen).length} روز فعال`}
+          hasChanges={hasUnsavedHours}
+        >
+          <div className="flex flex-col gap-4">
             <p className="text-xs text-muted-foreground">
               تغییرات تا زمان ثبت، ذخیره نمی‌شوند.
             </p>
@@ -374,13 +475,14 @@ export default function AdminSettingsPage() {
                 {isSavingHours ? "در حال ثبت..." : "ثبت تغییرات"}
               </Button>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </SettingsSection>
 
-        <Card>
-          <CardContent className="flex flex-col gap-4 p-4">
-            <h2 className="font-semibold">تغییر رمز عبور</h2>
-
+        <SettingsSection
+          title="تغییر رمز عبور"
+          summary="امنیت حساب"
+        >
+          <div className="flex flex-col gap-4">
             <div className="grid gap-4">
               <div className="flex flex-col gap-2">
                 <Label htmlFor="current-password">رمز عبور فعلی</Label>
@@ -389,15 +491,19 @@ export default function AdminSettingsPage() {
                     id="current-password"
                     type={showCurrentPassword ? "text" : "password"}
                     dir="ltr"
-                    className="pr-10"
+                    className="h-11 pr-12"
                     value={currentPassword}
                     onChange={(e) => setCurrentPassword(e.target.value)}
                   />
                   <button
                     type="button"
                     onClick={() => setShowCurrentPassword((v) => !v)}
-                    className="absolute inset-y-0 right-2 flex items-center text-muted-foreground hover:text-foreground"
-                    tabIndex={-1}
+                    aria-label={
+                      showCurrentPassword
+                        ? "مخفی کردن رمز عبور فعلی"
+                        : "نمایش رمز عبور فعلی"
+                    }
+                    className="absolute inset-y-0 right-1 flex h-11 w-11 items-center justify-center text-muted-foreground hover:text-foreground"
                   >
                     {showCurrentPassword ? (
                       <EyeOff className="h-4 w-4" />
@@ -414,15 +520,19 @@ export default function AdminSettingsPage() {
                     id="new-password"
                     type={showNewPassword ? "text" : "password"}
                     dir="ltr"
-                    className="pr-10"
+                    className="h-11 pr-12"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                   />
                   <button
                     type="button"
                     onClick={() => setShowNewPassword((v) => !v)}
-                    className="absolute inset-y-0 right-2 flex items-center text-muted-foreground hover:text-foreground"
-                    tabIndex={-1}
+                    aria-label={
+                      showNewPassword
+                        ? "مخفی کردن رمز عبور جدید"
+                        : "نمایش رمز عبور جدید"
+                    }
+                    className="absolute inset-y-0 right-1 flex h-11 w-11 items-center justify-center text-muted-foreground hover:text-foreground"
                   >
                     {showNewPassword ? (
                       <EyeOff className="h-4 w-4" />
@@ -439,15 +549,19 @@ export default function AdminSettingsPage() {
                     id="confirm-password"
                     type={showConfirmPassword ? "text" : "password"}
                     dir="ltr"
-                    className="pr-10"
+                    className="h-11 pr-12"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword((v) => !v)}
-                    className="absolute inset-y-0 right-2 flex items-center text-muted-foreground hover:text-foreground"
-                    tabIndex={-1}
+                    aria-label={
+                      showConfirmPassword
+                        ? "مخفی کردن تکرار رمز جدید"
+                        : "نمایش تکرار رمز جدید"
+                    }
+                    className="absolute inset-y-0 right-1 flex h-11 w-11 items-center justify-center text-muted-foreground hover:text-foreground"
                   >
                     {showConfirmPassword ? (
                       <EyeOff className="h-4 w-4" />
@@ -466,8 +580,8 @@ export default function AdminSettingsPage() {
                 {isChangingPassword ? "..." : "تغییر رمز عبور"}
               </Button>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </SettingsSection>
       </div>
     </main>
   );

@@ -2,7 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { MessageSquareOff, Star } from "lucide-react";
+import { StatusCard, StatusChip } from "@/components/ui/status-card";
 import { cn } from "@/lib/utils";
+import { ratingStatusTone } from "@/lib/status-tones";
 import { getAuthToken } from "@/lib/data/mock-session";
 import {
   ApiError,
@@ -32,12 +34,6 @@ const STATUS_LABELS: Record<RatingStatus, string> = {
   PENDING: "در انتظار تایید ادمین",
   APPROVED: "نمایش عمومی",
   REJECTED: "نمایش داده نمی‌شود",
-};
-
-const STATUS_STYLES: Record<RatingStatus, string> = {
-  PENDING: "border-amber-500/30 bg-amber-500/10 text-amber-500",
-  APPROVED: "border-emerald-500/30 bg-emerald-500/10 text-emerald-500",
-  REJECTED: "border-red-500/30 bg-red-500/10 text-red-400",
 };
 
 function Stars({ score }: { score: number }) {
@@ -169,21 +165,20 @@ export default function BarberReviewsPage() {
       ) : (
         <div className="flex flex-col gap-2.5">
           {ratings.map((r) => (
-            <div
+            <StatusCard
               key={r.id}
-              className="rounded-2xl border border-border bg-card px-4 py-3.5 transition-colors hover:border-primary/40"
+              tone={ratingStatusTone(r.status)}
+              contentClassName="px-4 py-3.5"
             >
               <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-semibold">{r.customerName}</span>
-                  <span
-                    className={cn(
-                      "rounded-md border px-2 py-0.5 text-[10.5px] font-medium",
-                      STATUS_STYLES[r.status]
-                    )}
+                  <StatusChip
+                    tone={ratingStatusTone(r.status)}
+                    className="px-2 py-0.5 text-[10.5px]"
                   >
                     {STATUS_LABELS[r.status]}
-                  </span>
+                  </StatusChip>
                 </div>
                 <span className="text-[11px] text-muted-foreground">
                   {formatDate(r.date)} · ساعت {toPersianDigits(r.time)}
@@ -206,7 +201,7 @@ export default function BarberReviewsPage() {
                   بدون متن نظر (فقط امتیاز)
                 </p>
               )}
-            </div>
+            </StatusCard>
           ))}
         </div>
       )}
