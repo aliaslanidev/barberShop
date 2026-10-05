@@ -291,7 +291,7 @@ export default function AdminManagersPage() {
       </div>
 
       {managers.length === 0 ? (
-        <Card className="flex min-h-[200px] items-center justify-center">
+        <Card className="flex min-h-[200px] items-center justify-center bg-[#0e110f]">
           <CardContent className="flex flex-col items-center gap-3 p-10 text-center text-muted-foreground">
             <UserCog className="h-8 w-8" />
             <p className="text-sm">
@@ -305,6 +305,9 @@ export default function AdminManagersPage() {
             <StatusCard
               key={manager.id}
               tone={accountStatusTone(manager.isActive)}
+              showTint={false}
+              accentClassName="bg-primary"
+              className="bg-[#0e110f]"
               contentClassName="flex flex-col gap-3 pe-4 py-4"
             >
                 <div className="flex items-center justify-between gap-4">
@@ -404,7 +407,7 @@ export default function AdminManagersPage() {
                 </div>
 
                 {/* فاز تکمیلی ۱.۲ — غیرفعال‌سازی کامل حساب به‌جای حذف دائمی */}
-                <div className="flex items-center justify-between gap-3 rounded-lg bg-secondary/40 px-3 py-2.5">
+                <div className="flex items-center justify-between gap-3 rounded-lg bg-[#151a17] px-3 py-2.5">
                   <div>
                     <p className="text-sm font-medium">دسترسی به حساب</p>
                     <p className="text-xs text-muted-foreground">

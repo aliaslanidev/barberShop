@@ -2,13 +2,24 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Check, MessageSquareOff, Star, X } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { StatusCard } from "@/components/ui/status-card";
 import { cn } from "@/lib/utils";
 import { getAuthToken } from "@/lib/data/mock-session";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   ApiError,
+  listBarbers,
   listRatingsApi,
   updateRatingStatusApi,
+  type ApiBarber,
   type ApiAdminRating,
   type RatingStatus,
 } from "@/lib/api";
@@ -76,6 +87,7 @@ function Stars({ score }: { score: number }) {
 
 export default function AdminRatingsPage() {
   const [ratings, setRatings] = useState<ApiAdminRating[]>([]);
+  const [barbers, setBarbers] = useState<ApiBarber[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("PENDING");
@@ -90,19 +102,30 @@ export default function AdminRatingsPage() {
       return;
     }
 
-    listRatingsApi(token)
-      .then(setRatings)
-      .catch((err) =>
-        setError(err instanceof ApiError ? err.message : "خطا در دریافت نظرها"),
-      )
+    Promise.allSettled([listRatingsApi(token), listBarbers()])
+      .then(([ratingsResult, barbersResult]) => {
+        if (ratingsResult.status === "fulfilled") {
+          setRatings(ratingsResult.value);
+        } else {
+          const err = ratingsResult.reason;
+          setError(
+            err instanceof ApiError ? err.message : "خطا در دریافت نظرها",
+          );
+        }
+
+        if (barbersResult.status === "fulfilled") {
+          setBarbers(barbersResult.value);
+        } else {
+          const err = barbersResult.reason;
+          toast.error(
+            err instanceof ApiError
+              ? err.message
+              : "خطا در دریافت فهرست آرایشگرها",
+          );
+        }
+      })
       .finally(() => setIsLoading(false));
   }, []);
-
-  const barbers = useMemo(() => {
-    const map = new Map<string, string>();
-    ratings.forEach((r) => map.set(r.barberId, r.barberName));
-    return Array.from(map, ([id, name]) => ({ id, name }));
-  }, [ratings]);
 
   const byBarber = useMemo(
     () =>
@@ -185,18 +208,24 @@ export default function AdminRatingsPage() {
           ))}
         </div>
 
-        <select
-          value={barberFilter}
-          onChange={(e) => setBarberFilter(e.target.value)}
-          className="h-10 rounded-lg border border-border bg-card px-3 text-sm"
+        <Select
+          value={barberFilter || "ALL"}
+          onValueChange={(value) =>
+            setBarberFilter(value === "ALL" ? "" : value)
+          }
         >
-          <option value="">همهٔ آرایشگرها</option>
-          {barbers.map((b) => (
-            <option key={b.id} value={b.id}>
-              {b.name}
-            </option>
-          ))}
-        </select>
+          <SelectTrigger className="w-full sm:w-52">
+            <SelectValue placeholder="همهٔ آرایشگرها" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">همهٔ آرایشگرها</SelectItem>
+            {barbers.map((barber) => (
+              <SelectItem key={barber.id} value={barber.id}>
+                {barber.user.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {error && (
@@ -210,12 +239,19 @@ export default function AdminRatingsPage() {
           در حال بارگذاری...
         </p>
       ) : visible.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 py-12 text-muted-foreground">
+        <div className="flex flex-col items-center gap-2 rounded-xl border border-border bg-[#0e110f] py-12 text-muted-foreground">
           <MessageSquareOff className="h-7 w-7" />
           <p className="text-sm">نظری در این بخش وجود ندارد</p>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-2xl border border-border bg-card">
+        <StatusCard
+          tone="success"
+          showTint={false}
+          accentClassName="bg-primary"
+          className="bg-[#0e110f]"
+          contentClassName="p-0"
+        >
+          <div className="overflow-x-auto">
           <table className="w-full min-w-[860px] text-sm">
             <thead className="bg-secondary/50 text-xs text-muted-foreground">
               <tr>
@@ -305,7 +341,8 @@ export default function AdminRatingsPage() {
               ))}
             </tbody>
           </table>
-        </div>
+          </div>
+        </StatusCard>
       )}
     </div>
   );

@@ -6,8 +6,8 @@ import DateObject from "react-date-object";
 import persian from "react-date-object/calendars/persian";
 import persian_fa from "react-date-object/locales/persian_fa";
 
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { JalaliDatePicker } from "@/components/ui/jalali-date-picker";
@@ -118,89 +118,97 @@ export default function AdminHolidaysPage() {
         </p>
       </div>
 
-      <Card>
+      <Card className="bg-[#0e110f]">
         <CardContent className="flex flex-col gap-4 p-4">
-          <h2 className="font-semibold">تعطیلی کل سالن</h2>
+        <h2 className="font-semibold">تعطیلی کل سالن</h2>
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-            <div className="flex flex-col gap-2">
-              <Label>تاریخ</Label>
-              <JalaliDatePicker value={date} onChange={setDate} placeholder="انتخاب تاریخ" />
-            </div>
-            <div className="flex flex-1 flex-col gap-2">
-              <Label>دلیل (اختیاری)</Label>
-              <Input
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                placeholder="مثلا: عید نوروز"
-              />
-            </div>
-            <Button onClick={handleAdd} disabled={!date || isSubmitting}>
-              {isSubmitting ? "..." : "افزودن تعطیلی"}
-            </Button>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+          <div className="flex w-full flex-col gap-2 sm:w-auto">
+            <Label>تاریخ</Label>
+            <JalaliDatePicker
+              value={date}
+              onChange={setDate}
+              placeholder="انتخاب تاریخ"
+            />
           </div>
+          <div className="flex flex-1 flex-col gap-2">
+            <Label>دلیل (اختیاری)</Label>
+            <Input
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="مثلا: عید نوروز"
+            />
+          </div>
+          <Button
+            className="w-full shrink-0 sm:w-auto"
+            onClick={handleAdd}
+            disabled={!date || isSubmitting}
+          >
+            {isSubmitting ? "..." : "افزودن تعطیلی"}
+          </Button>
+        </div>
 
-          <div className="flex flex-col gap-2 pt-2">
-            {holidays.length === 0 && (
-              <p className="text-sm text-muted-foreground">
-                هنوز تعطیلی‌ای ثبت نشده
-              </p>
-            )}
-            {holidays.map((h) => (
-              <div
-                key={h.id}
-                className="flex items-center justify-between rounded-lg border border-border bg-card px-4 py-2 text-sm"
+        <div className="flex flex-col gap-2 pt-2">
+          {holidays.length === 0 && (
+            <p className="text-sm text-muted-foreground">
+              هنوز تعطیلی‌ای ثبت نشده
+            </p>
+          )}
+          {holidays.map((h) => (
+            <div
+              key={h.id}
+              className="flex flex-col gap-2 rounded-lg border border-border bg-[#151a17] px-3 py-2 text-sm sm:flex-row sm:items-center sm:justify-between sm:px-4"
+            >
+              <span className="min-w-0 break-words">
+                {formatJalali(h.date)}
+                {h.reason && (
+                  <span className="text-muted-foreground"> — {h.reason}</span>
+                )}
+              </span>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="self-end text-destructive sm:self-auto"
+                onClick={() => handleRemove(h.id)}
               >
-                <span>
-                  {formatJalali(h.date)}
-                  {h.reason && (
-                    <span className="text-muted-foreground"> — {h.reason}</span>
-                  )}
-                </span>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="text-destructive"
-                  onClick={() => handleRemove(h.id)}
-                >
-                  حذف
-                </Button>
-              </div>
-            ))}
-          </div>
+                حذف
+              </Button>
+            </div>
+          ))}
+        </div>
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="bg-[#0e110f]">
         <CardContent className="flex flex-col gap-4 p-4">
-          <h2 className="font-semibold">مرخصی آرایشگرها</h2>
+        <h2 className="font-semibold">مرخصی آرایشگرها</h2>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b text-right text-muted-foreground">
-                  <th className="p-2 font-medium">آرایشگر</th>
-                  <th className="p-2 font-medium">تاریخ</th>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[320px] text-sm">
+            <thead>
+              <tr className="border-b text-right text-muted-foreground">
+                <th className="p-2 font-medium">آرایشگر</th>
+                <th className="p-2 font-medium">تاریخ</th>
+              </tr>
+            </thead>
+            <tbody>
+              {timeOffEntries.map((e) => (
+                <tr key={e.id} className="border-b last:border-0">
+                  <td className="p-2">{e.barber.user.name}</td>
+                  <td className="p-2">{formatJalali(e.date)}</td>
                 </tr>
-              </thead>
-              <tbody>
-                {timeOffEntries.map((e) => (
-                  <tr key={e.id} className="border-b last:border-0">
-                    <td className="p-2">{e.barber.user.name}</td>
-                    <td className="p-2">{formatJalali(e.date)}</td>
-                  </tr>
-                ))}
+              ))}
 
-                {timeOffEntries.length === 0 && (
-                  <tr>
-                    <td colSpan={2} className="p-6 text-center text-muted-foreground">
-                      هیچ مرخصی‌ای ثبت نشده
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+              {timeOffEntries.length === 0 && (
+                <tr>
+                  <td colSpan={2} className="p-6 text-center text-muted-foreground">
+                    هیچ مرخصی‌ای ثبت نشده
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
         </CardContent>
       </Card>
     </main>

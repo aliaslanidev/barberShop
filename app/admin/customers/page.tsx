@@ -382,9 +382,9 @@ export default function AdminCustomersPage() {
           )}
         >
           {/* جدول (دسکتاپ) */}
-          <div className="hidden overflow-hidden rounded-lg border border-border md:block">
+          <div className="relative hidden overflow-hidden rounded-lg border border-border border-r-2 border-r-primary bg-[#0e110f] md:block">
             <table className="w-full text-sm">
-              <thead className="bg-secondary/40 text-muted-foreground">
+              <thead className="bg-[#151a17] text-muted-foreground">
                 <tr className="text-right">
                   <th className="p-3">
                     <SortHeader
@@ -452,7 +452,7 @@ export default function AdminCustomersPage() {
                           variant={customer.isActive ? "outline" : "default"}
                           className={cn(
                             customer.isActive &&
-                              "border-destructive/40 text-destructive hover:bg-destructive/10",
+                              "border-red-500/50 bg-red-500/10 text-red-400 hover:bg-red-500/15",
                           )}
                           onClick={() => openDialog(customer)}
                         >
@@ -472,6 +472,9 @@ export default function AdminCustomersPage() {
               <StatusCard
                 key={customer.id}
                 tone={customer.isActive ? "success" : "danger"}
+                showTint={false}
+                accentClassName="bg-primary"
+                className="bg-[#0e110f]"
                 contentClassName="flex flex-col gap-3 pe-4 py-4"
               >
                   <div className="flex items-start justify-between gap-3">
@@ -508,7 +511,7 @@ export default function AdminCustomersPage() {
                       className={cn(
                         "w-full",
                         customer.isActive &&
-                          "border-destructive/40 text-destructive hover:bg-destructive/10",
+                          "border-red-500/50 bg-red-500/10 text-red-400 hover:bg-red-500/15",
                       )}
                       onClick={() => openDialog(customer)}
                     >

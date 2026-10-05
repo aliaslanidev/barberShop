@@ -37,6 +37,8 @@ const toneStyles: Record<
 interface StatusCardProps extends HTMLAttributes<HTMLDivElement> {
   tone: StatusTone;
   dimmed?: boolean;
+  showTint?: boolean;
+  accentClassName?: string;
   contentClassName?: string;
   children: ReactNode;
 }
@@ -44,6 +46,8 @@ interface StatusCardProps extends HTMLAttributes<HTMLDivElement> {
 export function StatusCard({
   tone,
   dimmed = false,
+  showTint = true,
+  accentClassName,
   className,
   contentClassName,
   children,
@@ -60,13 +64,19 @@ export function StatusCard({
       )}
       {...props}
     >
+      {showTint && (
+        <span
+          aria-hidden="true"
+          className={cn("pointer-events-none absolute inset-0", styles.tint)}
+        />
+      )}
       <span
         aria-hidden="true"
-        className={cn("pointer-events-none absolute inset-0", styles.tint)}
-      />
-      <span
-        aria-hidden="true"
-        className={cn("absolute inset-y-0 start-0 w-1.5", styles.accent)}
+        className={cn(
+          "absolute inset-y-0 start-0 w-1.5",
+          styles.accent,
+          accentClassName,
+        )}
       />
       <div className={cn("relative ps-5 pe-4 py-4", contentClassName)}>
         {children}

@@ -65,10 +65,7 @@ export default function AdminDashboardPage() {
         {stats.map((stat) => {
           const Icon = stat.icon;
           return (
-            <Card
-              key={stat.label}
-              className="relative overflow-hidden border-r-2 border-r-primary"
-            >
+            <Card key={stat.label} className="bg-[#0e110f]">
               <CardContent className="flex items-center gap-4 p-5">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
                   <Icon className="h-5 w-5" />
@@ -85,7 +82,7 @@ export default function AdminDashboardPage() {
         })}
       </div>
 
-      <Card className="relative overflow-hidden border-r-2 border-r-primary">
+      <Card className="bg-[#0e110f]">
         <CardContent className="p-5">
           <h2 className="mb-3 text-sm font-bold">دسترسی سریع</h2>
           <p className="text-sm text-muted-foreground">

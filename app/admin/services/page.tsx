@@ -209,16 +209,16 @@ export default function AdminServicesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <h1 className="text-xl font-bold">خدمات و قیمت‌گذاری</h1>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="w-full min-w-0 sm:flex-1">
+          <h1 className="whitespace-nowrap text-xl font-bold">خدمات و قیمت‌گذاری</h1>
           <p className="text-sm text-muted-foreground">
             افزودن و مدیریت خدمات سالن
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="relative w-full sm:w-72">
+        <div className="flex w-full min-w-0 flex-col-reverse gap-2 sm:w-auto sm:flex-row sm:items-center">
+          <div className="relative w-full min-w-0 sm:w-72">
             <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={searchQuery}
@@ -242,7 +242,7 @@ export default function AdminServicesPage() {
             <DialogTrigger asChild>
               <Button
                 size="sm"
-                className="shrink-0 gap-2"
+                className="w-full shrink-0 gap-2 sm:w-auto"
               >
                 <Plus className="h-4 w-4" />
                 سرویس جدید
@@ -327,10 +327,13 @@ export default function AdminServicesPage() {
               <StatusCard
                 key={service.id}
                 tone="success"
+                showTint={false}
+                accentClassName="bg-primary"
+                className="bg-[#0e110f]"
                 contentClassName="space-y-4 p-5"
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex min-w-0 flex-1 items-start gap-3">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="flex min-w-0 items-start gap-3">
                     <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
                       <Icon className="h-5 w-5" />
                     </span>
@@ -341,7 +344,7 @@ export default function AdminServicesPage() {
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-end gap-2 sm:shrink-0">
                     <Button
                       variant="destructive"
                       size="sm"
@@ -382,7 +385,7 @@ export default function AdminServicesPage() {
           if (!open && !isSavingEdit) handleCancelEditing();
         }}
       >
-        <DialogContent className="max-h-[85dvh] overflow-y-auto border-r-2 border-r-primary bg-card shadow-2xl sm:max-w-lg">
+        <DialogContent className="max-h-[85dvh] overflow-y-auto bg-[#0e110f] shadow-2xl sm:max-w-lg">
           <DialogHeader className="border-b border-border pb-3">
             <DialogTitle>ویرایش سرویس</DialogTitle>
           </DialogHeader>

@@ -8,7 +8,7 @@ import persian from "react-date-object/calendars/persian";
 import persian_fa from "react-date-object/locales/persian_fa";
 
 import { Card, CardContent } from "@/components/ui/card";
-import { StatusCard, StatusChip } from "@/components/ui/status-card";
+import { StatusChip } from "@/components/ui/status-card";
 import { leaveRequestStatusTone } from "@/lib/status-tones";
 import { Button } from "@/components/ui/button";
 import { getAuthToken } from "@/lib/data/mock-session";
@@ -104,11 +104,8 @@ export default function AdminLeaveRequestsPage() {
       ) : (
         <div className="space-y-3">
           {requests.map((r) => (
-            <StatusCard
-              key={r.id}
-              tone={leaveRequestStatusTone(r.status)}
-              contentClassName="flex items-center justify-between gap-4 pe-4 py-4"
-            >
+            <Card key={r.id} className="bg-[#0e110f]">
+              <CardContent className="flex items-center justify-between gap-4 p-4">
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="font-medium">{r.barber.user.name}</p>
@@ -144,7 +141,8 @@ export default function AdminLeaveRequestsPage() {
                     <Check className="h-4 w-4" />
                   </Button>
                 </div>
-            </StatusCard>
+              </CardContent>
+            </Card>
           ))}
         </div>
       )}

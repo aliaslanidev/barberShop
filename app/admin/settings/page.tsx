@@ -61,7 +61,7 @@ function SettingsSection({
   }, []);
 
   return (
-    <section className="overflow-hidden rounded-xl border border-border bg-card">
+    <section className="overflow-hidden rounded-xl border border-border bg-[#0e110f]">
       <button
         id={buttonId}
         type="button"
@@ -69,7 +69,7 @@ function SettingsSection({
         aria-expanded={isOpen || isDesktop}
         tabIndex={isDesktop ? -1 : undefined}
         onClick={() => setIsOpen((open) => !open)}
-        className="flex min-h-14 w-full items-center justify-between gap-3 px-4 py-3 text-right lg:pointer-events-none"
+        className="relative flex min-h-14 w-full items-center justify-between gap-3 px-4 py-3 text-right lg:pointer-events-none"
       >
         <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
           <span className="font-semibold">{title}</span>
@@ -102,7 +102,7 @@ function SettingsSection({
         )}
       >
         <div className="min-h-0 overflow-hidden">
-          <div className="border-t border-border p-4">{children}</div>
+          <div className="relative border-t border-border p-4">{children}</div>
         </div>
       </div>
     </section>
@@ -366,7 +366,7 @@ export default function AdminSettingsPage() {
 
             <div className="flex flex-col gap-2">
               {hours.map((h) => (
-                <div key={h.day} className="rounded-lg border border-border px-3">
+                <div key={h.day} className="rounded-lg border border-border bg-[#151a17] px-3">
                   <div className="flex min-h-14 items-center justify-between gap-2">
                     <button
                       type="button"

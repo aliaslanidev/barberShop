@@ -157,6 +157,9 @@ export function BookingMobileCard({
     <StatusCard
       tone={bookingStatusTone(booking.status)}
       dimmed={isCancelled}
+      showTint={false}
+      accentClassName="bg-primary"
+      className="bg-[#0e110f]"
       contentClassName="flex flex-col gap-3.5"
     >
         {/* ردیف اول: ساعت و تاریخ + وضعیت */}
@@ -195,14 +198,14 @@ export function BookingMobileCard({
 
         {/* آرایشگر و خدمت */}
         <div className="grid grid-cols-2 gap-2">
-          <div className="rounded-lg bg-background/50 p-2.5">
+          <div className="rounded-lg bg-[#151a17] p-2.5">
             <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
               <User className="h-3.5 w-3.5" />
               آرایشگر
             </div>
             <p className="mt-1 text-sm font-medium">{booking.barber.user.name}</p>
           </div>
-          <div className="rounded-lg bg-background/50 p-2.5">
+          <div className="rounded-lg bg-[#151a17] p-2.5">
             <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
               <Scissors className="h-3.5 w-3.5" />
               خدمت
@@ -242,7 +245,7 @@ export function BookingMobileCard({
           <div className={cn("grid gap-2", canCancel ? "grid-cols-2" : "grid-cols-1")}>
             <a
               href={`tel:${booking.customer.mobile}`}
-              className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-border bg-background/60 text-sm font-medium transition-colors hover:bg-muted"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-border bg-[#151a17] text-sm font-medium transition-colors hover:bg-muted"
             >
               <Phone className="h-4 w-4" />
               تماس با مشتری

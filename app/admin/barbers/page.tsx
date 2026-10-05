@@ -158,7 +158,7 @@ function AccordionSection({
   children: ReactNode;
 }) {
   return (
-    <section className="rounded-xl border border-border bg-secondary/20 md:rounded-none md:border-0 md:border-t md:bg-transparent md:pt-4">
+    <section className="rounded-xl border border-border bg-[#151a17] md:rounded-none md:border-0 md:border-t md:bg-transparent md:pt-4">
       <button
         type="button"
         onClick={onToggle}
@@ -890,9 +890,12 @@ export default function AdminBarbersPage() {
         <StatusCard
           key={selectedBarber.id}
           tone={barberStatus.tone}
+          showTint={false}
+          accentClassName="bg-primary"
           className={cn(
             PERMISSIONS_BOX_MIN_HEIGHT,
             "flex flex-col",
+            "bg-[#0e110f]",
           )}
           contentClassName="flex flex-1 flex-col gap-4 ps-6 pe-5 py-5"
         >

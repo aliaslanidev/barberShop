@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
+import { StatusCard } from "@/components/ui/status-card";
 import {
   Select,
   SelectContent,
@@ -105,7 +106,7 @@ function ReportAccordion({
   }, []);
 
   return (
-    <section className="overflow-hidden rounded-xl border border-border bg-card">
+    <section className="overflow-hidden rounded-xl border border-border bg-[#151a17]">
       <button
         type="button"
         onClick={() => setIsOpen((open) => !open)}
@@ -254,7 +255,7 @@ export default function AdminReportsPage() {
         aria-label="خلاصه نوبت‌ها"
         className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5"
       >
-        <Card className="col-span-2 sm:col-span-1">
+        <Card className="col-span-2 bg-[#0e110f] sm:col-span-1">
           <CardContent className="flex flex-col gap-1 p-4">
             <span className="text-sm text-muted-foreground">کل نوبت‌ها</span>
             <span className="text-2xl font-bold">{toPersianDigits(totalCount)}</span>
@@ -262,7 +263,7 @@ export default function AdminReportsPage() {
         </Card>
 
         {STATUS_ORDER.map((status) => (
-          <Card key={status}>
+          <Card key={status} className="bg-[#0e110f]">
             <CardContent className="flex flex-col gap-1 p-4">
               <span className="text-sm text-muted-foreground">{STATUS_LABELS[status]}</span>
               <span className="text-2xl font-bold">{toPersianDigits(summary.byStatus[status])}</span>
@@ -357,7 +358,7 @@ export default function AdminReportsPage() {
       {/* گزارش مالی — طبق بند ۷.۱، سرور خودش نوبت‌های isBarberOwnRevenue و
           isPrivateCustomer رو حذف می‌کنه، اینجا فقط فیلتر آرایشگر و بازه‌ی
           زمانی رو می‌فرستیم */}
-      <Card>
+      <Card className="bg-[#0e110f]">
         <CardContent className="flex flex-col gap-4 p-4">
           <div>
             <h2 className="font-semibold">گزارش مالی سالن</h2>
@@ -436,11 +437,11 @@ export default function AdminReportsPage() {
           ) : (
             <>
               <div className="grid gap-4 sm:grid-cols-2">
-                <div className="rounded-lg bg-secondary/40 p-4">
+                <div className="rounded-lg bg-[#151a17] p-4">
                   <span className="block text-sm text-muted-foreground">مجموع درآمد سالن</span>
                   <span className="text-xl font-bold">{formatToman(revenue.totalRevenue)}</span>
                 </div>
-                <div className="rounded-lg bg-secondary/40 p-4">
+                <div className="rounded-lg bg-[#151a17] p-4">
                   <span className="block text-sm text-muted-foreground">نوبت تکمیل‌شده</span>
                   <span className="text-xl font-bold">{toPersianDigits(revenue.completedCount)}</span>
                 </div>
@@ -459,7 +460,7 @@ export default function AdminReportsPage() {
                       revenue.byBarber.map((b) => (
                         <div
                           key={b.barberId}
-                          className="flex items-center justify-between gap-3 rounded-lg bg-secondary/40 px-3 py-2"
+                          className="flex items-center justify-between gap-3 rounded-lg bg-[#151a17] px-3 py-2"
                         >
                           <span className="min-w-0 truncate text-sm">{b.barberName}</span>
                           <div className="shrink-0 text-left text-sm">
@@ -480,7 +481,7 @@ export default function AdminReportsPage() {
                       revenue.byService.map((s) => (
                         <div
                           key={s.serviceId}
-                          className="flex items-center justify-between gap-3 rounded-lg bg-secondary/40 px-3 py-2"
+                          className="flex items-center justify-between gap-3 rounded-lg bg-[#151a17] px-3 py-2"
                         >
                           <span className="min-w-0 truncate text-sm">{s.serviceTitle}</span>
                           <div className="shrink-0 text-left text-sm">
