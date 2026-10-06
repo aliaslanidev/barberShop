@@ -5,6 +5,12 @@ import { Check, MessageSquareOff, Star, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { StatusCard } from "@/components/ui/status-card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { getAuthToken } from "@/lib/data/mock-session";
 import {
@@ -93,6 +99,9 @@ export default function AdminRatingsPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("PENDING");
   const [barberFilter, setBarberFilter] = useState<string>("");
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [selectedRating, setSelectedRating] = useState<ApiAdminRating | null>(
+    null,
+  );
 
   useEffect(() => {
     const token = getAuthToken();
@@ -244,106 +253,296 @@ export default function AdminRatingsPage() {
           <p className="text-sm">نظری در این بخش وجود ندارد</p>
         </div>
       ) : (
-        <StatusCard
-          tone="success"
-          showTint={false}
-          accentClassName="bg-primary"
-          className="bg-[#0e110f]"
-          contentClassName="p-0"
-        >
-          <div className="overflow-x-auto">
-          <table className="w-full min-w-[860px] text-sm">
-            <thead className="bg-secondary/50 text-xs text-muted-foreground">
-              <tr>
-                <th className="px-4 py-3 text-start font-medium">آرایشگر</th>
-                <th className="px-4 py-3 text-start font-medium">مشتری</th>
-                <th className="px-4 py-3 text-start font-medium">امتیاز</th>
-                <th className="px-4 py-3 text-start font-medium">نظر</th>
-                <th className="px-4 py-3 text-start font-medium">تاریخ</th>
-                <th className="px-4 py-3 text-start font-medium">وضعیت</th>
-                <th className="px-4 py-3 text-start font-medium" />
-              </tr>
-            </thead>
+        <>
+          <div className="hidden overflow-hidden rounded-xl border border-border bg-[#0e110f] md:block">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[1136px] table-fixed text-sm">
+                <thead className="border-b border-primary/15 bg-[#151a17] text-xs text-primary/80">
+                  <tr>
+                    <th className="w-[56px] px-3 py-3 text-center font-medium">#</th>
+                    <th className="w-[150px] px-4 py-3 text-start font-medium">آرایشگر</th>
+                    <th className="w-[150px] px-4 py-3 text-start font-medium">مشتری</th>
+                    <th className="w-[100px] px-4 py-3 text-start font-medium">امتیاز</th>
+                    <th className="w-[230px] px-4 py-3 text-start font-medium">نظر</th>
+                    <th className="w-[120px] px-4 py-3 text-start font-medium">تاریخ</th>
+                    <th className="w-[140px] px-4 py-3 text-start font-medium">وضعیت</th>
+                    <th className="w-[190px] px-5 py-3 text-center font-medium">عملیات</th>
+                  </tr>
+                </thead>
 
-            <tbody className="divide-y divide-border">
-              {visible.map((r) => (
-                <tr
-                  key={r.id}
-                  className="align-top transition-colors hover:bg-primary/[0.03]"
+                <tbody className="divide-y divide-border">
+                  {visible.map((r, index) => (
+                    <tr
+                      key={r.id}
+                      tabIndex={0}
+                      aria-label={`مشاهده جزئیات نظر ${r.customerName}`}
+                      title="برای مشاهدهٔ جزئیات دوبار کلیک کنید"
+                      onDoubleClick={(event) => {
+                        if (
+                          event.target instanceof Element &&
+                          event.target.closest("button")
+                        ) {
+                          return;
+                        }
+                        setSelectedRating(r);
+                      }}
+                      onKeyDown={(event) => {
+                        if (
+                          event.target === event.currentTarget &&
+                          (event.key === "Enter" || event.key === " ")
+                        ) {
+                          event.preventDefault();
+                          setSelectedRating(r);
+                        }
+                      }}
+                      className="cursor-default align-middle transition-colors hover:bg-white/[0.025] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+                    >
+                      <td className="px-3 py-3 text-center text-xs tabular-nums text-muted-foreground">
+                        {toPersianDigits(index + 1)}
+                      </td>
+
+                      <td className="px-4 py-3">
+                        <div className="flex min-w-0 items-center gap-2.5">
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-rust text-xs font-bold text-white">
+                            {initialsOf(r.barberName)}
+                          </span>
+                          <span className="truncate font-medium" title={r.barberName}>
+                            {r.barberName}
+                          </span>
+                        </div>
+                      </td>
+
+                      <td className="px-4 py-3">
+                        <div className="truncate" title={r.customerName}>
+                          {r.customerName}
+                        </div>
+                        <div
+                          className="mt-0.5 truncate text-[11px] text-muted-foreground"
+                          title={r.serviceTitle}
+                        >
+                          {r.serviceTitle}
+                        </div>
+                      </td>
+
+                      <td className="px-4 py-3">
+                        <Stars score={r.score} />
+                      </td>
+
+                      <td className="px-4 py-3">
+                        <div
+                          className="rounded-md border border-border/80 bg-background/40 px-2.5 py-1.5 text-xs leading-6 text-muted-foreground"
+                          title={r.comment || "بدون متن نظر"}
+                        >
+                          <span className="block truncate">
+                            {r.comment || "بدون متن نظر"}
+                          </span>
+                        </div>
+                      </td>
+
+                      <td className="whitespace-nowrap px-4 py-3 text-xs text-muted-foreground">
+                        {formatDate(r.createdAt)}
+                      </td>
+
+                      <td className="px-4 py-3">
+                        <span
+                          className={cn(
+                            "whitespace-nowrap rounded-md border px-2 py-0.5 text-[11px] font-medium",
+                            STATUS_STYLES[r.status],
+                          )}
+                        >
+                          {STATUS_LABELS[r.status]}
+                        </span>
+                      </td>
+
+                      <td className="px-5 py-3">
+                        <div className="flex justify-center gap-2">
+                          {r.status !== "APPROVED" && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              className="px-3"
+                              disabled={busyId === r.id}
+                              onClick={() => void handleStatus(r.id, "APPROVED")}
+                            >
+                              <Check className="ml-1 h-3.5 w-3.5" />
+                              تایید
+                            </Button>
+                          )}
+                          {r.status !== "REJECTED" && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="px-3"
+                              disabled={busyId === r.id}
+                              onClick={() => void handleStatus(r.id, "REJECTED")}
+                            >
+                              <X className="ml-1 h-3.5 w-3.5" />
+                              رد
+                            </Button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-3 md:hidden">
+            {visible.map((r) => (
+              <StatusCard
+                key={r.id}
+                tone={
+                  r.status === "APPROVED"
+                    ? "success"
+                    : r.status === "REJECTED"
+                      ? "danger"
+                      : "warning"
+                }
+                showTint={false}
+                accentClassName="bg-primary"
+                className="bg-[#0e110f]"
+                contentClassName="flex flex-col gap-3 pe-4 py-4"
+              >
+                <button
+                  type="button"
+                  className="flex w-full flex-col gap-3 text-start transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  aria-label={`مشاهده جزئیات نظر ${r.customerName}`}
+                  onClick={() => setSelectedRating(r)}
                 >
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2.5">
+                  <div className="flex w-full items-start justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-3">
                       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-rust text-xs font-bold text-white">
                         {initialsOf(r.barberName)}
                       </span>
-                      <span className="font-medium">{r.barberName}</span>
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold">{r.barberName}</p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          مشتری: {r.customerName}
+                        </p>
+                      </div>
                     </div>
-                  </td>
-
-                  <td className="px-4 py-3">
-                    <div>{r.customerName}</div>
-                    <div className="mt-0.5 text-[11px] text-muted-foreground">
-                      {r.serviceTitle}
-                    </div>
-                  </td>
-
-                  <td className="px-4 py-3">
-                    <Stars score={r.score} />
-                  </td>
-
-                  <td className="max-w-[280px] px-4 py-3 leading-7 text-muted-foreground">
-                    {r.comment ? r.comment : <span>—</span>}
-                  </td>
-
-                  <td className="whitespace-nowrap px-4 py-3 text-xs text-muted-foreground">
-                    {formatDate(r.createdAt)}
-                  </td>
-
-                  <td className="px-4 py-3">
                     <span
                       className={cn(
-                        "whitespace-nowrap rounded-md border px-2 py-0.5 text-[11px] font-medium",
+                        "shrink-0 whitespace-nowrap rounded-md border px-2 py-0.5 text-[11px] font-medium",
                         STATUS_STYLES[r.status],
                       )}
                     >
                       {STATUS_LABELS[r.status]}
                     </span>
-                  </td>
+                  </div>
 
-                  <td className="px-4 py-3">
-                    <div className="flex gap-2">
-                      {r.status !== "APPROVED" && (
-                        <Button
-                          type="button"
-                          size="sm"
-                          disabled={busyId === r.id}
-                          onClick={() => handleStatus(r.id, "APPROVED")}
-                        >
-                          <Check className="ml-1 h-4 w-4" />
-                          تایید
-                        </Button>
-                      )}
-                      {r.status !== "REJECTED" && (
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          disabled={busyId === r.id}
-                          onClick={() => handleStatus(r.id, "REJECTED")}
-                        >
-                          <X className="ml-1 h-4 w-4" />
-                          رد
-                        </Button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  <div className="flex w-full items-center justify-between gap-3">
+                    <Stars score={r.score} />
+                    <span className="truncate text-xs text-muted-foreground">
+                      {r.serviceTitle}
+                    </span>
+                  </div>
+
+                  <div className="w-full rounded-lg border border-border/80 bg-background/40 px-3 py-2 text-start">
+                    <p className="mb-1 text-[11px] text-muted-foreground">
+                      متن نظر مشتری
+                    </p>
+                    <p className="line-clamp-2 text-sm leading-7 text-foreground/90">
+                      {r.comment || "بدون متن نظر (فقط امتیاز)"}
+                    </p>
+                  </div>
+
+                  <div className="flex w-full items-center justify-between gap-2 text-xs text-muted-foreground">
+                    <span>{formatDate(r.createdAt)}</span>
+                    <span>برای مشاهدهٔ جزئیات لمس کنید</span>
+                  </div>
+                </button>
+
+                <div className="flex gap-2 border-t border-border pt-3">
+                  {r.status !== "APPROVED" && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={busyId === r.id}
+                      onClick={() => void handleStatus(r.id, "APPROVED")}
+                    >
+                      <Check className="ml-1 h-4 w-4" />
+                      تایید
+                    </Button>
+                  )}
+                  {r.status !== "REJECTED" && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={busyId === r.id}
+                      onClick={() => void handleStatus(r.id, "REJECTED")}
+                    >
+                      <X className="ml-1 h-4 w-4" />
+                      رد
+                    </Button>
+                  )}
+                </div>
+              </StatusCard>
+            ))}
           </div>
-        </StatusCard>
+        </>
       )}
+
+      <Dialog
+        open={selectedRating !== null}
+        onOpenChange={(open) => {
+          if (!open) setSelectedRating(null);
+        }}
+      >
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
+          {selectedRating && (
+            <>
+              <DialogHeader>
+                <DialogTitle>جزئیات نظر مشتری</DialogTitle>
+              </DialogHeader>
+
+              <div className="space-y-4 text-sm">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground">آرایشگر</p>
+                    <p className="mt-1 font-medium">{selectedRating.barberName}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">مشتری</p>
+                    <p className="mt-1 font-medium">{selectedRating.customerName}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">خدمت</p>
+                    <p className="mt-1 font-medium">{selectedRating.serviceTitle}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">تاریخ</p>
+                    <p className="mt-1 font-medium">{formatDate(selectedRating.createdAt)}</p>
+                  </div>
+                  <div>
+                    <p className="mb-1 text-xs text-muted-foreground">امتیاز</p>
+                    <Stars score={selectedRating.score} />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">وضعیت</p>
+                    <p className="mt-1 font-medium">{STATUS_LABELS[selectedRating.status]}</p>
+                  </div>
+                </div>
+
+                <div className="border-t border-border pt-4">
+                  <div className="rounded-lg border border-border bg-secondary/30 p-3.5">
+                    <p className="mb-2 text-xs font-medium text-muted-foreground">
+                      متن نظر مشتری
+                    </p>
+                    <p className="whitespace-pre-wrap break-words leading-8">
+                      {selectedRating.comment || "بدون متن نظر (فقط امتیاز)"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

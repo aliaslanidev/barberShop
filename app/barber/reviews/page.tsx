@@ -2,7 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { MessageSquareOff, Star } from "lucide-react";
-import { StatusCard, StatusChip } from "@/components/ui/status-card";
+import { StatusCard } from "@/components/ui/status-card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { ratingStatusTone } from "@/lib/status-tones";
 import { getAuthToken } from "@/lib/data/mock-session";
@@ -56,6 +62,8 @@ export default function BarberReviewsPage() {
   const [data, setData] = useState<ApiBarberReviewsResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedRating, setSelectedRating] =
+    useState<ApiBarberReviewsResponse["ratings"][number] | null>(null);
 
   useEffect(() => {
     const token = getAuthToken();
@@ -158,53 +166,217 @@ export default function BarberReviewsPage() {
           در حال بارگذاری...
         </p>
       ) : ratings.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 py-12 text-muted-foreground">
+        <div className="flex flex-col items-center gap-2 rounded-xl border border-border bg-[#0e110f] py-12 text-muted-foreground">
           <MessageSquareOff className="h-7 w-7" />
           <p className="text-sm">هنوز نظری برای شما ثبت نشده</p>
         </div>
       ) : (
-        <div className="flex flex-col gap-2.5">
-          {ratings.map((r) => (
-            <StatusCard
-              key={r.id}
-              tone={ratingStatusTone(r.status)}
-              contentClassName="px-4 py-3.5"
-            >
-              <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-semibold">{r.customerName}</span>
-                  <StatusChip
-                    tone={ratingStatusTone(r.status)}
-                    className="px-2 py-0.5 text-[10.5px]"
-                  >
-                    {STATUS_LABELS[r.status]}
-                  </StatusChip>
-                </div>
-                <span className="text-[11px] text-muted-foreground">
-                  {formatDate(r.date)} · ساعت {toPersianDigits(r.time)}
-                </span>
-              </div>
+        <>
+          <div className="hidden overflow-hidden rounded-xl border border-border bg-[#0e110f] md:block">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[990px] table-fixed text-sm">
+                <thead className="border-b border-primary/15 bg-[#151a17] text-xs text-primary/80">
+                  <tr>
+                    <th className="w-[56px] px-3 py-3 text-center font-medium">#</th>
+                    <th className="w-[180px] px-4 py-3 text-start font-medium">مشتری</th>
+                    <th className="w-[170px] px-4 py-3 text-start font-medium">خدمت</th>
+                    <th className="w-[110px] px-4 py-3 text-start font-medium">امتیاز</th>
+                    <th className="w-[230px] px-4 py-3 text-start font-medium">نظر</th>
+                    <th className="w-[130px] px-4 py-3 text-start font-medium">تاریخ</th>
+                    <th className="w-[150px] px-4 py-3 text-start font-medium">وضعیت</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {ratings.map((r, index) => (
+                    <tr
+                      key={r.id}
+                      tabIndex={0}
+                      aria-label={`مشاهده جزئیات نظر ${r.customerName}`}
+                      title="برای مشاهدهٔ جزئیات دوبار کلیک کنید"
+                      onDoubleClick={() => setSelectedRating(r)}
+                      onKeyDown={(event) => {
+                        if (
+                          event.target === event.currentTarget &&
+                          (event.key === "Enter" || event.key === " ")
+                        ) {
+                          event.preventDefault();
+                          setSelectedRating(r);
+                        }
+                      }}
+                      className="cursor-default align-middle transition-colors hover:bg-white/[0.025] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+                    >
+                      <td className="px-3 py-3 text-center text-xs tabular-nums text-muted-foreground">
+                        {toPersianDigits(index + 1)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="block truncate font-medium" title={r.customerName}>
+                          {r.customerName}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="block truncate text-xs text-muted-foreground" title={r.serviceTitle}>
+                          {r.serviceTitle}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <Stars score={r.score} />
+                      </td>
+                      <td className="px-4 py-3">
+                        <div
+                          className="rounded-md border border-border/80 bg-background/40 px-2.5 py-1.5 text-xs leading-6 text-muted-foreground"
+                          title={r.comment || "بدون متن نظر"}
+                        >
+                          <span className="block truncate">
+                            {r.comment || "بدون متن نظر"}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-3 text-xs text-muted-foreground">
+                        {formatDate(r.date)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={cn(
+                            "whitespace-nowrap rounded-md border px-2 py-0.5 text-[11px] font-medium",
+                            r.status === "PENDING" &&
+                              "border-amber-500/30 bg-amber-500/10 text-amber-500",
+                            r.status === "APPROVED" &&
+                              "border-emerald-500/30 bg-emerald-500/10 text-emerald-500",
+                            r.status === "REJECTED" &&
+                              "border-red-500/30 bg-red-500/10 text-red-400",
+                          )}
+                        >
+                          {STATUS_LABELS[r.status]}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
 
-              <div className="mb-1.5 flex items-center gap-3">
-                <Stars score={r.score} />
-                <span className="text-xs text-muted-foreground">
-                  {r.serviceTitle}
-                </span>
-              </div>
+          <div className="flex flex-col gap-3 md:hidden">
+            {ratings.map((r) => (
+              <StatusCard
+                key={r.id}
+                tone={ratingStatusTone(r.status)}
+                showTint={false}
+                accentClassName="bg-primary"
+                className="bg-[#0e110f]"
+                contentClassName="flex flex-col gap-3 pe-4 py-4"
+              >
+                <button
+                  type="button"
+                  className="flex w-full flex-col gap-3 text-start transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  aria-label={`مشاهده جزئیات نظر ${r.customerName}`}
+                  onClick={() => setSelectedRating(r)}
+                >
+                  <div className="flex w-full items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold">{r.customerName}</p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {r.serviceTitle}
+                      </p>
+                    </div>
+                    <span
+                      className={cn(
+                        "shrink-0 whitespace-nowrap rounded-md border px-2 py-0.5 text-[11px] font-medium",
+                        r.status === "PENDING" &&
+                          "border-amber-500/30 bg-amber-500/10 text-amber-500",
+                        r.status === "APPROVED" &&
+                          "border-emerald-500/30 bg-emerald-500/10 text-emerald-500",
+                        r.status === "REJECTED" &&
+                          "border-red-500/30 bg-red-500/10 text-red-400",
+                      )}
+                    >
+                      {STATUS_LABELS[r.status]}
+                    </span>
+                  </div>
 
-              {r.comment ? (
-                <p className="text-sm leading-8 text-muted-foreground">
-                  {r.comment}
-                </p>
-              ) : (
-                <p className="text-xs text-muted-foreground">
-                  بدون متن نظر (فقط امتیاز)
-                </p>
-              )}
-            </StatusCard>
-          ))}
-        </div>
+                  <div className="flex w-full items-center justify-between gap-3">
+                    <Stars score={r.score} />
+                    <span className="text-xs text-muted-foreground">
+                      {formatDate(r.date)} · ساعت {toPersianDigits(r.time)}
+                    </span>
+                  </div>
+
+                  <div className="w-full rounded-lg border border-border/80 bg-background/40 px-3 py-2 text-start">
+                    <p className="mb-1 text-[11px] text-muted-foreground">
+                      متن نظر مشتری
+                    </p>
+                    <p className="line-clamp-2 text-sm leading-7 text-foreground/90">
+                      {r.comment || "بدون متن نظر (فقط امتیاز)"}
+                    </p>
+                  </div>
+
+                  <div className="flex w-full justify-end text-xs text-muted-foreground">
+                    <span>برای مشاهدهٔ جزئیات لمس کنید</span>
+                  </div>
+                </button>
+              </StatusCard>
+            ))}
+          </div>
+        </>
       )}
+
+      <Dialog
+        open={selectedRating !== null}
+        onOpenChange={(open) => {
+          if (!open) setSelectedRating(null);
+        }}
+      >
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
+          {selectedRating && (
+            <>
+              <DialogHeader>
+                <DialogTitle>جزئیات نظر مشتری</DialogTitle>
+              </DialogHeader>
+
+              <div className="space-y-4 text-sm">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground">مشتری</p>
+                    <p className="mt-1 font-medium">{selectedRating.customerName}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">خدمت</p>
+                    <p className="mt-1 font-medium">{selectedRating.serviceTitle}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">تاریخ</p>
+                    <p className="mt-1 font-medium">
+                      {formatDate(selectedRating.date)} · ساعت{" "}
+                      {toPersianDigits(selectedRating.time)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">وضعیت</p>
+                    <p className="mt-1 font-medium">
+                      {STATUS_LABELS[selectedRating.status]}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="mb-1 text-xs text-muted-foreground">امتیاز</p>
+                    <Stars score={selectedRating.score} />
+                  </div>
+                </div>
+
+                <div className="border-t border-border pt-4">
+                  <div className="rounded-lg border border-border bg-secondary/30 p-3.5">
+                    <p className="mb-2 text-xs font-medium text-muted-foreground">
+                      متن نظر مشتری
+                    </p>
+                    <p className="whitespace-pre-wrap break-words leading-8">
+                      {selectedRating.comment || "بدون متن نظر (فقط امتیاز)"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
