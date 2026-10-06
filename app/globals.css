@@ -97,6 +97,30 @@
 ======================================== */
 
 @layer components {
+  .standard-table table {
+    font-family: var(--font-yekan-bakh), Tahoma, sans-serif;
+    font-size: 0.75rem;
+  }
+
+  .standard-table thead th,
+  .standard-table thead th * {
+    font-family: var(--font-yekan-bakh), Tahoma, sans-serif !important;
+    font-size: 0.6875rem !important;
+    line-height: 1.25rem !important;
+  }
+
+  .standard-table tbody td,
+  .standard-table tbody td *:not(svg) {
+    font-family: var(--font-yekan-bakh), Tahoma, sans-serif !important;
+    font-size: 0.75rem !important;
+    line-height: 1.5rem !important;
+  }
+
+  .standard-table .table-status-badge {
+    font-size: 0.6875rem !important;
+    line-height: 1rem !important;
+  }
+
   .container {
     width: 100%;
     max-width: 1280px;
@@ -171,6 +195,13 @@
 ======================================== */
 
 @layer utilities {
+  .standard-table tbody button {
+    height: 1.75rem !important;
+    min-height: 1.75rem !important;
+    padding-inline: 0.625rem !important;
+    font-size: 0.75rem !important;
+  }
+
   @keyframes glow-pulse {
     0%,
     100% {

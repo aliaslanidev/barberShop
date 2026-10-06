@@ -11,6 +11,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { JalaliDatePicker } from "@/components/ui/jalali-date-picker";
+import { StandardTable } from "@/components/ui/standard-table";
 import { getAuthToken } from "@/lib/data/mock-session";
 import {
   listSalonHolidaysApi,
@@ -183,32 +184,30 @@ export default function AdminHolidaysPage() {
         <CardContent className="flex flex-col gap-4 p-4">
         <h2 className="font-semibold">مرخصی آرایشگرها</h2>
 
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[320px] text-sm">
-            <thead>
-              <tr className="border-b text-right text-muted-foreground">
-                <th className="p-2 font-medium">آرایشگر</th>
-                <th className="p-2 font-medium">تاریخ</th>
-              </tr>
-            </thead>
-            <tbody>
-              {timeOffEntries.map((e) => (
-                <tr key={e.id} className="border-b last:border-0">
-                  <td className="p-2">{e.barber.user.name}</td>
-                  <td className="p-2">{formatJalali(e.date)}</td>
-                </tr>
-              ))}
-
-              {timeOffEntries.length === 0 && (
-                <tr>
-                  <td colSpan={2} className="p-6 text-center text-muted-foreground">
-                    هیچ مرخصی‌ای ثبت نشده
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        <StandardTable
+          rows={timeOffEntries}
+          minWidth="420px"
+          emptyMessage="هیچ مرخصی‌ای ثبت نشده"
+          columns={[
+            {
+              id: "barber",
+              header: "آرایشگر",
+              width: 220,
+              minWidth: 160,
+              sortValue: (entry) => entry.barber.user.name,
+              cell: (entry) => entry.barber.user.name,
+            },
+            {
+              id: "date",
+              header: "تاریخ",
+              width: 160,
+              minWidth: 130,
+              sortValue: (entry) => entry.date,
+              className: "whitespace-nowrap",
+              cell: (entry) => formatJalali(entry.date),
+            },
+          ]}
+        />
         </CardContent>
       </Card>
     </main>

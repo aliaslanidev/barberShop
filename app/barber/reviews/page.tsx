@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { MessageSquareOff, Star } from "lucide-react";
-import { StatusCard } from "@/components/ui/status-card";
+import { StatusCard, TableStatusBadge } from "@/components/ui/status-card";
+import { StandardTable } from "@/components/ui/standard-table";
 import {
   Dialog,
   DialogContent,
@@ -172,88 +173,97 @@ export default function BarberReviewsPage() {
         </div>
       ) : (
         <>
-          <div className="hidden overflow-hidden rounded-xl border border-border bg-[#0e110f] md:block">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[990px] table-fixed text-sm">
-                <thead className="border-b border-primary/15 bg-[#151a17] text-xs text-primary/80">
-                  <tr>
-                    <th className="w-[56px] px-3 py-3 text-center font-medium">#</th>
-                    <th className="w-[180px] px-4 py-3 text-start font-medium">مشتری</th>
-                    <th className="w-[170px] px-4 py-3 text-start font-medium">خدمت</th>
-                    <th className="w-[110px] px-4 py-3 text-start font-medium">امتیاز</th>
-                    <th className="w-[230px] px-4 py-3 text-start font-medium">نظر</th>
-                    <th className="w-[130px] px-4 py-3 text-start font-medium">تاریخ</th>
-                    <th className="w-[150px] px-4 py-3 text-start font-medium">وضعیت</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {ratings.map((r, index) => (
-                    <tr
-                      key={r.id}
-                      tabIndex={0}
-                      aria-label={`مشاهده جزئیات نظر ${r.customerName}`}
-                      title="برای مشاهدهٔ جزئیات دوبار کلیک کنید"
-                      onDoubleClick={() => setSelectedRating(r)}
-                      onKeyDown={(event) => {
-                        if (
-                          event.target === event.currentTarget &&
-                          (event.key === "Enter" || event.key === " ")
-                        ) {
-                          event.preventDefault();
-                          setSelectedRating(r);
-                        }
-                      }}
-                      className="cursor-default align-middle transition-colors hover:bg-white/[0.025] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+          <div className="hidden md:block">
+            <StandardTable
+              rows={ratings}
+              minWidth="990px"
+              getRowProps={(rating) => ({
+                "aria-label": `مشاهده جزئیات نظر ${rating.customerName}`,
+                title: "برای مشاهدهٔ جزئیات دوبار کلیک کنید",
+              })}
+              onRowDoubleClick={(rating) => setSelectedRating(rating)}
+              onRowKeyDown={(rating, event) => {
+                if (
+                  event.target === event.currentTarget &&
+                  (event.key === "Enter" || event.key === " ")
+                ) {
+                  event.preventDefault();
+                  setSelectedRating(rating);
+                }
+              }}
+              columns={[
+                {
+                  id: "customer",
+                  header: "مشتری",
+                  width: 180,
+                  minWidth: 140,
+                  sortValue: (rating) => rating.customerName,
+                  cell: (rating) => (
+                    <span className="block truncate font-medium" title={rating.customerName}>
+                      {rating.customerName}
+                    </span>
+                  ),
+                },
+                {
+                  id: "service",
+                  header: "خدمت",
+                  width: 170,
+                  minWidth: 130,
+                  sortValue: (rating) => rating.serviceTitle,
+                  cell: (rating) => (
+                    <span className="block truncate text-xs text-muted-foreground" title={rating.serviceTitle}>
+                      {rating.serviceTitle}
+                    </span>
+                  ),
+                },
+                {
+                  id: "score",
+                  header: "امتیاز",
+                  width: 110,
+                  minWidth: 90,
+                  sortValue: (rating) => rating.score,
+                  cell: (rating) => <Stars score={rating.score} />,
+                },
+                {
+                  id: "comment",
+                  header: "نظر",
+                  width: 230,
+                  minWidth: 150,
+                  sortValue: (rating) => rating.comment ?? "",
+                  cell: (rating) => (
+                    <div
+                      className="rounded-md border border-border/80 bg-background/40 px-2.5 py-1.5 text-xs leading-6 text-muted-foreground"
+                      title={rating.comment || "بدون متن نظر"}
                     >
-                      <td className="px-3 py-3 text-center text-xs tabular-nums text-muted-foreground">
-                        {toPersianDigits(index + 1)}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="block truncate font-medium" title={r.customerName}>
-                          {r.customerName}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="block truncate text-xs text-muted-foreground" title={r.serviceTitle}>
-                          {r.serviceTitle}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <Stars score={r.score} />
-                      </td>
-                      <td className="px-4 py-3">
-                        <div
-                          className="rounded-md border border-border/80 bg-background/40 px-2.5 py-1.5 text-xs leading-6 text-muted-foreground"
-                          title={r.comment || "بدون متن نظر"}
-                        >
-                          <span className="block truncate">
-                            {r.comment || "بدون متن نظر"}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-xs text-muted-foreground">
-                        {formatDate(r.date)}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span
-                          className={cn(
-                            "whitespace-nowrap rounded-md border px-2 py-0.5 text-[11px] font-medium",
-                            r.status === "PENDING" &&
-                              "border-amber-500/30 bg-amber-500/10 text-amber-500",
-                            r.status === "APPROVED" &&
-                              "border-emerald-500/30 bg-emerald-500/10 text-emerald-500",
-                            r.status === "REJECTED" &&
-                              "border-red-500/30 bg-red-500/10 text-red-400",
-                          )}
-                        >
-                          {STATUS_LABELS[r.status]}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                      <span className="block truncate">
+                        {rating.comment || "بدون متن نظر"}
+                      </span>
+                    </div>
+                  ),
+                },
+                {
+                  id: "date",
+                  header: "تاریخ",
+                  width: 130,
+                  minWidth: 110,
+                  sortValue: (rating) => rating.date,
+                  className: "whitespace-nowrap text-xs text-muted-foreground",
+                  cell: (rating) => formatDate(rating.date),
+                },
+                {
+                  id: "status",
+                  header: "وضعیت",
+                  width: 150,
+                  minWidth: 130,
+                  sortValue: (rating) => STATUS_LABELS[rating.status],
+                  cell: (rating) => (
+                    <TableStatusBadge tone={ratingStatusTone(rating.status)}>
+                      {STATUS_LABELS[rating.status]}
+                    </TableStatusBadge>
+                  ),
+                },
+              ]}
+            />
           </div>
 
           <div className="flex flex-col gap-3 md:hidden">

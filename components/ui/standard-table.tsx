@@ -1,12 +1,55 @@
-import { useState, type PointerEvent, type ReactNode } from "react";
+import {
+  useMemo,
+  useState,
+  type KeyboardEvent,
+  type MouseEvent,
+  type PointerEvent,
+  type ReactNode,
+} from "react";
+import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import { cn, toPersianDigits } from "@/lib/utils";
+import { StandardTablePagination } from "@/components/ui/standard-table-pagination";
+
+type SortValue = string | number | Date | null | undefined;
+
+export function StandardTableSortHeader({
+  label,
+  direction,
+  onSort,
+  ariaLabel,
+}: {
+  label: ReactNode;
+  direction: "asc" | "desc" | false;
+  onSort: () => void;
+  ariaLabel?: string;
+}) {
+  return (
+    <button
+      type="button"
+      className="group inline-flex h-full items-center gap-1 font-medium text-primary/80 transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
+      aria-label={ariaLabel ?? `مرتب‌سازی بر اساس ${typeof label === "string" ? label : "این ستون"}`}
+      onClick={onSort}
+    >
+      {label}
+      {direction === "asc" ? (
+        <ArrowUp className="h-3.5 w-3.5" />
+      ) : direction === "desc" ? (
+        <ArrowDown className="h-3.5 w-3.5" />
+      ) : (
+        <ArrowUpDown className="h-3.5 w-3.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100" />
+      )}
+    </button>
+  );
+}
 
 export interface StandardTableColumn<TData> {
   id: string;
   header: ReactNode;
   className?: string;
+  headerClassName?: string;
   width?: number;
   minWidth?: number;
+  sortValue?: (row: TData) => SortValue;
   cell: (row: TData) => ReactNode;
 }
 
@@ -17,6 +60,14 @@ interface StandardTableProps<TData extends { id: string }> {
   minWidth?: string;
   rowNumberOffset?: number;
   resizable?: boolean;
+  pagination?: boolean;
+  emptyMessage?: ReactNode;
+  onRowDoubleClick?: (row: TData, event: MouseEvent<HTMLTableRowElement>) => void;
+  onRowKeyDown?: (row: TData, event: KeyboardEvent<HTMLTableRowElement>) => void;
+  getRowProps?: (row: TData) => {
+    "aria-label"?: string;
+    title?: string;
+  };
 }
 
 export function StandardTable<TData extends { id: string }>({
@@ -26,6 +77,11 @@ export function StandardTable<TData extends { id: string }>({
   minWidth,
   rowNumberOffset = 0,
   resizable = true,
+  pagination = true,
+  emptyMessage,
+  onRowDoubleClick,
+  onRowKeyDown,
+  getRowProps,
 }: StandardTableProps<TData>) {
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>(
     () =>
@@ -33,8 +89,46 @@ export function StandardTable<TData extends { id: string }>({
         columns.map((column) => [column.id, column.width ?? 160]),
       ),
   );
+  const [sortState, setSortState] = useState<{
+    columnId: string;
+    descending: boolean;
+  } | null>(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5);
   const getColumnWidth = (column: StandardTableColumn<TData>) =>
     columnWidths[column.id] ?? column.width ?? 160;
+
+  const sortedRows = useMemo(() => {
+    if (!sortState) return rows;
+    const column = columns.find((item) => item.id === sortState.columnId);
+    const sortValue = column?.sortValue;
+    if (!sortValue) return rows;
+
+    return rows
+      .map((row, index) => ({ row, index, value: sortValue(row) }))
+      .sort((a, b) => {
+        const left = a.value;
+        const right = b.value;
+        let result = 0;
+        if (left == null || right == null) {
+          result = left == null ? (right == null ? 0 : -1) : 1;
+        } else if (left instanceof Date && right instanceof Date) {
+          result = left.getTime() - right.getTime();
+        } else if (typeof left === "number" && typeof right === "number") {
+          result = left - right;
+        } else {
+          result = String(left).localeCompare(String(right), "fa");
+        }
+        return (sortState.descending ? -result : result) || a.index - b.index;
+      })
+      .map(({ row }) => row);
+  }, [columns, rows, sortState]);
+
+  const pageCount = Math.max(1, Math.ceil(sortedRows.length / pageSize));
+  const currentPage = Math.min(page, pageCount);
+  const visibleRows = pagination
+    ? sortedRows.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+    : sortedRows;
 
   function resizeColumn(
     column: StandardTableColumn<TData>,
@@ -58,12 +152,8 @@ export function StandardTable<TData extends { id: string }>({
   const tableWidth = Math.max(totalWidth, requestedMinWidth);
 
   return (
-    <div
-      className={cn(
-        "overflow-x-auto rounded-lg border border-border border-r-2 border-r-primary bg-[#0e110f]",
-        className,
-      )}
-    >
+    <div className={cn("flex flex-col gap-3", className)}>
+    <div className="standard-table overflow-x-auto rounded-lg border border-border border-r-2 border-r-primary bg-[#0e110f]">
       <table
         className="border-separate border-spacing-0 text-sm"
         style={{ width: `max(100%, ${tableWidth}px)`, tableLayout: "fixed" }}
@@ -78,7 +168,7 @@ export function StandardTable<TData extends { id: string }>({
           <tr className="border-b border-primary/15 text-right">
             <th
               scope="col"
-              className="w-14 px-3 py-3 text-center font-medium"
+              className="h-10 w-14 px-3 text-center font-medium text-primary/80"
             >
               #
             </th>
@@ -87,11 +177,32 @@ export function StandardTable<TData extends { id: string }>({
                 key={column.id}
                 scope="col"
                 className={cn(
-                  "relative px-4 py-3 pe-5 font-medium",
-                  column.className,
+                  "relative h-10 whitespace-nowrap px-4 pe-5 text-primary/80 font-medium",
+                  column.headerClassName,
                 )}
               >
-                {column.header}
+                {column.sortValue ? (
+                  <StandardTableSortHeader
+                    label={column.header}
+                    ariaLabel={`مرتب‌سازی بر اساس ${typeof column.header === "string" ? column.header : column.id}`}
+                    direction={
+                      sortState?.columnId === column.id
+                        ? sortState.descending
+                          ? "desc"
+                          : "asc"
+                        : false
+                    }
+                    onSort={() =>
+                      setSortState((current) =>
+                        current?.columnId === column.id
+                          ? { columnId: column.id, descending: !current.descending }
+                          : { columnId: column.id, descending: false },
+                      )
+                    }
+                  />
+                ) : (
+                  column.header
+                )}
                 {resizable && columnIndex < columns.length - 1 && (
                   <div
                     role="separator"
@@ -146,29 +257,64 @@ export function StandardTable<TData extends { id: string }>({
           </tr>
         </thead>
         <tbody className="divide-y divide-border">
-          {rows.map((row, index) => (
+          {visibleRows.map((row, index) => (
             <tr
               key={row.id}
-              className="align-middle transition-colors hover:bg-white/[0.025]"
+              tabIndex={onRowDoubleClick || onRowKeyDown ? 0 : undefined}
+              onDoubleClick={
+                onRowDoubleClick
+                  ? (event) => onRowDoubleClick(row, event)
+                  : undefined
+              }
+              onKeyDown={
+                onRowKeyDown ? (event) => onRowKeyDown(row, event) : undefined
+              }
+              className={cn(
+                "align-middle transition-colors hover:bg-white/[0.025]",
+                (onRowDoubleClick || onRowKeyDown) &&
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary",
+              )}
+              {...getRowProps?.(row)}
             >
-              <td className="px-3 py-3 text-center text-xs tabular-nums text-muted-foreground">
-                {toPersianDigits(rowNumberOffset + index + 1)}
+              <td className="px-3 py-2.5 text-center text-xs tabular-nums text-muted-foreground">
+                {toPersianDigits(rowNumberOffset + (pagination ? (currentPage - 1) * pageSize : 0) + index + 1)}
               </td>
               {columns.map((column) => (
                 <td
                   key={column.id}
-                  className={cn(
-                    "px-4 py-3",
-                    column.className,
-                  )}
+                  className={cn("px-4 py-2.5", column.className)}
                 >
                   {column.cell(row)}
                 </td>
               ))}
             </tr>
           ))}
+          {sortedRows.length === 0 && emptyMessage != null && (
+            <tr>
+              <td
+                colSpan={columns.length + 1}
+                className="px-4 py-8 text-center text-sm text-muted-foreground"
+              >
+                {emptyMessage}
+              </td>
+            </tr>
+          )}
         </tbody>
       </table>
+    </div>
+    {pagination && (
+      <StandardTablePagination
+        total={sortedRows.length}
+        page={currentPage}
+        pageSize={pageSize}
+        itemLabel="مورد"
+        onPageChange={setPage}
+        onPageSizeChange={(nextPageSize) => {
+          setPageSize(nextPageSize);
+          setPage(1);
+        }}
+      />
+    )}
     </div>
   );
 }

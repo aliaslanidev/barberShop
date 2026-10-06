@@ -3,9 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
-  ArrowUpDown,
-  ChevronLeft,
-  ChevronRight,
   Search,
   ShieldAlert,
   Users,
@@ -26,11 +23,20 @@ import { getCurrentAdmin } from "@/lib/data/admin-session";
 
 import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
-import { StatusCard, StatusChip } from "@/components/ui/status-card";
+import {
+  StatusCard,
+  StatusChip,
+  TableStatusBadge,
+} from "@/components/ui/status-card";
+import { accountStatusTone } from "@/lib/status-tones";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { StandardTable } from "@/components/ui/standard-table";
+import {
+  StandardTable,
+  StandardTableSortHeader,
+} from "@/components/ui/standard-table";
+import { StandardTablePagination } from "@/components/ui/standard-table-pagination";
 import {
   Dialog,
   DialogContent,
@@ -39,7 +45,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-const PAGE_SIZE_OPTIONS = [5, 10, 15] as const;
 const DEFAULT_PAGE_SIZE = 5;
 const SEARCH_DEBOUNCE_MS = 350;
 
@@ -64,39 +69,11 @@ function formatDate(iso: string) {
   });
 }
 
-// شماره صفحه‌ها با «…» وقتی زیاد باشن: مثلاً 1 ... 4 5 6 ... 12
-type PageItem = number | "ellipsis-left" | "ellipsis-right";
-
-function getPageItems(current: number, total: number): PageItem[] {
-  if (total <= 7) {
-    return Array.from({ length: total }, (_, i) => i + 1);
-  }
-
-  let start = Math.max(2, current - 1);
-  let end = Math.min(total - 1, current + 1);
-  if (current <= 3) end = 4;
-  if (current >= total - 2) start = total - 3;
-
-  const items: PageItem[] = [1];
-  if (start > 2) items.push("ellipsis-left");
-  for (let i = start; i <= end; i++) items.push(i);
-  if (end < total - 1) items.push("ellipsis-right");
-  items.push(total);
-  return items;
-}
-
 function StatusBadge({ isActive }: { isActive: boolean }) {
   return (
-    <span
-      className={cn(
-        "inline-block rounded-full px-2 py-0.5 text-xs font-medium",
-        isActive
-          ? "bg-primary/10 text-primary"
-          : "bg-destructive/10 text-destructive",
-      )}
-    >
+    <TableStatusBadge tone={accountStatusTone(isActive)}>
       {isActive ? "فعال" : "مسدود"}
-    </span>
+    </TableStatusBadge>
   );
 }
 
@@ -129,15 +106,11 @@ interface SortHeaderProps {
 function SortHeader({ label, sortKey, activeKey, dir, onSort }: SortHeaderProps) {
   const isActive = activeKey === sortKey;
   return (
-    <button
-      type="button"
-      onClick={() => onSort(sortKey)}
-      className="group inline-flex items-center gap-1 font-medium text-primary/80 transition-colors hover:text-primary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
-    >
-      {label}
-      <ArrowUpDown className="h-3.5 w-3.5 opacity-0 transition-[opacity,transform] duration-200 group-hover:translate-y-[-1px] group-hover:opacity-100 group-focus-visible:opacity-100" />
-      {isActive && <span className="text-xs">{dir === "asc" ? "↑" : "↓"}</span>}
-    </button>
+    <StandardTableSortHeader
+      label={label}
+      direction={isActive ? dir : false}
+      onSort={() => onSort(sortKey)}
+    />
   );
 }
 
@@ -289,12 +262,10 @@ export default function AdminCustomersPage() {
 
   const customers = data?.items ?? [];
   const total = data?.total ?? 0;
-  const totalPages = data?.totalPages ?? 1;
   const currentPage = data?.page ?? 1;
   const counts = data?.counts ?? { all: 0, active: 0, blocked: 0 };
   const startIndex = (currentPage - 1) * pageSize;
   const hasFilters = search !== "" || statusFilter !== "ALL";
-  const pageItems = getPageItems(currentPage, totalPages);
 
   const tabCounts: Record<CustomerStatusFilter, number> = {
     ALL: counts.all,
@@ -381,6 +352,7 @@ export default function AdminCustomersPage() {
             <StandardTable
               rows={customers}
               rowNumberOffset={startIndex}
+              pagination={false}
               columns={[
                 {
                   id: "customer",
@@ -486,7 +458,15 @@ export default function AdminCustomersPage() {
                         id: "actions",
                         width: 155,
                         minWidth: 125,
-                        header: "عملیات",
+                        header: (
+                          <SortHeader
+                            label="عملیات"
+                            sortKey="isActive"
+                            activeKey={sortKey}
+                            dir={sortDir}
+                            onSort={handleSort}
+                          />
+                        ),
                         className: "whitespace-nowrap",
                         cell: (customer: ApiCustomer) => (
                           <Button
@@ -568,91 +548,15 @@ export default function AdminCustomersPage() {
           </div>
 
           {/* صفحه‌بندی */}
-          <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-3">
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-              <p className="text-xs text-muted-foreground">
-                نمایش {toPersianDigits(startIndex + 1)} تا{" "}
-                {toPersianDigits(startIndex + customers.length)} از{" "}
-                {toPersianDigits(total)} مشتری
-              </p>
-
-              <div className="flex items-center gap-2">
-                <label
-                  htmlFor="page-size"
-                  className="text-xs text-muted-foreground"
-                >
-                  تعداد در هر صفحه
-                </label>
-                <select
-                  id="page-size"
-                  value={pageSize}
-                  disabled={isFetching}
-                  onChange={(e) => handlePageSizeChange(Number(e.target.value))}
-                  className="h-8 rounded-md border border-border bg-card px-2 text-sm outline-none focus:border-primary"
-                >
-                  {PAGE_SIZE_OPTIONS.map((size) => (
-                    <option key={size} value={size}>
-                      {toPersianDigits(size)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {totalPages > 1 && (
-              <nav
-                aria-label="صفحه‌بندی"
-                className="flex flex-wrap items-center gap-1.5"
-              >
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={currentPage <= 1 || isFetching}
-                  onClick={() => setPage(currentPage - 1)}
-                >
-                  <ChevronRight className="ml-1 h-4 w-4" />
-                  قبلی
-                </Button>
-
-                {pageItems.map((item) =>
-                  typeof item === "number" ? (
-                    <button
-                      key={item}
-                      type="button"
-                      disabled={isFetching}
-                      onClick={() => setPage(item)}
-                      aria-current={item === currentPage ? "page" : undefined}
-                      className={cn(
-                        "h-8 min-w-8 rounded-md border px-2 text-sm transition-colors",
-                        item === currentPage
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "border-border text-muted-foreground hover:bg-secondary",
-                      )}
-                    >
-                      {toPersianDigits(item)}
-                    </button>
-                  ) : (
-                    <span
-                      key={item}
-                      className="px-1 text-sm text-muted-foreground"
-                    >
-                      …
-                    </span>
-                  ),
-                )}
-
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={currentPage >= totalPages || isFetching}
-                  onClick={() => setPage(currentPage + 1)}
-                >
-                  بعدی
-                  <ChevronLeft className="mr-1 h-4 w-4" />
-                </Button>
-              </nav>
-            )}
-          </div>
+          <StandardTablePagination
+            total={total}
+            page={currentPage}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={handlePageSizeChange}
+            itemLabel="مشتری"
+            disabled={isFetching}
+          />
         </div>
       )}
 

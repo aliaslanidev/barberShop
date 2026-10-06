@@ -134,7 +134,7 @@ function CustomerHistoryContent() {
           ))}
         </div>
       )}
-      <BookingPagination page={page} totalPages={totalPages} total={total} onPageChange={setPage} />
+      <BookingPagination page={page} totalPages={totalPages} total={total} pageSize={PAGE_SIZE} onPageChange={setPage} />
     </div>
   );
 }

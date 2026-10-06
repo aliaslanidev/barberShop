@@ -4,7 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import { Check, MessageSquareOff, Star, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { StatusCard } from "@/components/ui/status-card";
+import { StatusCard, TableStatusBadge } from "@/components/ui/status-card";
+import { ratingStatusTone } from "@/lib/status-tones";
+import { StandardTable } from "@/components/ui/standard-table";
 import {
   Dialog,
   DialogContent,
@@ -254,140 +256,152 @@ export default function AdminRatingsPage() {
         </div>
       ) : (
         <>
-          <div className="hidden overflow-hidden rounded-xl border border-border bg-[#0e110f] md:block">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[1136px] table-fixed text-sm">
-                <thead className="border-b border-primary/15 bg-[#151a17] text-xs text-primary/80">
-                  <tr>
-                    <th className="w-[56px] px-3 py-3 text-center font-medium">#</th>
-                    <th className="w-[150px] px-4 py-3 text-start font-medium">آرایشگر</th>
-                    <th className="w-[150px] px-4 py-3 text-start font-medium">مشتری</th>
-                    <th className="w-[100px] px-4 py-3 text-start font-medium">امتیاز</th>
-                    <th className="w-[230px] px-4 py-3 text-start font-medium">نظر</th>
-                    <th className="w-[120px] px-4 py-3 text-start font-medium">تاریخ</th>
-                    <th className="w-[140px] px-4 py-3 text-start font-medium">وضعیت</th>
-                    <th className="w-[190px] px-5 py-3 text-center font-medium">عملیات</th>
-                  </tr>
-                </thead>
-
-                <tbody className="divide-y divide-border">
-                  {visible.map((r, index) => (
-                    <tr
-                      key={r.id}
-                      tabIndex={0}
-                      aria-label={`مشاهده جزئیات نظر ${r.customerName}`}
-                      title="برای مشاهدهٔ جزئیات دوبار کلیک کنید"
-                      onDoubleClick={(event) => {
-                        if (
-                          event.target instanceof Element &&
-                          event.target.closest("button")
-                        ) {
-                          return;
-                        }
-                        setSelectedRating(r);
-                      }}
-                      onKeyDown={(event) => {
-                        if (
-                          event.target === event.currentTarget &&
-                          (event.key === "Enter" || event.key === " ")
-                        ) {
-                          event.preventDefault();
-                          setSelectedRating(r);
-                        }
-                      }}
-                      className="cursor-default align-middle transition-colors hover:bg-white/[0.025] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"
+          <div className="hidden md:block">
+            <StandardTable
+              rows={visible}
+              minWidth="1136px"
+              getRowProps={(rating) => ({
+                "aria-label": `مشاهده جزئیات نظر ${rating.customerName}`,
+                title: "برای مشاهدهٔ جزئیات دوبار کلیک کنید",
+              })}
+              onRowDoubleClick={(rating, event) => {
+                if (
+                  event.target instanceof Element &&
+                  event.target.closest("button")
+                ) {
+                  return;
+                }
+                setSelectedRating(rating);
+              }}
+              onRowKeyDown={(rating, event) => {
+                if (
+                  event.target === event.currentTarget &&
+                  (event.key === "Enter" || event.key === " ")
+                ) {
+                  event.preventDefault();
+                  setSelectedRating(rating);
+                }
+              }}
+              columns={[
+                {
+                  id: "barber",
+                  header: "آرایشگر",
+                  width: 150,
+                  minWidth: 130,
+                  sortValue: (rating) => rating.barberName,
+                  cell: (rating) => (
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-rust text-xs font-bold text-white">
+                        {initialsOf(rating.barberName)}
+                      </span>
+                      <span className="truncate font-medium" title={rating.barberName}>
+                        {rating.barberName}
+                      </span>
+                    </div>
+                  ),
+                },
+                {
+                  id: "customer",
+                  header: "مشتری",
+                  width: 150,
+                  minWidth: 130,
+                  sortValue: (rating) => rating.customerName,
+                  cell: (rating) => (
+                    <>
+                      <div className="truncate" title={rating.customerName}>
+                        {rating.customerName}
+                      </div>
+                      <div className="mt-0.5 truncate text-[11px] text-muted-foreground" title={rating.serviceTitle}>
+                        {rating.serviceTitle}
+                      </div>
+                    </>
+                  ),
+                },
+                {
+                  id: "score",
+                  header: "امتیاز",
+                  width: 100,
+                  minWidth: 90,
+                  sortValue: (rating) => rating.score,
+                  cell: (rating) => <Stars score={rating.score} />,
+                },
+                {
+                  id: "comment",
+                  header: "نظر",
+                  width: 230,
+                  minWidth: 160,
+                  sortValue: (rating) => rating.comment ?? "",
+                  cell: (rating) => (
+                    <div
+                      className="rounded-md border border-border/80 bg-background/40 px-2.5 py-1.5 text-xs leading-6 text-muted-foreground"
+                      title={rating.comment || "بدون متن نظر"}
                     >
-                      <td className="px-3 py-3 text-center text-xs tabular-nums text-muted-foreground">
-                        {toPersianDigits(index + 1)}
-                      </td>
-
-                      <td className="px-4 py-3">
-                        <div className="flex min-w-0 items-center gap-2.5">
-                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-rust text-xs font-bold text-white">
-                            {initialsOf(r.barberName)}
-                          </span>
-                          <span className="truncate font-medium" title={r.barberName}>
-                            {r.barberName}
-                          </span>
-                        </div>
-                      </td>
-
-                      <td className="px-4 py-3">
-                        <div className="truncate" title={r.customerName}>
-                          {r.customerName}
-                        </div>
-                        <div
-                          className="mt-0.5 truncate text-[11px] text-muted-foreground"
-                          title={r.serviceTitle}
+                      <span className="block truncate">
+                        {rating.comment || "بدون متن نظر"}
+                      </span>
+                    </div>
+                  ),
+                },
+                {
+                  id: "date",
+                  header: "تاریخ",
+                  width: 120,
+                  minWidth: 110,
+                  sortValue: (rating) => rating.createdAt,
+                  className: "whitespace-nowrap text-xs text-muted-foreground",
+                  cell: (rating) => formatDate(rating.createdAt),
+                },
+                {
+                  id: "status",
+                  header: "وضعیت",
+                  width: 140,
+                  minWidth: 125,
+                  sortValue: (rating) => STATUS_LABELS[rating.status],
+                  cell: (rating) => (
+                    <TableStatusBadge tone={ratingStatusTone(rating.status)}>
+                      {STATUS_LABELS[rating.status]}
+                    </TableStatusBadge>
+                  ),
+                },
+                {
+                  id: "actions",
+                  header: "عملیات",
+                  width: 190,
+                  minWidth: 170,
+                  sortValue: (rating) => STATUS_LABELS[rating.status],
+                  className: "text-center",
+                  cell: (rating) => (
+                    <div className="flex justify-center gap-2">
+                      {rating.status !== "APPROVED" && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="px-3"
+                          disabled={busyId === rating.id}
+                          onClick={() => void handleStatus(rating.id, "APPROVED")}
                         >
-                          {r.serviceTitle}
-                        </div>
-                      </td>
-
-                      <td className="px-4 py-3">
-                        <Stars score={r.score} />
-                      </td>
-
-                      <td className="px-4 py-3">
-                        <div
-                          className="rounded-md border border-border/80 bg-background/40 px-2.5 py-1.5 text-xs leading-6 text-muted-foreground"
-                          title={r.comment || "بدون متن نظر"}
+                          <Check className="ml-1 h-3.5 w-3.5" />
+                          تایید
+                        </Button>
+                      )}
+                      {rating.status !== "REJECTED" && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="px-3"
+                          disabled={busyId === rating.id}
+                          onClick={() => void handleStatus(rating.id, "REJECTED")}
                         >
-                          <span className="block truncate">
-                            {r.comment || "بدون متن نظر"}
-                          </span>
-                        </div>
-                      </td>
-
-                      <td className="whitespace-nowrap px-4 py-3 text-xs text-muted-foreground">
-                        {formatDate(r.createdAt)}
-                      </td>
-
-                      <td className="px-4 py-3">
-                        <span
-                          className={cn(
-                            "whitespace-nowrap rounded-md border px-2 py-0.5 text-[11px] font-medium",
-                            STATUS_STYLES[r.status],
-                          )}
-                        >
-                          {STATUS_LABELS[r.status]}
-                        </span>
-                      </td>
-
-                      <td className="px-5 py-3">
-                        <div className="flex justify-center gap-2">
-                          {r.status !== "APPROVED" && (
-                            <Button
-                              type="button"
-                              size="sm"
-                              className="px-3"
-                              disabled={busyId === r.id}
-                              onClick={() => void handleStatus(r.id, "APPROVED")}
-                            >
-                              <Check className="ml-1 h-3.5 w-3.5" />
-                              تایید
-                            </Button>
-                          )}
-                          {r.status !== "REJECTED" && (
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              className="px-3"
-                              disabled={busyId === r.id}
-                              onClick={() => void handleStatus(r.id, "REJECTED")}
-                            >
-                              <X className="ml-1 h-3.5 w-3.5" />
-                              رد
-                            </Button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                          <X className="ml-1 h-3.5 w-3.5" />
+                          رد
+                        </Button>
+                      )}
+                    </div>
+                  ),
+                },
+              ]}
+            />
           </div>
 
           <div className="flex flex-col gap-3 md:hidden">

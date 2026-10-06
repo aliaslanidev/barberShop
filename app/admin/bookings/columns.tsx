@@ -2,10 +2,15 @@
 
 import { useState } from "react";
 import type { ColumnDef, Column } from "@tanstack/react-table";
-import { ArrowUpDown, Clock, Phone, Scissors, User } from "lucide-react";
+import { Clock, Phone, Scissors, User } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { StatusCard, StatusChip } from "@/components/ui/status-card";
+import { StandardTableSortHeader } from "@/components/ui/standard-table";
+import {
+  StatusCard,
+  StatusChip,
+  TableStatusBadge,
+} from "@/components/ui/status-card";
 import { cn } from "@/lib/utils";
 import { bookingStatusTone } from "@/lib/status-tones";
 import { getBookingServiceTitles, type ApiBooking, type BookingStatus } from "@/lib/api";
@@ -43,16 +48,11 @@ function toPersianDigits(value: string | number): string {
 
 function SortableHeader({ label, column }: { label: string; column: Column<ApiBooking, unknown> }) {
   return (
-    <Button
-      type="button"
-      variant="ghost"
-      size="sm"
-      className="-mr-2 h-8 gap-1 px-2 font-medium text-muted-foreground hover:text-foreground"
-      onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-    >
-      {label}
-      <ArrowUpDown className="h-3.5 w-3.5" />
-    </Button>
+    <StandardTableSortHeader
+      label={label}
+      direction={column.getIsSorted() || false}
+      onSort={() => column.toggleSorting(column.getIsSorted() === "asc")}
+    />
   );
 }
 
@@ -79,12 +79,12 @@ export function getBookingColumns({ onCancel }: BookingColumnsOptions): ColumnDe
     {
       id: "customerName",
       accessorFn: (row) => row.customer.name,
-      header: "مشتری",
+      header: ({ column }) => <SortableHeader label="مشتری" column={column} />,
     },
     {
       id: "customerPhone",
       accessorFn: (row) => row.customer.mobile,
-      header: "شماره تماس",
+      header: ({ column }) => <SortableHeader label="شماره تماس" column={column} />,
       cell: ({ row }) => (
         <span className="font-mono" dir="ltr">
           {toPersianDigits(row.original.customer.mobile)}
@@ -94,25 +94,26 @@ export function getBookingColumns({ onCancel }: BookingColumnsOptions): ColumnDe
     {
       id: "barberName",
       accessorFn: (row) => row.barber.user.name,
-      header: "آرایشگر",
+      header: ({ column }) => <SortableHeader label="آرایشگر" column={column} />,
     },
     {
       id: "serviceTitle",
       accessorFn: getBookingServiceTitles,
-      header: "خدمت",
+      header: ({ column }) => <SortableHeader label="خدمت" column={column} />,
     },
     {
       accessorKey: "status",
       header: ({ column }) => <SortableHeader label="وضعیت" column={column} />,
       cell: ({ row }) => (
-        <span className={cn("rounded-full px-2 py-1 text-xs font-medium", STATUS_STYLES[row.original.status])}>
+        <TableStatusBadge tone={bookingStatusTone(row.original.status)}>
           {STATUS_LABELS[row.original.status]}
-        </span>
+        </TableStatusBadge>
       ),
     },
     {
       id: "actions",
-      header: "عملیات",
+      accessorFn: (row) => row.status,
+      header: ({ column }) => <SortableHeader label="عملیات" column={column} />,
       cell: ({ row }) => {
         const booking = row.original;
         if (booking.status === "CANCELLED" || booking.status === "COMPLETED") return null;

@@ -38,7 +38,8 @@ import {
 
 type DayFilter = "today" | "tomorrow" | "upcoming7" | "history" | "all" | "custom";
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE_OPTIONS = [5, 10, 15];
+const DEFAULT_PAGE_SIZE = 5;
 
 const DAY_TABS: { value: DayFilter; label: string }[] = [
   { value: "today", label: "امروز" },
@@ -67,6 +68,7 @@ export default function AdminBookingsPage() {
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [isLoading, setIsLoading] = useState(true);
 
   const [search, setSearch] = useState("");
@@ -99,7 +101,7 @@ export default function AdminBookingsPage() {
 
       const result = await listBookingsApi(token, {
         page,
-        pageSize: PAGE_SIZE,
+        pageSize,
         barberId: barberFilter === "all" ? undefined : barberFilter,
         status: statusFilter === "all" ? undefined : statusFilter,
         date,
@@ -116,7 +118,7 @@ export default function AdminBookingsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [dayFilter, customDateStr, page, barberFilter, statusFilter, search, todayStr, tomorrowStr, weekEndStr]);
+  }, [dayFilter, customDateStr, page, pageSize, barberFilter, statusFilter, search, todayStr, tomorrowStr, weekEndStr]);
 
   useEffect(() => {
     listBarbers()
@@ -255,11 +257,25 @@ export default function AdminBookingsPage() {
             columns={columns}
             data={bookings}
             emptyMessage="نوبتی با این فیلترها پیدا نشد"
+            initialPageSize={pageSize}
+            showPagination={false}
             renderMobileCard={(booking) => (
               <BookingMobileCard booking={booking} onCancel={handleCancel} />
             )}
           />
-          <BookingPagination page={page} totalPages={totalPages} total={total} onPageChange={setPage} />
+          <BookingPagination
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            pageSize={pageSize}
+            showPageSize
+            onPageSizeChange={(value) => {
+              if (!PAGE_SIZE_OPTIONS.includes(value)) return;
+              setPageSize(value);
+              setPage(1);
+            }}
+            onPageChange={setPage}
+          />
         </CardContent>
       </Card>
     </main>

@@ -3,9 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
-  ArrowUpDown,
-  ChevronLeft,
-  ChevronRight,
   Search,
   Users,
   X,
@@ -14,12 +11,15 @@ import {
 import { getMyCustomersApi, ApiError } from "@/lib/api";
 import { getAuthToken } from "@/lib/data/mock-session";
 
-import { cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import {
+  StandardTable,
+  StandardTableSortHeader,
+} from "@/components/ui/standard-table";
+import { StandardTablePagination } from "@/components/ui/standard-table-pagination";
 
-const PAGE_SIZE_OPTIONS = [5, 10, 15] as const;
 const DEFAULT_PAGE_SIZE = 5;
 const SEARCH_DEBOUNCE_MS = 350;
 
@@ -39,27 +39,6 @@ function toEnglishDigits(input: string) {
     .replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x0660));
 }
 
-// شماره صفحه‌ها با «…» وقتی زیاد باشن: مثلاً 1 ... 4 5 6 ... 12
-type PageItem = number | "ellipsis-left" | "ellipsis-right";
-
-function getPageItems(current: number, total: number): PageItem[] {
-  if (total <= 7) {
-    return Array.from({ length: total }, (_, i) => i + 1);
-  }
-
-  let start = Math.max(2, current - 1);
-  let end = Math.min(total - 1, current + 1);
-  if (current <= 3) end = 4;
-  if (current >= total - 2) start = total - 3;
-
-  const items: PageItem[] = [1];
-  if (start > 2) items.push("ellipsis-left");
-  for (let i = start; i <= end; i++) items.push(i);
-  if (end < total - 1) items.push("ellipsis-right");
-  items.push(total);
-  return items;
-}
-
 interface SortHeaderProps {
   label: string;
   active: boolean;
@@ -69,18 +48,11 @@ interface SortHeaderProps {
 
 function SortHeader({ label, active, dir, onSort }: SortHeaderProps) {
   return (
-    <button
-      type="button"
-      onClick={onSort}
-      className={cn(
-        "inline-flex items-center gap-1 font-medium transition-colors hover:text-foreground",
-        active && "text-foreground",
-      )}
-    >
-      {label}
-      <ArrowUpDown className="h-3.5 w-3.5" />
-      {active && <span className="text-xs">{dir === "asc" ? "↑" : "↓"}</span>}
-    </button>
+    <StandardTableSortHeader
+      label={label}
+      direction={active ? dir : false}
+      onSort={onSort}
+    />
   );
 }
 
@@ -90,6 +62,7 @@ export default function BarberCustomersPage() {
 
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState(""); // بعد از debounce
+  const [sortKey, setSortKey] = useState<"name" | "phone">("name");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
@@ -128,20 +101,29 @@ export default function BarberCustomersPage() {
         )
       : [...customers];
 
-    list.sort((a, b) => a.name.localeCompare(b.name, "fa"));
+    list.sort((a, b) =>
+      sortKey === "name"
+        ? a.name.localeCompare(b.name, "fa")
+        : a.phone.localeCompare(b.phone),
+    );
     if (sortDir === "desc") list.reverse();
     return list;
-  }, [customers, search, sortDir]);
+  }, [customers, search, sortDir, sortKey]);
 
   const total = filtered.length;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const currentPage = Math.min(page, totalPages);
   const startIndex = (currentPage - 1) * pageSize;
   const pageCustomers = filtered.slice(startIndex, startIndex + pageSize);
-  const pageItems = getPageItems(currentPage, totalPages);
   const hasFilters = search !== "";
 
-  function handleSort() {
+  function handleSort(key: "name" | "phone") {
+    if (sortKey !== key) {
+      setSortKey(key);
+      setSortDir("asc");
+      setPage(1);
+      return;
+    }
     setSortDir((d) => (d === "asc" ? "desc" : "asc"));
     setPage(1);
   }
@@ -212,44 +194,60 @@ export default function BarberCustomersPage() {
       ) : (
         <div className="flex flex-col gap-6">
           {/* جدول (دسکتاپ) */}
-          <div className="hidden overflow-hidden rounded-lg border border-border md:block">
-            <table className="w-full text-sm">
-              <thead className="bg-secondary/40 text-muted-foreground">
-                <tr className="text-right">
-                  <th className="p-3">
+          <div className="hidden md:block">
+            <StandardTable
+              rows={pageCustomers.map((customer) => ({
+                ...customer,
+                id: customer.phone,
+              }))}
+              rowNumberOffset={startIndex}
+              pagination={false}
+              columns={[
+                {
+                  id: "customer",
+                  header: (
                     <SortHeader
                       label="مشتری"
-                      active
+                      active={sortKey === "name"}
                       dir={sortDir}
-                      onSort={handleSort}
+                      onSort={() => handleSort("name")}
                     />
-                  </th>
-                  <th className="p-3 font-medium">شماره موبایل</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pageCustomers.map((customer) => (
-                  <tr
-                    key={customer.phone}
-                    className="border-t border-border align-top transition-colors hover:bg-secondary/20"
-                  >
-                    <td className="p-3">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-bold">
-                          {customer.name.slice(0, 1)}
-                        </div>
-                        <span className="font-medium">{customer.name}</span>
+                  ),
+                  width: 220,
+                  minWidth: 170,
+                  cell: (customer) => (
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-bold">
+                        {customer.name.slice(0, 1)}
                       </div>
-                    </td>
-                    <td className="p-3">
-                      <span dir="ltr" className="inline-block text-muted-foreground">
-                        {toPersianDigits(customer.phone)}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      <span className="font-medium">{customer.name}</span>
+                    </div>
+                  ),
+                },
+                {
+                  id: "phone",
+                  header: (
+                    <SortHeader
+                      label="شماره موبایل"
+                      active={sortKey === "phone"}
+                      dir={sortDir}
+                      onSort={() => handleSort("phone")}
+                    />
+                  ),
+                  width: 190,
+                  minWidth: 150,
+                  className: "whitespace-nowrap",
+                  cell: (customer) => (
+                    <span
+                      dir="ltr"
+                      className="inline-block text-muted-foreground"
+                    >
+                      {toPersianDigits(customer.phone)}
+                    </span>
+                  ),
+                },
+              ]}
+            />
           </div>
 
           {/* کارت (موبایل) */}
@@ -274,89 +272,14 @@ export default function BarberCustomersPage() {
           </div>
 
           {/* صفحه‌بندی */}
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-              <p className="text-xs text-muted-foreground">
-                نمایش {toPersianDigits(startIndex + 1)} تا{" "}
-                {toPersianDigits(startIndex + pageCustomers.length)} از{" "}
-                {toPersianDigits(total)} مشتری
-              </p>
-
-              <div className="flex items-center gap-2">
-                <label
-                  htmlFor="page-size"
-                  className="text-xs text-muted-foreground"
-                >
-                  تعداد در هر صفحه
-                </label>
-                <select
-                  id="page-size"
-                  value={pageSize}
-                  onChange={(e) => handlePageSizeChange(Number(e.target.value))}
-                  className="h-8 rounded-md border border-border bg-card px-2 text-sm outline-none focus:border-primary"
-                >
-                  {PAGE_SIZE_OPTIONS.map((size) => (
-                    <option key={size} value={size}>
-                      {toPersianDigits(size)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {totalPages > 1 && (
-              <nav
-                aria-label="صفحه‌بندی"
-                className="flex flex-wrap items-center gap-1.5"
-              >
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={currentPage <= 1}
-                  onClick={() => setPage(currentPage - 1)}
-                >
-                  <ChevronRight className="ml-1 h-4 w-4" />
-                  قبلی
-                </Button>
-
-                {pageItems.map((item) =>
-                  typeof item === "number" ? (
-                    <button
-                      key={item}
-                      type="button"
-                      onClick={() => setPage(item)}
-                      aria-current={item === currentPage ? "page" : undefined}
-                      className={cn(
-                        "h-8 min-w-8 rounded-md border px-2 text-sm transition-colors",
-                        item === currentPage
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "border-border text-muted-foreground hover:bg-secondary",
-                      )}
-                    >
-                      {toPersianDigits(item)}
-                    </button>
-                  ) : (
-                    <span
-                      key={item}
-                      className="px-1 text-sm text-muted-foreground"
-                    >
-                      …
-                    </span>
-                  ),
-                )}
-
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={currentPage >= totalPages}
-                  onClick={() => setPage(currentPage + 1)}
-                >
-                  بعدی
-                  <ChevronLeft className="mr-1 h-4 w-4" />
-                </Button>
-              </nav>
-            )}
-          </div>
+          <StandardTablePagination
+            total={total}
+            page={currentPage}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={handlePageSizeChange}
+            itemLabel="مشتری"
+          />
         </div>
       )}
     </div>

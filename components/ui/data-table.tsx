@@ -10,37 +10,18 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { ChevronLeft, ChevronRight } from "lucide-react";
-
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-
-const PERSIAN_DIGITS = ["۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹"];
-function toPersianDigits(value: string | number): string {
-  return String(value).replace(/[0-9]/g, (d) => PERSIAN_DIGITS[Number(d)]);
-}
-
-const PAGE_SIZE_OPTIONS = [5, 10, 15];
+  StandardTable,
+  type StandardTableColumn,
+} from "@/components/ui/standard-table";
+import { StandardTablePagination } from "@/components/ui/standard-table-pagination";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
   emptyMessage?: string;
   initialPageSize?: number;
+  showPagination?: boolean;
   // اگه پاس داده بشه، در موبایل (زیر md) به جای جدول، برای هر ردیف یک کارت
   // نمایش داده می‌شه. در این حالت صفحه‌بندیِ داخلیِ جدول در موبایل مخفیه و همه‌ی
   // داده‌ی ورودی (مثلاً یک صفحه‌ی سمت سرور) پشت‌سرهم نمایش داده می‌شه.
@@ -53,6 +34,7 @@ export function DataTable<TData, TValue>({
   data,
   emptyMessage = "داده‌ای پیدا نشد",
   initialPageSize = 10,
+  showPagination = true,
   renderMobileCard,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -71,8 +53,31 @@ export function DataTable<TData, TValue>({
   const rows = table.getRowModel().rows;
   // ردیف‌ها قبل از صفحه‌بندی داخلی (برای کارت‌های موبایل)
   const mobileRows = table.getPrePaginationRowModel().rows;
-  const pageCount = table.getPageCount();
   const pageIndex = table.getState().pagination.pageIndex;
+  const standardColumns: StandardTableColumn<(typeof rows)[number]>[] =
+    table.getVisibleLeafColumns().map((column) => {
+      const header = table
+        .getHeaderGroups()[0]
+        .headers.find((item) => item.column.id === column.id);
+
+      return {
+        id: column.id,
+        width: column.getSize(),
+        minWidth: column.columnDef.minSize,
+        header: header
+          ? flexRender(column.columnDef.header, header.getContext())
+          : null,
+        headerClassName: "text-primary/80",
+        cell: (row) => {
+          const cell = row
+            .getVisibleCells()
+            .find((item) => item.column.id === column.id);
+          return cell
+            ? flexRender(cell.column.columnDef.cell, cell.getContext())
+            : null;
+        },
+      };
+    });
 
   return (
     <div className="flex flex-col gap-3">
@@ -92,118 +97,28 @@ export function DataTable<TData, TValue>({
       )}
 
       {/* دسکتاپ (یا همه‌ی سایزها اگه renderMobileCard نداریم): جدول */}
-      <div
-        className={
-          renderMobileCard
-            ? "hidden overflow-x-auto rounded-lg border border-border md:block"
-            : "overflow-x-auto rounded-lg border border-border"
-        }
-      >
-        <Table>
-          <TableHeader>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id}>
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext(),
-                        )}
-                  </TableHead>
-                ))}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {rows.length ? (
-              rows.map((row) => (
-                <TableRow key={row.id}>
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext(),
-                      )}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="p-6 text-center text-muted-foreground"
-                >
-                  {emptyMessage}
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+      <div className={renderMobileCard ? "hidden md:block" : undefined}>
+        <StandardTable
+          rows={rows}
+          columns={standardColumns}
+          minWidth={`${56 + standardColumns.length * 150}px`}
+          emptyMessage={emptyMessage}
+          rowNumberOffset={pageIndex * table.getState().pagination.pageSize}
+          pagination={false}
+        />
       </div>
 
       {/* صفحه‌بندی داخلی: اگه کارت موبایل داریم، فقط در دسکتاپ نمایش داده می‌شه */}
-      {rows.length > 0 && (
-        <div
-          className={
-            renderMobileCard
-              ? "hidden flex-wrap items-center justify-between gap-3 md:flex"
-              : "flex flex-wrap items-center justify-between gap-3"
-          }
-        >
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <span>تعداد در صفحه:</span>
-            <Select
-              value={String(table.getState().pagination.pageSize)}
-              onValueChange={(value) => table.setPageSize(Number(value))}
-            >
-              <SelectTrigger className="w-20">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {PAGE_SIZE_OPTIONS.map((size) => (
-                  <SelectItem key={size} value={String(size)}>
-                    {toPersianDigits(size)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex items-center gap-3 text-sm text-muted-foreground">
-            <span>
-              صفحه {toPersianDigits(pageIndex + 1)} از{" "}
-              {toPersianDigits(Math.max(pageCount, 1))} (
-              {toPersianDigits(data.length)} مورد)
-            </span>
-            <div className="flex items-center gap-1.5">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="gap-1"
-                disabled={!table.getCanPreviousPage()}
-                onClick={() => table.previousPage()}
-              >
-                <ChevronRight className="h-4 w-4" />
-                قبلی
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="gap-1"
-                disabled={!table.getCanNextPage()}
-                onClick={() => table.nextPage()}
-              >
-                بعدی
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </div>
+      {showPagination && rows.length > 0 && (
+        <StandardTablePagination
+          className={renderMobileCard ? "hidden md:flex" : undefined}
+          total={data.length}
+          page={pageIndex + 1}
+          pageSize={table.getState().pagination.pageSize}
+          onPageChange={(nextPage) => table.setPageIndex(nextPage - 1)}
+          onPageSizeChange={(size) => table.setPageSize(size)}
+          itemLabel="مورد"
+        />
       )}
     </div>
   );

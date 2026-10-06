@@ -109,3 +109,31 @@ export function StatusChip({
     </span>
   );
 }
+
+const tableStatusStyles: Record<StatusTone, string> = {
+  success: "bg-emerald-500/15 text-emerald-400",
+  info: "bg-blue-500/15 text-blue-300",
+  warning: "bg-amber-500/15 text-amber-300",
+  danger: "bg-red-500/15 text-red-300",
+  neutral: "bg-muted text-muted-foreground",
+};
+
+export function TableStatusBadge({
+  tone,
+  className,
+  children,
+  ...props
+}: StatusChipProps) {
+  return (
+    <span
+      className={cn(
+        "table-status-badge inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium",
+        tableStatusStyles[tone],
+        className,
+      )}
+      {...props}
+    >
+      {children}
+    </span>
+  );
+}
