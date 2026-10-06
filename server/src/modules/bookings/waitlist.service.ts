@@ -100,7 +100,7 @@ async function advanceSlot(
       status: "OFFERED",
       offerExpiresAt: { lte: now },
     },
-    select: { id: true },
+    select: { id: true, customerId: true },
   });
   if (expiredOffers.length > 0) {
     await tx.slotWaitlist.updateMany({
@@ -109,6 +109,15 @@ async function advanceSlot(
     });
     await tx.slotHold.deleteMany({
       where: { waitlistRequestId: { in: expiredOffers.map((offer) => offer.id) } },
+    });
+    await tx.notification.createMany({
+      data: expiredOffers.map((offer) => ({
+        userId: offer.customerId,
+        type: "WAITLIST_STATUS",
+        title: "مهلت پیشنهاد صف انتظار تمام شد",
+        body: `مهلت ${toPersianDigits(String(OFFER_MINUTES))} دقیقه‌ای ثبت نوبت تمام شد و این درخواست صف انتظار بسته شد.`,
+        link: "/customer/bookings",
+      })),
     });
   }
 
@@ -165,10 +174,21 @@ async function advanceSlot(
       select: { serviceId: true },
     });
     if (barberServices.length !== requestedServiceIds.length) {
-      await tx.slotWaitlist.update({
+      const cancelled = await tx.slotWaitlist.updateMany({
         where: { id: request.id },
         data: { status: "CANCELLED" },
       });
+      if (cancelled.count > 0) {
+        await tx.notification.create({
+          data: {
+            userId: request.customerId,
+            type: "WAITLIST_STATUS",
+            title: "درخواست صف انتظار لغو شد",
+            body: "یکی از سرویس‌های انتخاب‌شده دیگر توسط این آرایشگر ارائه نمی‌شود؛ برای نوبت‌گیری، سرویس دیگری انتخاب کنید.",
+            link: "/customer/bookings",
+          },
+        });
+      }
       continue;
     }
 

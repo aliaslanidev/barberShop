@@ -11,6 +11,36 @@ export async function notifyUser(
   });
 }
 
+export async function notifyUserSafely(
+  userId: string,
+  data: { type: NotificationType; title: string; body: string; link?: string },
+  context: string,
+) {
+  try {
+    return await notifyUser(userId, data);
+  } catch (error) {
+    console.error(`ثبت اعلان ناموفق بود (${context})`, { userId, error });
+    return null;
+  }
+}
+
+export async function notifyAdminsSafely(
+  data: { type: NotificationType; title: string; body: string; link?: string },
+  context: string,
+) {
+  try {
+    const admins = await prisma.user.findMany({
+      where: { role: { in: ["ADMIN", "MANAGER"] }, isActive: true },
+      select: { id: true },
+    });
+    await Promise.all(
+      admins.map((admin) => notifyUserSafely(admin.id, data, context)),
+    );
+  } catch (error) {
+    console.error(`ارسال اعلان به مدیران ناموفق بود (${context})`, error);
+  }
+}
+
 export async function listMyNotifications(userId: string) {
   const [notifications, unreadCount] = await Promise.all([
     prisma.notification.findMany({

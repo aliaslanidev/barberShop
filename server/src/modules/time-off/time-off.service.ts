@@ -1,7 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import { AppError } from "@/utils/AppError";
 import { formatPersianDate } from "@/utils/persian-date";
-import { notifyUser } from "@/modules/notifications/notifications.service";
+import {
+  notifyAdminsSafely,
+  notifyUserSafely,
+} from "@/modules/notifications/notifications.service";
 import type {
   CreateTimeOffInput,
   LeaveRequestStatusQuery,
@@ -75,20 +78,14 @@ export async function createOwnTimeOff(userId: string, input: CreateTimeOffInput
     },
   });
 
-  // نوتیف برای همه‌ی ادمین/مدیرها: درخواست مرخصی جدید برای تایید
-  const admins = await prisma.user.findMany({
-    where: { role: { in: ["ADMIN", "MANAGER"] } },
-    select: { id: true },
-  });
-  await Promise.all(
-    admins.map((a) =>
-      notifyUser(a.id, {
-        type: "LEAVE_REQUEST_STATUS",
-        title: "درخواست مرخصی جدید",
-        body: `${barberProfile.user.name} یک درخواست مرخصی برای ${formatPersianDate(input.date)} ثبت کرد`,
-        link: "/admin/leave-requests",
-      }).catch(() => {})
-    )
+  await notifyAdminsSafely(
+    {
+      type: "LEAVE_REQUEST_STATUS",
+      title: "درخواست مرخصی جدید",
+      body: `${barberProfile.user.name} یک درخواست مرخصی برای ${formatPersianDate(input.date)} ثبت کرد`,
+      link: "/admin/leave-requests",
+    },
+    "leave-request-created",
   );
 
   return { type: "LEAVE_REQUEST" as const, leaveRequest };
@@ -168,12 +165,16 @@ export async function approveLeaveRequest(id: string, adminUserId: string) {
     select: { userId: true },
   });
   if (barberProfile) {
-    notifyUser(barberProfile.userId, {
-      type: "LEAVE_REQUEST_STATUS",
-      title: "مرخصی تایید شد",
-      body: `درخواست مرخصی شما برای ${formatPersianDate(request.date)} تایید شد`,
-      link: "/barber/time-off",
-    }).catch(() => {});
+    await notifyUserSafely(
+      barberProfile.userId,
+      {
+        type: "LEAVE_REQUEST_STATUS",
+        title: "مرخصی تایید شد",
+        body: `درخواست مرخصی شما برای ${formatPersianDate(request.date)} تایید شد`,
+        link: "/barber/time-off",
+      },
+      "leave-request-approved",
+    );
   }
 
   return updated;
@@ -196,12 +197,16 @@ export async function rejectLeaveRequest(id: string, adminUserId: string) {
     select: { userId: true },
   });
   if (barberProfile) {
-    notifyUser(barberProfile.userId, {
-      type: "LEAVE_REQUEST_STATUS",
-      title: "مرخصی رد شد",
-      body: `درخواست مرخصی شما برای ${formatPersianDate(request.date)} رد شد`,
-      link: "/barber/time-off",
-    }).catch(() => {});
+    await notifyUserSafely(
+      barberProfile.userId,
+      {
+        type: "LEAVE_REQUEST_STATUS",
+        title: "مرخصی رد شد",
+        body: `درخواست مرخصی شما برای ${formatPersianDate(request.date)} رد شد`,
+        link: "/barber/time-off",
+      },
+      "leave-request-rejected",
+    );
   }
 
   return updated;

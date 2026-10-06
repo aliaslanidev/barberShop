@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { AppError } from "@/utils/AppError";
+import { notifyAdminsSafely, notifyUserSafely } from "@/modules/notifications/notifications.service";
 import type { CreateRatingInput } from "@/modules/ratings/ratings.schema";
 import type { RatingStatus } from "@prisma/client";
 
@@ -43,7 +44,11 @@ export async function getRatingSummary(barberId: string): Promise<RatingSummary>
 export async function createRating(customerId: string, input: CreateRatingInput) {
   const booking = await prisma.booking.findUnique({
     where: { id: input.bookingId },
-    include: { rating: true },
+    include: {
+      rating: true,
+      customer: { select: { name: true } },
+      barber: { include: { user: { select: { name: true } } } },
+    },
   });
 
   if (!booking) throw new AppError("نوبت پیدا نشد", 404);
@@ -58,14 +63,27 @@ export async function createRating(customerId: string, input: CreateRatingInput)
   }
 
   try {
-    return await prisma.rating.create({
+    const comment = input.comment?.trim() || null;
+    const rating = await prisma.rating.create({
       data: {
         bookingId: booking.id,
         barberId: booking.barberId,
         score: input.score,
-        comment: input.comment ? input.comment : null,
+        comment,
       },
     });
+    if (comment) {
+      await notifyAdminsSafely(
+        {
+          type: "RATING_STATUS",
+          title: "نظر جدید نیازمند بررسی",
+          body: `${booking.customer.name} برای ${booking.barber.user.name} نظر ثبت کرد؛ متن آن را بررسی کنید.`,
+          link: "/admin/ratings",
+        },
+        "rating-created",
+      );
+    }
+    return rating;
   } catch (err) {
     if ((err as { code?: string }).code === "P2002") {
       throw new AppError("برای این نوبت قبلاً امتیاز ثبت شده است", 409);
@@ -150,10 +168,29 @@ export async function listRatingsForAdmin(filter: { barberId?: string; status?: 
 
 // ادمین/مدیر: تایید یا رد نمایش عمومیِ متن یه نظر
 export async function updateRatingStatus(id: string, status: "APPROVED" | "REJECTED") {
-  const rating = await prisma.rating.findUnique({ where: { id } });
+  const rating = await prisma.rating.findUnique({
+    where: { id },
+    include: { booking: { select: { customerId: true, id: true } } },
+  });
   if (!rating) throw new AppError("نظر پیدا نشد", 404);
 
-  return prisma.rating.update({ where: { id }, data: { status } });
+  const updated = await prisma.rating.update({ where: { id }, data: { status } });
+  if (rating.comment?.trim() && rating.status !== status) {
+    const approved = status === "APPROVED";
+    await notifyUserSafely(
+      rating.booking.customerId,
+      {
+        type: "RATING_STATUS",
+        title: approved ? "نظر شما تایید شد" : "نظر شما تایید نشد",
+        body: approved
+          ? "نظر شما تایید و منتشر شد."
+          : "متن نظر شما تایید نشد و به‌صورت عمومی نمایش داده نمی‌شود؛ امتیاز ثبت‌شده باقی می‌ماند.",
+        link: `/customer/history?review=${rating.booking.id}`,
+      },
+      "rating-status-changed",
+    );
+  }
+  return updated;
 }
 
 // نام مشتری برای نمایش عمومی: فقط نام کوچک + حرف اول نام‌خانوادگی (مثلاً «رضا احمدی» -> «رضا ا.»)

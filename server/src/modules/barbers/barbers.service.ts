@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { AppError } from "@/utils/AppError";
 import { formatPersianDate, toPersianDigits } from "@/utils/persian-date";
 import { hashPassword } from "@/utils/password";
-import { notifyUser } from "@/modules/notifications/notifications.service";
+import { notifyUserSafely } from "@/modules/notifications/notifications.service";
 import { advanceWaitlistSlot } from "@/modules/bookings/waitlist.service";
 import type {
   CreateBarberInput,
@@ -317,29 +317,18 @@ export async function updateBarberAccountStatus(
       }
     });
 
-    const notifications = await Promise.allSettled(futureBookings.map((booking) =>
-      notifyUser(booking.customerId, {
-        type: "BOOKING_STATUS_CHANGED",
-        title: "لغو نوبت",
-        body: `نوبت شما برای ${formatPersianDate(booking.date)} ساعت ${toPersianDigits(booking.time)} به دلیل در دسترس نبودن آرایشگر لغو شد`,
-        link: "/customer/bookings",
-      })
+    await Promise.all(futureBookings.map((booking) =>
+      notifyUserSafely(
+        booking.customerId,
+        {
+          type: "BOOKING_STATUS_CHANGED",
+          title: "لغو نوبت",
+          body: `نوبت شما برای ${formatPersianDate(booking.date)} ساعت ${toPersianDigits(booking.time)} به دلیل در دسترس نبودن آرایشگر لغو شد`,
+          link: "/customer/bookings",
+        },
+        `barber-deactivated-booking-cancelled:${booking.id}`,
+      )
     ));
-    const failedNotifications = notifications
-      .map((result, index) => ({ result, booking: futureBookings[index] }))
-      .filter(({ result }) => result.status === "rejected");
-
-    if (failedNotifications.length > 0) {
-      for (const { result, booking } of failedNotifications) {
-        if (result.status === "rejected") {
-          console.error("خطا در ثبت اعلان لغو نوبت", booking.id, result.reason);
-        }
-      }
-      throw new AppError(
-        `حساب غیرفعال و نوبت‌ها لغو شدند، اما ثبت اعلان برای ${failedNotifications.length.toLocaleString("fa-IR")} مشتری ناموفق بود.`,
-        500
-      );
-    }
   }
 
   return getBarberById(id);

@@ -2,7 +2,7 @@ import type { Prisma, Role, Weekday } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { AppError } from "@/utils/AppError";
 import { formatPersianDate, toPersianDigits } from "@/utils/persian-date";
-import { notifyUser } from "@/modules/notifications/notifications.service";
+import { notifyUserSafely } from "@/modules/notifications/notifications.service";
 import {
   advanceWaitlistSlot,
   lockWaitlistSlot,
@@ -611,12 +611,28 @@ export async function createBooking(
   }
 
   // نوتیف برای آرایشگر: نوبت جدید ثبت شد
-  notifyUser(booking.barber.user.id, {
-    type: "BOOKING_CREATED",
-    title: "نوبت جدید",
-    body: `${booking.customer.name} یک نوبت برای ${formatPersianDate(booking.date)} ساعت ${toPersianDigits(booking.time)} ثبت کرد`,
-    link: "/barber/bookings",
-  }).catch(() => {});
+  await Promise.all([
+    notifyUserSafely(
+      booking.barber.user.id,
+      {
+        type: "BOOKING_CREATED",
+        title: "نوبت جدید",
+        body: `${booking.customer.name} یک نوبت برای ${formatPersianDate(booking.date)} ساعت ${toPersianDigits(booking.time)} ثبت کرد`,
+        link: "/barber/bookings",
+      },
+      "booking-created-barber",
+    ),
+    notifyUserSafely(
+      booking.customer.id,
+      {
+        type: "BOOKING_STATUS_CHANGED",
+        title: "رزرو نوبت تایید شد",
+        body: `نوبت شما برای ${formatPersianDate(booking.date)} ساعت ${toPersianDigits(booking.time)} ثبت شد`,
+        link: "/customer/bookings",
+      },
+      "booking-created-customer",
+    ),
+  ]);
 
   return booking;
 }
@@ -794,12 +810,13 @@ export async function updateBookingStatus(
 
   // آپدیت وضعیت نوبت + ثبت لغو + احتمالاً مسدودسازی مشتری، همه تو یه
   // تراکنش — تا اگه هرجاش خطا خورد، هیچ‌کدوم نصفه‌کاره ثبت نشه.
-  const updated = await prisma.$transaction(async (tx) => {
+  const { booking: updated, customerBlocked } = await prisma.$transaction(async (tx) => {
     const result = await tx.booking.update({
       where: { id: bookingId },
       data: { status: newStatus },
       include: bookingIncludes,
     });
+    let customerBlocked = false;
 
     if (newStatus === "CANCELLED") {
       // هر لغو (توسط هر نقشی) اینجا ثبت می‌شه — این جدول تاریخچه‌ی کامل لغوهاست
@@ -832,45 +849,74 @@ export async function updateBookingStatus(
               blockedAt: new Date(),
             },
           });
+          customerBlocked = true;
         }
       }
     }
 
-    return result;
+    return { booking: result, customerBlocked };
   });
 
   // نوتیف‌های تغییر وضعیت نوبت
   if (newStatus === "IN_PROGRESS") {
-    notifyUser(updated.customer.id, {
-      type: "BOOKING_STATUS_CHANGED",
-      title: "شروع سرویس",
-      body: `سرویس شما نزد ${updated.barber.user.name} شروع شد`,
-      link: "/customer/bookings",
-    }).catch(() => {});
+    await notifyUserSafely(
+      updated.customer.id,
+      {
+        type: "BOOKING_STATUS_CHANGED",
+        title: "شروع سرویس",
+        body: `سرویس شما نزد ${updated.barber.user.name} شروع شد`,
+        link: "/customer/bookings",
+      },
+      "booking-started",
+    );
   } else if (newStatus === "COMPLETED") {
-    notifyUser(updated.customer.id, {
-      type: "BOOKING_STATUS_CHANGED",
-      title: "سرویس تمام شد",
-      body: `سرویس شما نزد ${updated.barber.user.name} تمام شد — می‌توانید امتیاز بدید`,
-      link: `/customer/history?review=${updated.id}`,
-    }).catch(() => {});
+    await notifyUserSafely(
+      updated.customer.id,
+      {
+        type: "BOOKING_STATUS_CHANGED",
+        title: "سرویس تمام شد",
+        body: `سرویس شما نزد ${updated.barber.user.name} تمام شد — می‌توانید امتیاز بدید`,
+        link: `/customer/history?review=${updated.id}`,
+      },
+      "booking-completed",
+    );
   } else if (newStatus === "CANCELLED") {
     if (isOwnerCustomer) {
       // مشتری خودش لغو کرد -> به آرایشگر اطلاع بده
-      notifyUser(updated.barber.user.id, {
-        type: "BOOKING_STATUS_CHANGED",
-        title: "لغو نوبت",
-        body: `نوبت ${formatPersianDate(updated.date)} ساعت ${toPersianDigits(updated.time)} توسط مشتری لغو شد`,
-        link: "/barber/bookings",
-      }).catch(() => {});
+      await notifyUserSafely(
+        updated.barber.user.id,
+        {
+          type: "BOOKING_STATUS_CHANGED",
+          title: "لغو نوبت",
+          body: `نوبت ${formatPersianDate(updated.date)} ساعت ${toPersianDigits(updated.time)} توسط مشتری لغو شد`,
+          link: "/barber/bookings",
+        },
+        "booking-cancelled-by-customer",
+      );
     } else {
       // آرایشگر یا ادمین لغو کرد -> به مشتری اطلاع بده
-      notifyUser(updated.customer.id, {
-        type: "BOOKING_STATUS_CHANGED",
-        title: "لغو نوبت",
-        body: `نوبت شما برای ${formatPersianDate(updated.date)} ساعت ${toPersianDigits(updated.time)} لغو شد`,
-        link: "/customer/bookings",
-      }).catch(() => {});
+      await notifyUserSafely(
+        updated.customer.id,
+        {
+          type: "BOOKING_STATUS_CHANGED",
+          title: "لغو نوبت",
+          body: `نوبت شما برای ${formatPersianDate(updated.date)} ساعت ${toPersianDigits(updated.time)} لغو شد`,
+          link: "/customer/bookings",
+        },
+        "booking-cancelled-by-staff",
+      );
+    }
+    if (customerBlocked) {
+      await notifyUserSafely(
+        updated.customer.id,
+        {
+          type: "ACCOUNT_STATUS",
+          title: "حساب شما به‌طور خودکار مسدود شد",
+          body: `با رسیدن تعداد لغوهای نوبت به ${toPersianDigits(String(CUSTOMER_CANCEL_BLOCK_THRESHOLD))}، امکان ثبت نوبت جدید برای حساب شما غیرفعال شد. برای پیگیری با سالن تماس بگیرید.`,
+          link: "/customer/bookings",
+        },
+        "customer-auto-blocked",
+      );
     }
     try {
       await advanceWaitlistSlot(
