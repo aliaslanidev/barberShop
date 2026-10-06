@@ -75,9 +75,14 @@ async function runReminderCheck() {
     } catch (err) {
       console.error("خطا در ارسال یادآوری نوبت", booking.id, err);
       // برای اینکه اجرای بعدی دوباره تلاش کنه
-      await prisma.booking
-        .update({ where: { id: booking.id }, data: { reminderSentAt: null } })
-        .catch(() => {});
+      try {
+        await prisma.booking.update({
+          where: { id: booking.id },
+          data: { reminderSentAt: null },
+        });
+      } catch (resetError) {
+        console.error("خطا در آماده‌سازی دوباره‌ی یادآوری نوبت", booking.id, resetError);
+      }
     }
   }
 }
