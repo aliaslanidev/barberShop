@@ -74,6 +74,7 @@ function startOfYear(d: Date): Date {
 }
 
 type PeriodKey = "TODAY" | "WEEK" | "MONTH" | "YEAR" | "CUSTOM";
+type ReportTab = "BOOKINGS" | "REVENUE";
 
 const PERIOD_LABELS: Record<PeriodKey, string> = {
   TODAY: "امروز",
@@ -151,6 +152,7 @@ export default function AdminReportsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [summary, setSummary] = useState<ApiBookingsSummary | null>(null);
   const [barbers, setBarbers] = useState<ApiBarber[]>([]);
+  const [activeTab, setActiveTab] = useState<ReportTab>("BOOKINGS");
 
   const [revenueBarberId, setRevenueBarberId] = useState<string>("ALL");
   const [period, setPeriod] = useState<PeriodKey>("MONTH");
@@ -247,126 +249,163 @@ export default function AdminReportsPage() {
       <div className="flex flex-col gap-1">
         <h1 className="text-xl font-bold">گزارش‌ها</h1>
         <p className="text-sm text-muted-foreground">
-          آمار کلی نوبت‌ها بر اساس آرایشگر و وضعیت
+          گزارش عملکرد نوبت‌ها و درآمد حاصل از آن‌ها
         </p>
       </div>
 
-      <section
-        aria-label="خلاصه نوبت‌ها"
-        className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5"
+      <div
+        role="group"
+        aria-label="نوع گزارش"
+        className="grid grid-cols-2 gap-2 rounded-xl border border-border bg-[#0e110f] p-1.5"
       >
-        <Card className="col-span-2 bg-[#0e110f] sm:col-span-1">
-          <CardContent className="flex flex-col gap-1 p-4">
-            <span className="text-sm text-muted-foreground">کل نوبت‌ها</span>
-            <span className="text-2xl font-bold">{toPersianDigits(totalCount)}</span>
-          </CardContent>
-        </Card>
-
-        {STATUS_ORDER.map((status) => (
-          <Card key={status} className="bg-[#0e110f]">
-            <CardContent className="flex flex-col gap-1 p-4">
-              <span className="text-sm text-muted-foreground">{STATUS_LABELS[status]}</span>
-              <span className="text-2xl font-bold">{toPersianDigits(summary.byStatus[status])}</span>
-            </CardContent>
-          </Card>
+        {([
+          { value: "BOOKINGS", label: "عملکرد نوبت‌ها" },
+          { value: "REVENUE", label: "درآمد نوبت‌ها" },
+        ] as const).map((tab) => (
+          <button
+            key={tab.value}
+            type="button"
+            aria-pressed={activeTab === tab.value}
+            onClick={() => setActiveTab(tab.value)}
+            className={cn(
+              "min-h-11 rounded-lg px-3 py-2 text-sm font-medium transition-colors sm:px-4",
+              activeTab === tab.value
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+            )}
+          >
+            {tab.label}
+          </button>
         ))}
-      </section>
+      </div>
 
-      <ReportAccordion
-        title="نوبت‌ها به تفکیک آرایشگر"
-        summary={`${toPersianDigits(summary.byBarber.length)} آرایشگر`}
-      >
-        {summary.byBarber.length === 0 ? (
-          <p className="text-sm text-muted-foreground">هنوز آرایشگری ثبت نشده</p>
-        ) : (
-          <div className="flex flex-col gap-4">
-            {summary.byBarber.map((b) => (
-              <div key={b.barberId} className="space-y-1.5">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="min-w-0 truncate text-sm">{b.barberName}</span>
-                  <span className="shrink-0 text-sm font-medium">{toPersianDigits(b.count)} نوبت</span>
-                </div>
-                <div
-                  className="h-2.5 overflow-hidden rounded-full bg-muted"
-                  role="progressbar"
-                  aria-label={`نوبت‌های ${b.barberName}`}
-                  aria-valuemin={0}
-                  aria-valuemax={maxBarberCount}
-                  aria-valuenow={b.count}
-                >
-                  <div
-                    className="h-full rounded-full bg-primary"
-                    style={{ width: `${(b.count / maxBarberCount) * 100}%` }}
-                  />
-                </div>
-              </div>
+      {activeTab === "BOOKINGS" ? (
+        <section
+          aria-label="گزارش عملکرد نوبت‌ها"
+          className="space-y-5"
+        >
+          <section
+            aria-label="خلاصه نوبت‌ها"
+            className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5"
+          >
+            <Card className="col-span-2 bg-[#0e110f] sm:col-span-1">
+              <CardContent className="flex flex-col gap-1 p-4">
+                <span className="text-sm text-muted-foreground">کل نوبت‌ها</span>
+                <span className="text-2xl font-bold">{toPersianDigits(totalCount)}</span>
+              </CardContent>
+            </Card>
+
+            {STATUS_ORDER.map((status) => (
+              <Card key={status} className="bg-[#0e110f]">
+                <CardContent className="flex flex-col gap-1 p-4">
+                  <span className="text-sm text-muted-foreground">{STATUS_LABELS[status]}</span>
+                  <span className="text-2xl font-bold">{toPersianDigits(summary.byStatus[status])}</span>
+                </CardContent>
+              </Card>
             ))}
-          </div>
-        )}
-      </ReportAccordion>
+          </section>
 
-      <ReportAccordion
-        title="نوبت‌ها به تفکیک وضعیت"
-        summary={`${toPersianDigits(totalCount)} نوبت`}
-      >
-        {totalCount === 0 ? (
-          <p className="text-sm text-muted-foreground">هنوز نوبتی ثبت نشده</p>
-        ) : (
-          <>
-            <div
-              className="flex h-3 w-full overflow-hidden rounded-full"
-              role="img"
-              aria-label="نمودار توزیع نوبت‌ها بر اساس وضعیت"
-            >
-              {STATUS_ORDER.map((status) =>
-                summary.byStatus[status] > 0 ? (
-                  <div
-                    key={status}
-                    className={cn(STATUS_STYLES[status])}
-                    style={{
-                      width: `${(summary.byStatus[status] / totalCount) * 100}%`,
-                    }}
-                    title={`${STATUS_LABELS[status]}: ${summary.byStatus[status]}`}
-                  />
-                ) : null,
-              )}
-            </div>
+          <ReportAccordion
+            title="نوبت‌ها به تفکیک آرایشگر"
+            summary={`${toPersianDigits(summary.byBarber.length)} آرایشگر`}
+          >
+            {summary.byBarber.length === 0 ? (
+              <p className="text-sm text-muted-foreground">هنوز آرایشگری ثبت نشده</p>
+            ) : (
+              <div className="flex flex-col gap-4">
+                {summary.byBarber.map((b) => (
+                  <div key={b.barberId} className="space-y-1.5">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="min-w-0 truncate text-sm">{b.barberName}</span>
+                      <span className="shrink-0 text-sm font-medium">{toPersianDigits(b.count)} نوبت</span>
+                    </div>
+                    <div
+                      className="h-2.5 overflow-hidden rounded-full bg-muted"
+                      role="progressbar"
+                      aria-label={`نوبت‌های ${b.barberName}`}
+                      aria-valuemin={0}
+                      aria-valuemax={maxBarberCount}
+                      aria-valuenow={b.count}
+                    >
+                      <div
+                        className="h-full rounded-full bg-primary"
+                        style={{ width: `${(b.count / maxBarberCount) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </ReportAccordion>
 
-            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {STATUS_ORDER.map((status) => (
+          <ReportAccordion
+            title="نوبت‌ها به تفکیک وضعیت"
+            summary={`${toPersianDigits(totalCount)} نوبت`}
+          >
+            {totalCount === 0 ? (
+              <p className="text-sm text-muted-foreground">هنوز نوبتی ثبت نشده</p>
+            ) : (
+              <>
                 <div
-                  key={status}
-                  className="flex items-center justify-between gap-3 rounded-lg bg-secondary/40 px-3 py-2.5 text-sm"
+                  className="flex h-3 w-full overflow-hidden rounded-full"
+                  role="img"
+                  aria-label="نمودار توزیع نوبت‌ها بر اساس وضعیت"
                 >
-                  <span className="flex items-center gap-2">
-                    <span
-                      className={cn(
-                        "h-2.5 w-2.5 shrink-0 rounded-full",
-                        STATUS_STYLES[status],
-                      )}
-                    />
-                    {STATUS_LABELS[status]}
-                  </span>
-                  <span className="font-medium">{summary.byStatus[status]}</span>
+                  {STATUS_ORDER.map((status) =>
+                    summary.byStatus[status] > 0 ? (
+                      <div
+                        key={status}
+                        className={cn(STATUS_STYLES[status])}
+                        style={{
+                          width: `${(summary.byStatus[status] / totalCount) * 100}%`,
+                        }}
+                        title={`${STATUS_LABELS[status]}: ${summary.byStatus[status]}`}
+                      />
+                    ) : null,
+                  )}
                 </div>
-              ))}
-            </div>
-          </>
-        )}
-      </ReportAccordion>
 
-      {/* گزارش مالی — طبق بند ۷.۱، سرور خودش نوبت‌های isBarberOwnRevenue و
-          isPrivateCustomer رو حذف می‌کنه، اینجا فقط فیلتر آرایشگر و بازه‌ی
-          زمانی رو می‌فرستیم */}
+                <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {STATUS_ORDER.map((status) => (
+                    <div
+                      key={status}
+                      className="flex items-center justify-between gap-3 rounded-lg bg-secondary/40 px-3 py-2.5 text-sm"
+                    >
+                      <span className="flex items-center gap-2">
+                        <span
+                          className={cn(
+                            "h-2.5 w-2.5 shrink-0 rounded-full",
+                            STATUS_STYLES[status],
+                          )}
+                        />
+                        {STATUS_LABELS[status]}
+                      </span>
+                      <span className="font-medium">{summary.byStatus[status]}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </ReportAccordion>
+        </section>
+      ) : (
+        <section
+          aria-label="گزارش درآمد نوبت‌ها"
+          className="space-y-5"
+        >
+      {/* درآمد از نوبت‌های سالن محاسبه می‌شود؛ این بخش حسابداری یا پرداخت واقعی نیست. */}
       <Card className="bg-[#0e110f]">
         <CardContent className="flex flex-col gap-4 p-4">
           <div>
-            <h2 className="font-semibold">گزارش مالی سالن</h2>
+            <h2 className="font-semibold">درآمد نوبت‌ها</h2>
             <p className="mt-1 text-xs text-muted-foreground">
               {PERIOD_LABELS[period]} ·{" "}
               {revenueBarberId === "ALL"
                 ? "همه‌ی آرایشگرها"
                 : barbers.find((barber) => barber.id === revenueBarberId)?.user.name}
+            </p>
+            <p className="mt-2 text-xs leading-6 text-muted-foreground">
+              این مبلغ بر اساس نوبت‌های تکمیل‌شده محاسبه شده و نشان‌دهنده‌ی پرداخت واقعی یا حسابداری سالن نیست.
             </p>
           </div>
 
@@ -431,14 +470,14 @@ export default function AdminReportsPage() {
           {period === "CUSTOM" && (!customFrom || !customTo) ? (
             <p className="text-sm text-muted-foreground">هر دو تاریخ «از» و «تا» را انتخاب کنید.</p>
           ) : isRevenueLoading ? (
-            <p className="text-sm text-muted-foreground">در حال دریافت گزارش مالی...</p>
+            <p className="text-sm text-muted-foreground">در حال دریافت درآمد نوبت‌ها...</p>
           ) : !revenue ? (
-            <p className="text-sm text-muted-foreground">خطا در دریافت گزارش مالی</p>
+            <p className="text-sm text-muted-foreground">خطا در دریافت گزارش درآمد نوبت‌ها</p>
           ) : (
             <>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="rounded-lg bg-[#151a17] p-4">
-                  <span className="block text-sm text-muted-foreground">مجموع درآمد سالن</span>
+                  <span className="block text-sm text-muted-foreground">درآمد محاسبه‌شده از نوبت‌ها</span>
                   <span className="text-xl font-bold">{formatToman(revenue.totalRevenue)}</span>
                 </div>
                 <div className="rounded-lg bg-[#151a17] p-4">
@@ -499,6 +538,8 @@ export default function AdminReportsPage() {
           )}
         </CardContent>
       </Card>
+        </section>
+      )}
     </main>
   );
 }
