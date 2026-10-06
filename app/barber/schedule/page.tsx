@@ -116,30 +116,30 @@ export default function BarberSchedulePage() {
   }
 
   return (
-    <div className="max-w-7xl space-y-6">
+    <div className="mx-auto max-w-7xl space-y-6">
       <header>
         <h1 className="text-xl font-bold md:text-2xl">زمان‌بندی کاری</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          روزهای کاری و ساعت‌های قابل رزرو خود را مدیریت کنید.
+          روزهای کاری، ساعت‌های ویژه و محدودیت‌های پذیرش نوبت را مدیریت کنید.
         </p>
       </header>
 
       <div
         className={cn(
-          "grid items-start gap-5",
+          "grid items-stretch gap-4 sm:gap-5",
           barber.manageSchedule && barber.blockSlots ? "lg:grid-cols-2" : "grid-cols-1"
         )}
       >
         {barber.manageSchedule && (
-          <section className="min-w-0 space-y-3">
-            <div>
-              <h2 className="text-lg font-semibold">روزهای کاری</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                ساعت کاری فعلاً ثابت و از ۹ تا ۲۱ است.
-              </p>
-            </div>
-            <Card>
-              <CardContent className="space-y-5 p-4 sm:p-5">
+          <Card className="h-full">
+            <CardContent className="flex h-full flex-col gap-4 p-4 sm:p-5">
+              <div>
+                <h2 className="text-lg font-semibold">روزهای کاری</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  ساعت کاری فعلاً ثابت و از ۹ تا ۲۱ است.
+                </p>
+              </div>
+              <div className="flex flex-1 flex-col justify-between gap-5">
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                   {WEEK_DAYS.map(({ label, value }) => {
                     const isActive = selectedDays.includes(value);
@@ -161,19 +161,30 @@ export default function BarberSchedulePage() {
                     );
                   })}
                 </div>
-                <div className="flex flex-wrap gap-2 border-t border-border pt-4">
-                  <Button variant="outline" onClick={handleCancel} disabled={!isDirty}>
+                <div className="flex flex-col-reverse gap-2 border-t border-border pt-4 sm:flex-row sm:flex-wrap">
+                  <Button
+                    variant="outline"
+                    onClick={handleCancel}
+                    disabled={!isDirty}
+                    className="w-full sm:w-auto"
+                  >
                     لغو تغییرات
                   </Button>
-                  <Button onClick={handleSave} disabled={!isDirty || isSaving}>
+                  <Button
+                    onClick={handleSave}
+                    disabled={!isDirty || isSaving}
+                    className="w-full sm:w-auto"
+                  >
                     {isSaving ? "در حال ذخیره..." : "ذخیره روزهای کاری"}
                   </Button>
                 </div>
-              </CardContent>
-            </Card>
-          </section>
+              </div>
+            </CardContent>
+          </Card>
         )}
-        {barber.blockSlots && <BlockedSlotsManager />}
+        {barber.blockSlots && (
+          <BlockedSlotsManager hasWorkingSchedule={barber.manageSchedule} />
+        )}
       </div>
     </div>
   );

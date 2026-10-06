@@ -30,6 +30,7 @@ const SESSION_SLOTS: string[] = Array.from(
 );
 
 type PendingBlockedTime = { date: string; time: string };
+type BlockedSlotsManagerProps = { hasWorkingSchedule: boolean };
 
 function toISODate(d: Date): string {
   const y = d.getFullYear();
@@ -46,7 +47,7 @@ function formatJalali(isoDate: string): string {
   }).format("dddd D/M/YYYY");
 }
 
-export function BlockedSlotsManager() {
+export function BlockedSlotsManager({ hasWorkingSchedule }: BlockedSlotsManagerProps) {
   const [slots, setSlots] = useState<ApiBlockedSlot[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [date, setDate] = useState<DateObject | null>(null);
@@ -171,30 +172,35 @@ export function BlockedSlotsManager() {
   }
 
   return (
-    <section id="blocked-slots" className="min-w-0 space-y-3 scroll-mt-24">
-      <div>
-        <h2 className="text-lg font-semibold">بستن ساعت‌های خاص</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          ساعت‌هایی را که امکان پذیرش نوبت ندارید، برای تاریخ دلخواه ببندید.
-        </p>
-      </div>
-
-      <Card>
-        <CardContent className="flex flex-col gap-4 p-4 sm:p-5">
-          <div className="flex flex-col gap-2">
-            <Label>تاریخ</Label>
-            <JalaliDatePicker value={date} onChange={handleDateChange} placeholder="انتخاب تاریخ" />
+    <>
+      <Card
+        id="blocked-slots"
+        className={cn(
+          "h-full scroll-mt-24",
+          !hasWorkingSchedule && "lg:col-span-2"
+        )}
+      >
+        <CardContent className="flex h-full flex-col gap-4 p-4 sm:p-5">
+          <div>
+            <h2 className="text-lg font-semibold">بستن ساعت‌های خاص</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              تاریخ را انتخاب کنید، سپس ساعت‌هایی را که امکان پذیرش ندارید مشخص کنید.
+            </p>
           </div>
 
-          {selectedDateStr ? (
+          <div className="flex flex-1 flex-col gap-4">
+            <div className="flex flex-col gap-2">
+              <Label>تاریخ</Label>
+              <JalaliDatePicker value={date} onChange={handleDateChange} placeholder="انتخاب تاریخ" />
+            </div>
+
+            {selectedDateStr ? (
               <div className="flex flex-col gap-2">
                 <Label>ساعت‌های موردنظر</Label>
-                <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
+                <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 xl:grid-cols-6">
                   {SESSION_SLOTS.map((time) => {
                     const isBlocked = blockedTimesForSelectedDate.has(time);
-                    const isSelected = selectedDateStr
-                      ? pendingTimes.has(`${selectedDateStr}|${time}`)
-                      : false;
+                    const isSelected = pendingTimes.has(`${selectedDateStr}|${time}`);
                     return (
                       <button
                         key={time}
@@ -203,7 +209,7 @@ export function BlockedSlotsManager() {
                         aria-pressed={isSelected}
                         onClick={() => toggleSelect(time)}
                         className={cn(
-                          "rounded-lg border-2 px-2 py-2 text-sm font-medium transition-colors",
+                          "min-h-11 rounded-lg border-2 px-2 py-2 text-sm font-medium transition-colors",
                           isBlocked
                             ? "cursor-not-allowed border-red-500 bg-red-500 text-white"
                             : isSelected
@@ -220,14 +226,17 @@ export function BlockedSlotsManager() {
                   قرمز = بسته‌شده؛ رنگی = انتخاب فعلی شما.
                 </p>
               </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">ابتدا یک تاریخ انتخاب کنید.</p>
-          )}
+            ) : (
+              <p className="rounded-lg border border-dashed border-border px-3 py-4 text-center text-sm text-muted-foreground">
+                ابتدا یک تاریخ انتخاب کنید تا ساعت‌های آن نمایش داده شوند.
+              </p>
+            )}
+          </div>
         </CardContent>
       </Card>
 
-      <Card>
-        <CardContent className="space-y-4 p-4 sm:p-5">
+      <Card className="h-full">
+        <CardContent className="flex h-full flex-col gap-4 p-4 sm:p-5">
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-sm font-medium">ساعت‌های انتخابی</p>
@@ -246,7 +255,7 @@ export function BlockedSlotsManager() {
             </p>
           ) : (
             <ul
-              className="max-h-64 space-y-2 overflow-y-auto overscroll-contain pr-1"
+              className="max-h-64 min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain pr-1"
               aria-label="ساعت‌های انتخابی برای بستن"
             >
               {sortedPendingTimes.map(({ key, date: pendingDate, time }) => (
@@ -271,12 +280,13 @@ export function BlockedSlotsManager() {
             </ul>
           )}
 
-          <div className="flex flex-wrap justify-end gap-2 border-t border-border pt-4">
+          <div className="mt-auto flex flex-col-reverse gap-2 border-t border-border pt-4 sm:flex-row sm:flex-wrap sm:justify-end">
             <Button
               type="button"
               variant="outline"
               onClick={cancelChanges}
               disabled={pendingTimes.size === 0 || isSubmitting}
+              className="w-full sm:w-auto"
             >
               لغو تغییرات
             </Button>
@@ -284,6 +294,7 @@ export function BlockedSlotsManager() {
               type="button"
               onClick={handleConfirm}
               disabled={pendingTimes.size === 0 || isSubmitting}
+              className="w-full sm:w-auto"
             >
               {isSubmitting ? "در حال ذخیره..." : "ذخیره تغییرات"}
             </Button>
@@ -291,15 +302,20 @@ export function BlockedSlotsManager() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardContent className="space-y-3 p-4 sm:p-5">
-          <p className="text-sm font-medium">ساعت‌های بسته‌شده</p>
+      <Card className="h-full">
+        <CardContent className="flex h-full flex-col gap-3 p-4 sm:p-5">
+          <div>
+            <h2 className="text-base font-semibold">ساعت‌های بسته‌شده</h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              برای آزادکردن ساعت، آن را از فهرست حذف کنید.
+            </p>
+          </div>
           {isLoading ? (
             <p className="text-sm text-muted-foreground">در حال دریافت اطلاعات...</p>
           ) : slots.length === 0 ? (
             <p className="text-sm text-muted-foreground">هنوز ساعتی بسته نشده است.</p>
           ) : (
-            <div className="max-h-72 space-y-2 overflow-y-auto pr-1">
+            <div className="max-h-72 min-h-0 flex-1 space-y-2 overflow-y-auto overscroll-contain pr-1">
               {slots.map((slot) => (
                 <div
                   key={slot.id}
@@ -324,6 +340,6 @@ export function BlockedSlotsManager() {
           )}
         </CardContent>
       </Card>
-    </section>
+    </>
   );
 }
