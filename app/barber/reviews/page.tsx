@@ -127,7 +127,7 @@ export default function BarberReviewsPage() {
       />
 
       {summary && (
-        <div className="flex flex-wrap items-center gap-6 rounded-2xl border border-border bg-card p-5">
+        <StandardTablePanel className="flex-row flex-wrap items-center gap-6">
           {summary.count > 0 && summary.average != null ? (
             <>
               <div className="text-4xl font-extrabold leading-none text-primary">
@@ -173,7 +173,7 @@ export default function BarberReviewsPage() {
               هنوز امتیازی ثبت نشده
             </span>
           )}
-        </div>
+        </StandardTablePanel>
       )}
 
       <StandardTablePanel
@@ -334,19 +334,12 @@ export default function BarberReviewsPage() {
                         {r.serviceTitle}
                       </p>
                     </div>
-                    <span
-                      className={cn(
-                        "shrink-0 whitespace-nowrap rounded-md border px-2 py-0.5 text-[11px] font-medium",
-                        r.status === "PENDING" &&
-                          "border-amber-500/30 bg-amber-500/10 text-amber-500",
-                        r.status === "APPROVED" &&
-                          "border-emerald-500/30 bg-emerald-500/10 text-emerald-500",
-                        r.status === "REJECTED" &&
-                          "border-red-500/30 bg-red-500/10 text-red-400",
-                      )}
+                    <TableStatusBadge
+                      tone={ratingStatusTone(r.status)}
+                      className="shrink-0 whitespace-nowrap"
                     >
                       {STATUS_LABELS[r.status]}
-                    </span>
+                    </TableStatusBadge>
                   </div>
 
                   <div className="flex w-full items-center justify-between gap-3">

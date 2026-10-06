@@ -4,6 +4,11 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { TableStatusBadge } from "@/components/ui/status-card";
+import {
+  StandardTablePageHeading,
+  StandardTablePanel,
+} from "@/components/ui/standard-table-layout";
 import { useCurrentBarberProfile } from "@/lib/hooks/use-current-barber";
 import { listBookingsApi, ApiError, getBookingServiceTitles, type ApiBooking } from "@/lib/api";
 import { getAuthToken } from "@/lib/data/mock-session";
@@ -95,9 +100,9 @@ export default function BarberDashboardPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-xl font-bold md:text-2xl">سلام {barber.user.name.split(" ")[0]} 👋</h1>
-      </div>
+      <StandardTablePageHeading
+        title={`سلام ${barber.user.name.split(" ")[0]} 👋`}
+      />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
@@ -129,7 +134,7 @@ export default function BarberDashboardPage() {
       {current && (
         <div>
           <h2 className="mb-3 text-sm font-medium text-muted-foreground">در حال انجام</h2>
-          <Card className="border-primary/50">
+          <StandardTablePanel className="border-primary/50">
             <CardContent className="flex items-center justify-between p-5">
               <div>
                 <p className="text-sm font-medium">{current.customer.name}</p>
@@ -137,54 +142,62 @@ export default function BarberDashboardPage() {
                   {getBookingServiceTitles(current)} — ساعت {toPersianDigits(current.time)}
                 </p>
               </div>
-              <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+              <TableStatusBadge tone="info">
                 در حال انجام
-              </span>
+              </TableStatusBadge>
             </CardContent>
-          </Card>
+          </StandardTablePanel>
         </div>
       )}
 
       <div>
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-medium text-muted-foreground">نوبت‌های پیش‌رو</h2>
-          <Button asChild variant="ghost" size="sm">
-            <Link href="/barber/bookings">مشاهده همه نوبت‌ها</Link>
-          </Button>
-        </div>
-
         {upcoming.length === 0 ? (
-          <Card>
+          <StandardTablePanel>
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-sm font-semibold">نوبت‌های پیش‌رو</h2>
+              <Button asChild variant="ghost" size="sm">
+                <Link href="/barber/bookings">مشاهده همه نوبت‌ها</Link>
+              </Button>
+            </div>
             <CardContent className="p-6 text-center text-sm text-muted-foreground">
               نوبت پیش‌رویی ندارید.
             </CardContent>
-          </Card>
+          </StandardTablePanel>
         ) : (
-          <div className="space-y-3">
-            {upcoming.slice(0, UPCOMING_PREVIEW_COUNT).map((a) => {
-              const key = dateKeyOf(a);
-              return (
-                <Card key={a.id}>
-                  <CardContent className="flex items-center justify-between gap-3 p-5">
-                    <div>
-                      <p className="text-sm font-medium">{a.customer.name}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">
+          <StandardTablePanel>
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-sm font-semibold">نوبت‌های پیش‌رو</h2>
+              <Button asChild variant="ghost" size="sm">
+                <Link href="/barber/bookings">مشاهده همه نوبت‌ها</Link>
+              </Button>
+            </div>
+            <div className="flex flex-col gap-2">
+              {upcoming.slice(0, UPCOMING_PREVIEW_COUNT).map((a) => {
+                const key = dateKeyOf(a);
+                return (
+                  <div
+                    key={a.id}
+                    className="flex items-center justify-between gap-3 rounded-lg border border-border bg-background/40 px-4 py-3"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">{a.customer.name}</p>
+                      <p className="mt-1 truncate text-xs text-muted-foreground">
                         {getBookingServiceTitles(a)} — ساعت {toPersianDigits(a.time)}
                       </p>
                     </div>
                     <span className="shrink-0 text-xs text-muted-foreground">
                       {key === today ? "امروز" : formatShortDate(key)}
                     </span>
-                  </CardContent>
-                </Card>
-              );
-            })}
-            {upcomingTotal > UPCOMING_PREVIEW_COUNT && (
-              <p className="text-center text-xs text-muted-foreground">
-                و {toPersianDigits(String(upcomingTotal - UPCOMING_PREVIEW_COUNT))} نوبت دیگر
-              </p>
-            )}
-          </div>
+                  </div>
+                );
+              })}
+              {upcomingTotal > UPCOMING_PREVIEW_COUNT && (
+                <p className="pt-1 text-center text-xs text-muted-foreground">
+                  و {toPersianDigits(String(upcomingTotal - UPCOMING_PREVIEW_COUNT))} نوبت دیگر
+                </p>
+              )}
+            </div>
+          </StandardTablePanel>
         )}
       </div>
     </div>

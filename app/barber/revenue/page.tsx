@@ -14,6 +14,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { JalaliDatePicker } from "@/components/ui/jalali-date-picker";
+import {
+  StandardTablePageHeading,
+  StandardTablePanel,
+} from "@/components/ui/standard-table-layout";
 import { useAuth } from "@/lib/auth-context";
 import { getAuthToken } from "@/lib/data/mock-session";
 import {
@@ -149,26 +153,26 @@ export default function BarberRevenuePage() {
   if (!barber?.managePricing) {
     return (
       <div className="space-y-4">
-        <h1 className="text-xl font-bold md:text-2xl">درآمد من</h1>
-        <Card>
+        <StandardTablePageHeading title="درآمد من" />
+        <StandardTablePanel>
           <CardContent className="p-6 text-sm text-muted-foreground">
             شما اجازه‌ی مشاهده‌ی این گزارش را ندارید.
           </CardContent>
-        </Card>
+        </StandardTablePanel>
       </div>
     );
   }
 
   return (
-    <div className="max-w-lg space-y-6">
-      <h1 className="text-xl font-bold md:text-2xl">درآمد من</h1>
-      <p className="text-sm text-muted-foreground">
-        این گزارش فقط درآمد شخصی خودتان است و هیچ‌کس دیگری (ادمین/مدیر سالن) آن را نمی‌بیند.
-      </p>
+    <div className="space-y-6">
+      <StandardTablePageHeading
+        title="درآمد من"
+        description="این گزارش فقط درآمد شخصی خودتان است و هیچ‌کس دیگری (ادمین/مدیر سالن) آن را نمی‌بیند."
+      />
 
-      <div className="flex flex-wrap gap-2">
+      <StandardTablePanel className="p-3">
         <Select value={period} onValueChange={(v) => setPeriod(v as PeriodKey)}>
-          <SelectTrigger className="w-36">
+          <SelectTrigger className="w-full sm:w-48">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -179,10 +183,8 @@ export default function BarberRevenuePage() {
             ))}
           </SelectContent>
         </Select>
-      </div>
-
-      {period === "CUSTOM" && (
-        <div className="flex flex-wrap items-end gap-3">
+        {period === "CUSTOM" && (
+          <div className="flex flex-wrap items-end gap-3">
           <div className="flex flex-col gap-1">
             <span className="text-xs text-muted-foreground">از تاریخ</span>
             <JalaliDatePicker value={customFrom} onChange={setCustomFrom} placeholder="از" />
@@ -191,8 +193,9 @@ export default function BarberRevenuePage() {
             <span className="text-xs text-muted-foreground">تا تاریخ</span>
             <JalaliDatePicker value={customTo} onChange={setCustomTo} placeholder="تا" />
           </div>
-        </div>
-      )}
+          </div>
+        )}
+      </StandardTablePanel>
 
       {period === "CUSTOM" && (!customFrom || !customTo) ? (
         <p className="text-sm text-muted-foreground">هر دو تاریخ «از» و «تا» را انتخاب کنید.</p>
@@ -218,26 +221,30 @@ export default function BarberRevenuePage() {
             </Card>
           </div>
 
-          <div className="space-y-2">
-            <p className="text-sm font-medium">تفکیک بر اساس سرویس</p>
+          <StandardTablePanel>
+            <h2 className="text-sm font-semibold">تفکیک بر اساس سرویس</h2>
             {!report || report.byService.length === 0 ? (
-              <p className="text-sm text-muted-foreground">هنوز درآمدی ثبت نشده است.</p>
+              <p className="rounded-lg border border-border bg-background/30 p-6 text-center text-sm text-muted-foreground">
+                هنوز درآمدی ثبت نشده است.
+              </p>
             ) : (
-              report.byService.map((s) => (
-                <div
-                  key={s.serviceTitle}
-                  className="flex items-center justify-between rounded-lg bg-secondary/40 px-3 py-2"
-                >
-                  <span className="text-sm">{s.serviceTitle}</span>
-                  <div className="text-left text-sm">
-                    <span className="font-medium">{formatToman(s.revenue)}</span>
-                    <span className="mx-2 text-muted-foreground">·</span>
-                    <span className="text-muted-foreground">{toPersianDigits(s.count)} نوبت</span>
+              <div className="flex flex-col gap-2">
+                {report.byService.map((s) => (
+                  <div
+                    key={s.serviceTitle}
+                    className="flex items-center justify-between gap-3 rounded-lg border border-border bg-background/30 px-4 py-3"
+                  >
+                    <span className="text-sm">{s.serviceTitle}</span>
+                    <div className="text-left text-sm">
+                      <span className="font-medium">{formatToman(s.revenue)}</span>
+                      <span className="mx-2 text-muted-foreground">·</span>
+                      <span className="text-muted-foreground">{toPersianDigits(s.count)} نوبت</span>
+                    </div>
                   </div>
-                </div>
-              ))
+                ))}
+              </div>
             )}
-          </div>
+          </StandardTablePanel>
         </>
       )}
     </div>

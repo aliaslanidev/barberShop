@@ -2,11 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Card, CardContent } from "@/components/ui/card";
-import { StatusCard, StatusChip } from "@/components/ui/status-card";
+import { StatusCard, TableStatusBadge } from "@/components/ui/status-card";
 import { Button } from "@/components/ui/button";
 import { BookingPagination } from "@/components/booking-pagination";
-import { cn } from "@/lib/utils";
+import {
+  StandardTableFilterTabs,
+  StandardTablePageHeading,
+  StandardTablePanel,
+} from "@/components/ui/standard-table-layout";
 import { bookingStatusTone } from "@/lib/status-tones";
 import {
   listBookingsApi,
@@ -170,40 +173,35 @@ export default function BarberBookingsPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-bold md:text-2xl">نوبت‌ها</h1>
+      <StandardTablePageHeading title="نوبت‌ها" />
 
-      <div className="flex gap-2 rounded-lg bg-secondary p-1">
-        {TABS.map((t) => (
-          <button
-            key={t.key}
-            type="button"
-            onClick={() => { setTab(t.key); setPage(1); }}
-            className={cn(
-              "flex-1 rounded-md py-2 text-sm font-medium transition-colors",
-              tab === t.key ? "bg-primary text-primary-foreground" : "text-muted-foreground",
-            )}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <StandardTablePanel className="p-3">
+        <StandardTableFilterTabs
+          items={TABS.map(({ key, label }) => ({ value: key, label }))}
+          value={tab}
+          onChange={(value) => {
+            setTab(value);
+            setPage(1);
+          }}
+          ariaLabel="فیلتر بازه نوبت‌ها"
+        />
+      </StandardTablePanel>
 
-      {groups.length === 0 ? (
-        <Card>
-          <CardContent className="p-8 text-center text-sm text-muted-foreground">
+      <StandardTablePanel>
+        {groups.length === 0 ? (
+          <div className="rounded-lg border border-border bg-background/30 p-8 text-center text-sm text-muted-foreground">
             {EMPTY_MESSAGES[tab]}
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-6">
-          {groups.map(([dateKey, bookings]) => (
-            <div key={dateKey} className="space-y-3">
+          </div>
+        ) : (
+          <div className="flex flex-col gap-5">
+            {groups.map(([dateKey, bookings]) => (
+              <div key={dateKey} className="flex flex-col gap-3">
               <h2 className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                 {formatDateLabel(dateKey)}
                 {dateKey === today && (
-                  <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">
+                  <TableStatusBadge tone="info">
                     امروز
-                  </span>
+                  </TableStatusBadge>
                 )}
               </h2>
 
@@ -211,14 +209,17 @@ export default function BarberBookingsPage() {
                 <StatusCard
                   key={a.id}
                   tone={bookingStatusTone(a.status)}
-                  contentClassName="flex flex-wrap items-center justify-between gap-3 pe-5 py-5"
+                  showTint={false}
+                  accentClassName="bg-primary"
+                  className="bg-background/30"
+                  contentClassName="flex flex-wrap items-center justify-between gap-3 pe-5 py-3"
                 >
                     <div>
                       <p className="text-sm font-medium">{a.customer.name}</p>
                       <div className="mt-1 flex flex-wrap items-center gap-2">
-                        <StatusChip tone={bookingStatusTone(a.status)}>
+                        <TableStatusBadge tone={bookingStatusTone(a.status)}>
                           {statusLabel[a.status]}
-                        </StatusChip>
+                        </TableStatusBadge>
                         <p className="text-xs text-muted-foreground">
                           {getBookingServiceTitles(a)} — ساعت {toPersianDigits(a.time)} ·{" "}
                           {formatPrice(a.price ?? a.service.priceValue)}
@@ -246,10 +247,11 @@ export default function BarberBookingsPage() {
                 </StatusCard>
               ))}
             </div>
-          ))}
-        </div>
-      )}
-      <BookingPagination page={page} totalPages={totalPages} total={total} pageSize={PAGE_SIZE} onPageChange={setPage} />
+            ))}
+          </div>
+        )}
+        <BookingPagination page={page} totalPages={totalPages} total={total} pageSize={PAGE_SIZE} onPageChange={setPage} />
+      </StandardTablePanel>
     </div>
   );
 }

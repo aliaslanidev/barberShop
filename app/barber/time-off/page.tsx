@@ -7,13 +7,16 @@ import DateObject from "react-date-object";
 import persian from "react-date-object/calendars/persian";
 import persian_fa from "react-date-object/locales/persian_fa";
 
-import { Card, CardContent } from "@/components/ui/card";
-import { StatusCard, StatusChip } from "@/components/ui/status-card";
+import { StatusCard, TableStatusBadge } from "@/components/ui/status-card";
 import { leaveRequestStatusTone } from "@/lib/status-tones";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { JalaliDatePicker } from "@/components/ui/jalali-date-picker";
+import {
+  StandardTablePageHeading,
+  StandardTablePanel,
+} from "@/components/ui/standard-table-layout";
 import { useAuth } from "@/lib/auth-context";
 import { getAuthToken } from "@/lib/data/mock-session";
 import {
@@ -144,16 +147,19 @@ export default function BarberTimeOffPage() {
   }
 
   return (
-    <div className="max-w-lg space-y-6">
-      <h1 className="text-xl font-bold md:text-2xl">مرخصی</h1>
-      <p className="text-sm text-muted-foreground">
-        {canManageDirectly
-          ? "مرخصی‌ای که ثبت کنی مستقیم اعمال می‌شه، بدون نیاز به تایید."
-          : "درخواست مرخصی‌ات باید توسط مدیر سالن تایید بشه."}
-      </p>
+    <div className="space-y-6">
+      <StandardTablePageHeading
+        title="مرخصی"
+        description={
+          canManageDirectly
+            ? "مرخصی‌ای که ثبت کنی مستقیم اعمال می‌شه، بدون نیاز به تایید."
+            : "درخواست مرخصی‌ات باید توسط مدیر سالن تایید بشه."
+        }
+      />
 
-      <Card>
-        <CardContent className="flex flex-col gap-4 p-5">
+      <StandardTablePanel className="max-w-2xl">
+        <h2 className="text-sm font-semibold">ثبت مرخصی</h2>
+        <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
             <Label>تاریخ</Label>
             <JalaliDatePicker value={date} onChange={setDate} placeholder="انتخاب تاریخ" />
@@ -172,16 +178,17 @@ export default function BarberTimeOffPage() {
           <Button onClick={handleSubmit} disabled={!date || isSubmitting}>
             {isSubmitting ? "..." : canManageDirectly ? "ثبت مرخصی" : "ارسال درخواست مرخصی"}
           </Button>
-        </CardContent>
-      </Card>
+        </div>
+      </StandardTablePanel>
 
       {timeOffs.length > 0 && (
-        <div className="space-y-2">
-          <p className="text-sm font-medium">مرخصی‌های ثبت‌شده</p>
+        <StandardTablePanel>
+          <h2 className="text-sm font-semibold">مرخصی‌های ثبت‌شده</h2>
+          <div className="flex flex-col gap-2">
           {timeOffs.map((t) => (
             <div
               key={t.id}
-              className="flex items-center justify-between rounded-lg bg-secondary/40 px-3 py-2"
+              className="flex items-center justify-between rounded-lg border border-border bg-background/30 px-4 py-2.5"
             >
               <span className="text-sm">{formatJalali(t.date.slice(0, 10))}</span>
               {canManageDirectly && (
@@ -198,27 +205,31 @@ export default function BarberTimeOffPage() {
               )}
             </div>
           ))}
-        </div>
+          </div>
+        </StandardTablePanel>
       )}
 
       {leaveRequests.length > 0 && (
-        <div className="space-y-2">
-          <p className="text-sm font-medium">درخواست‌های مرخصی</p>
+        <StandardTablePanel>
+          <h2 className="text-sm font-semibold">درخواست‌های مرخصی</h2>
+          <div className="flex flex-col gap-2">
           {leaveRequests.map((r) => (
             <StatusCard
               key={r.id}
               tone={leaveRequestStatusTone(r.status)}
+              showTint={false}
+              accentClassName="bg-primary"
+              className="bg-background/30"
               contentClassName="flex items-center justify-between gap-3 pe-3 py-2"
             >
               <div className="text-sm">
                 <span>{formatJalali(r.date.slice(0, 10))}</span>
                 <span className="mx-2 text-muted-foreground">—</span>
-                <StatusChip
+                <TableStatusBadge
                   tone={leaveRequestStatusTone(r.status)}
-                  className="px-2 py-0.5"
                 >
                   {STATUS_LABELS[r.status]}
-                </StatusChip>
+                </TableStatusBadge>
               </div>
               {r.status === "PENDING" && (
                 <Button
@@ -234,7 +245,8 @@ export default function BarberTimeOffPage() {
               )}
             </StatusCard>
           ))}
-        </div>
+          </div>
+        </StandardTablePanel>
       )}
     </div>
   );
