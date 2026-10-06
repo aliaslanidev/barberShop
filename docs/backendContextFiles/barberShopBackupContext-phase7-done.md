@@ -194,7 +194,7 @@ module/controller/route/service بک‌اندشون ساخته نشده.
   برگردونده می‌شه، امتیازش (اگه ثبت شده) رو هم همراه داره.
 - منطق availability (`getAvailableSlots`, `getSlotsWithStatus`,
   `getAvailableDatesInRange`) بدون تغییر نسبت به فاز قبل کار می‌کنه:
-  چک تعطیلی/مرخصی/نوبت‌های موجود/بلاک‌شده/هولدهای فعال.
+  چک تعطیلی/مرخصی/نوبت‌های موجود/بسته‌شده/هولدهای فعال.
 - `updateBookingStatus` مجوزها: `IN_PROGRESS`/`COMPLETED` فقط آرایشگر خودِ
   نوبت یا ادمین/مدیر؛ `CANCELLED` مشتری خودِ نوبت، یا آرایشگر با
   `cancelOwnBookings`، یا ادمین/مدیر.
@@ -298,7 +298,7 @@ PushSubscription  id, userId, endpoint(unique), p256dh, auth
 | 11 | قیمت آرایشگر | `BarberService.customPrice` nullable، فقط با `managePricing` |
 | 12 | مرخصی | با پرمیشن مستقیم، بدونش `LeaveRequest` |
 | 13 | ساعات کاری | ثابت و سراسری سالن (۹–۲۱) |
-| 14 | هولد اسلات | ۵ دقیقه، بدون cron، endpointهای عمومی |
+| 14 | نگه‌داری بازه زمانی | ۵ دقیقه، بدون cron، endpointهای عمومی |
 | 15 | قیمت ثبت‌شده‌ی نوبت | موقع رزرو تو `Booking.price` ذخیره و ثابت می‌مونه |
 | 16 | نمایش قیمت به مشتری | همیشه قیمت همون آرایشگر |
 | 17 | بعد از ثبت رزرو | صفحه‌ی پیش‌فاکتور/اطلاعیه |

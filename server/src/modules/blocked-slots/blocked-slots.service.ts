@@ -20,7 +20,7 @@ async function getOwnBarberProfileWithPermission(userId: string) {
   const barberProfile = await prisma.barberProfile.findUnique({ where: { userId } });
   if (!barberProfile) throw new AppError("پروفایل آرایشگر پیدا نشد", 404);
   if (!barberProfile.blockSlots) {
-    throw new AppError("شما اجازه‌ی بلاک‌کردن اسلات را ندارید", 403);
+    throw new AppError("شما اجازه‌ی بستن ساعت‌های خاص را ندارید", 403);
   }
   return barberProfile;
 }
@@ -58,7 +58,7 @@ export async function createOwnBlockedSlot(userId: string, input: CreateBlockedS
     },
   });
   if (existingBooking) {
-    throw new AppError("این اسلات نوبت تاییدشده دارد و قابل بلاک‌کردن نیست", 409);
+    throw new AppError("برای این ساعت نوبت تاییدشده ثبت شده و نمی‌توان آن را بست", 409);
   }
 
   return prisma.blockedSlot.upsert({
@@ -83,7 +83,7 @@ export async function deleteOwnBlockedSlot(userId: string, id: string) {
 
   const slot = await prisma.blockedSlot.findUnique({ where: { id } });
   if (!slot || slot.barberId !== barberProfile.id) {
-    throw new AppError("اسلات بلاک‌شده پیدا نشد", 404);
+    throw new AppError("محدودیت این ساعت پیدا نشد", 404);
   }
 
   await prisma.blockedSlot.delete({ where: { id } });

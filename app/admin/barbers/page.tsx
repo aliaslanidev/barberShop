@@ -66,7 +66,7 @@ const OPTIONAL_PERMISSIONS: {
   { key: "managePricing", label: "مدیریت قیمت" },
   { key: "manageSchedule", label: "مدیریت زمان‌بندی" },
   { key: "manageTimeOff", label: "مدیریت مرخصی" },
-  { key: "blockSlots", label: "بلاک کردن اسلات" },
+  { key: "blockSlots", label: "بستن ساعت‌های خاص" },
   { key: "cancelOwnBookings", label: "کنسل کردن نوبت تاییدشده" },
   { key: "viewCustomers", label: "دیدن لیست مشتری‌ها" },
 ];

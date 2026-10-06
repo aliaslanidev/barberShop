@@ -20,7 +20,7 @@ const PERMISSION_ITEMS: { key: keyof BarberPermissions; label: string }[] = [
   { key: "manage_pricing", label: "مدیریت قیمت‌گذاری" },
   { key: "manage_schedule", label: "مدیریت زمان‌بندی" },
   { key: "manage_time_off", label: "ثبت مرخصی" },
-  { key: "block_slots", label: "بلاک کردن اسلات" },
+  { key: "block_slots", label: "بستن ساعت‌های خاص" },
   { key: "cancel_own_bookings", label: "کنسل نوبت‌های خودش" },
 ];
 

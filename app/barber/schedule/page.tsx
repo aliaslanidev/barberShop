@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
 import { getAuthToken } from "@/lib/data/mock-session";
+import { BlockedSlotsManager } from "@/components/barber/blocked-slots-manager";
 import {
   listBarbers,
   updateMyWorkingDaysApi,
@@ -56,6 +57,15 @@ export default function BarberSchedulePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
+  useEffect(() => {
+    if (barber && window.location.hash === "#blocked-slots") {
+      document.getElementById("blocked-slots")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }
+  }, [barber]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-10 text-sm text-muted-foreground">
@@ -64,20 +74,20 @@ export default function BarberSchedulePage() {
     );
   }
 
-  if (!barber?.manageSchedule) {
+  if (!barber?.manageSchedule && !barber?.blockSlots) {
     return (
       <div className="space-y-4">
         <h1 className="text-xl font-bold md:text-2xl">زمان‌بندی کاری</h1>
         <Card>
           <CardContent className="p-6 text-sm text-muted-foreground">
-            زمان‌بندی شما توسط سالن تعیین می‌شود.
+            شما اجازه‌ی مدیریت زمان‌بندی یا بستن ساعت‌های خاص را ندارید.
           </CardContent>
         </Card>
       </div>
     );
   }
 
-  const isDirty = !sameDaySet(selectedDays, barber.workingDays);
+  const isDirty = barber.manageSchedule && !sameDaySet(selectedDays, barber.workingDays);
 
   function toggleDay(day: ApiWeekday) {
     setSelectedDays((prev) =>
@@ -106,38 +116,64 @@ export default function BarberSchedulePage() {
   }
 
   return (
-    <div className="max-w-lg space-y-6">
-      <h1 className="text-xl font-bold md:text-2xl">زمان‌بندی کاری</h1>
-      <p className="text-sm text-muted-foreground">
-        روزهای کاری خود را انتخاب کنید (ساعت کاری فعلاً ثابت ۹ تا ۲۱ است).
-      </p>
-      <div className="flex flex-wrap gap-2">
-        {WEEK_DAYS.map(({ label, value }) => {
-          const isActive = selectedDays.includes(value);
-          return (
-            <button
-              key={value}
-              type="button"
-              onClick={() => toggleDay(value)}
-              className={cn(
-                "rounded-lg border px-4 py-2 text-sm transition-colors",
-                isActive
-                  ? "border-primary bg-primary/10 text-primary"
-                  : "border-border bg-card text-muted-foreground"
-              )}
-            >
-              {label}
-            </button>
-          );
-        })}
-      </div>
-      <div className="flex gap-2">
-        <Button variant="outline" onClick={handleCancel} disabled={!isDirty}>
-          لغو
-        </Button>
-        <Button onClick={handleSave} disabled={!isDirty || isSaving}>
-          {isSaving ? "..." : "ذخیره تغییرات"}
-        </Button>
+    <div className="max-w-7xl space-y-6">
+      <header>
+        <h1 className="text-xl font-bold md:text-2xl">زمان‌بندی کاری</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          روزهای کاری و ساعت‌های قابل رزرو خود را مدیریت کنید.
+        </p>
+      </header>
+
+      <div
+        className={cn(
+          "grid items-start gap-5",
+          barber.manageSchedule && barber.blockSlots ? "lg:grid-cols-2" : "grid-cols-1"
+        )}
+      >
+        {barber.manageSchedule && (
+          <section className="min-w-0 space-y-3">
+            <div>
+              <h2 className="text-lg font-semibold">روزهای کاری</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                ساعت کاری فعلاً ثابت و از ۹ تا ۲۱ است.
+              </p>
+            </div>
+            <Card>
+              <CardContent className="space-y-5 p-4 sm:p-5">
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  {WEEK_DAYS.map(({ label, value }) => {
+                    const isActive = selectedDays.includes(value);
+                    return (
+                      <button
+                        key={value}
+                        type="button"
+                        aria-pressed={isActive}
+                        onClick={() => toggleDay(value)}
+                        className={cn(
+                          "min-h-11 rounded-lg border px-3 py-2 text-sm transition-colors",
+                          isActive
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border bg-card text-muted-foreground hover:bg-secondary"
+                        )}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="flex flex-wrap gap-2 border-t border-border pt-4">
+                  <Button variant="outline" onClick={handleCancel} disabled={!isDirty}>
+                    لغو تغییرات
+                  </Button>
+                  <Button onClick={handleSave} disabled={!isDirty || isSaving}>
+                    {isSaving ? "در حال ذخیره..." : "ذخیره روزهای کاری"}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </section>
+        )}
+        {barber.blockSlots && <BlockedSlotsManager />}
       </div>
     </div>
   );

@@ -247,7 +247,7 @@ server/
   - `managePricing` — تعیین قیمت خودش (وگرنه از قیمت پیش‌فرض سالن استفاده می‌کنه)
   - `manageSchedule` — تعیین ساعات کاری خودش
   - `manageTimeOff` — ثبت مستقیم مرخصی بدون تایید ادمین
-  - `blockSlots` — بستن دستی یک اسلات زمانی خاص
+  - `blockSlots` — بستن دستی یک بازه زمانی خاص
   - `cancelOwnBookings` — لغو نوبت‌های تاییدشده‌ی خودش
 - پرمیشن‌های ثابت (به همه آرایشگرها خودکار تعلق می‌گیره): دیدن داشبورد خودش،
   نوبت‌های خودش، مشتری‌های خودش، تاریخچه‌ی خودش، شروع/پایان سرویس.
@@ -411,16 +411,16 @@ server/
 
 > ✅ ماژول bookings بک‌اند (`server/src/modules/bookings/`):
 > - فرض معماری: چون `Service` فیلد duration نداره، هر نوبت **۶۰ دقیقه‌ی
->   ثابت** در نظر گرفته می‌شه (اسلات‌ها از `WorkingHours.openTime` تا
+>   ثابت** در نظر گرفته می‌شه (بازه‌های زمانی از `WorkingHours.openTime` تا
 >   `closeTime` ساعتی تولید می‌شن).
 > - `getAvailableSlots(barberId, date)`: یه روز رو چک می‌کنه (تعطیل/مرخصی/
->   ساعت‌کاری/نوبت‌های `status != CANCELLED`) و اسلات‌های آزاد اون روز رو
+>   ساعت‌کاری/نوبت‌های `status != CANCELLED`) و بازه‌های زمانی آزاد اون روز رو
 >   برمی‌گردونه. اندپوینت عمومی: `GET /bookings/availability?barberId=&date=`.
 > - `getAvailableDatesInRange(barberId, from, to)`: نسخه‌ی بهینه برای
 >   رنگ‌کردن تقویم — فقط ۳ کوئری رو کل بازه (نه N کوئری جدا). اندپوینت
 >   عمومی: `GET /bookings/availability-range?barberId=&from=&to=`. فرانت
 >   ازش برای بازه‌ی ۳۰ روزه استفاده می‌کنه (`CALENDAR_WINDOW_DAYS`).
-> - `createBooking`: قبل از ساخت، اسلات رو دوباره از `getAvailableSlots`
+> - `createBooking`: قبل از ساخت، بازه زمانی رو دوباره از `getAvailableSlots`
 >   چک می‌کنه (race condition ساده جلوگیری می‌شه، نه قفل واقعی دیتابیس).
 > - `updateBookingStatus`: منطق مجوز CONFIRMED→IN_PROGRESS→COMPLETED فقط
 >   برای آرایشگر خودِ نوبت یا ادمین/مدیر؛ CANCELLED برای مشتری خودِ نوبت،

@@ -22,7 +22,7 @@ import {
 export const bookingsRouter = Router();
 
 // عمومی — صفحه‌ی بوکینگ قبل از لاگین این‌ها رو صدا می‌زنه: چک availability
-// و ساخت/تمدید/آزادسازی هولدِ موقت اسلات، چون هنوز مشتری لاگین نکرده
+// و ساخت/تمدید/آزادسازی هولدِ موقت بازه زمانی، چون هنوز مشتری لاگین نکرده
 // (لاگین/ثبت‌نام تازه تو مرحله‌ی auth اتفاق می‌افته، بعد از انتخاب ساعت)
 bookingsRouter.get("/availability", asyncHandler(availabilityHandler));
 bookingsRouter.get("/availability-range", asyncHandler(availabilityRangeHandler));

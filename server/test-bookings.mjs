@@ -34,7 +34,7 @@ function toISODate(d) {
 }
 
 async function findOpenDate(barberId) {
-  // تا ۱۴ روز جلو می‌گرده تا یه روزی با اسلات خالی پیدا کنه (جمعه‌ها معمولاً تعطیلن)
+  // تا ۱۴ روز جلو می‌گرده تا یه روزی با بازه‌ی خالی پیدا کنه (جمعه‌ها معمولاً تعطیلن)
   for (let i = 1; i <= 14; i++) {
     const d = new Date();
     d.setDate(d.getDate() + i);
@@ -70,9 +70,9 @@ async function main() {
 
   // ---------- availability ----------
   const openSlot = await findOpenDate(barber.id);
-  logResult("پیدا کردن یه تاریخ با اسلات خالی (تا ۱۴ روز جلو)", !!openSlot, 200, openSlot);
+  logResult("پیدا کردن یه تاریخ با بازه‌ی خالی (تا ۱۴ روز جلو)", !!openSlot, 200, openSlot);
   if (!openSlot) {
-    console.log("\n⚠️ هیچ اسلات خالی‌ای پیدا نشد — احتمالاً WorkingHours خالیه.");
+    console.log("\n⚠️ هیچ بازه‌ی خالی‌ای پیدا نشد — احتمالاً WorkingHours خالیه.");
     console.log("   npx tsx src/scripts/seed-working-hours.ts رو اجرا کن و دوباره تست کن.");
     return;
   }
@@ -106,13 +106,13 @@ async function main() {
   logResult("POST /bookings", created.status === 201, created.status, created.data);
   const bookingId = created.data?.id;
 
-  // ---------- همون اسلات دیگه نباید تو availability باشه ----------
+  // ---------- همون بازه‌ی زمانی دیگه نباید تو availability باشه ----------
   const afterCreate = await req(
     "GET",
     `/bookings/availability?barberId=${barber.id}&date=${openSlot.dateStr}`
   );
   const stillThere = afterCreate.data?.includes(openSlot.slot);
-  logResult("اسلات رزروشده دیگه تو availability نیست", stillThere === false, afterCreate.status, afterCreate.data);
+  logResult("بازه‌ی رزروشده دیگه تو availability نیست", stillThere === false, afterCreate.status, afterCreate.data);
 
   // ---------- مشتری لیست نوبت‌های خودش رو می‌بینه ----------
   const customerBookings = await req("GET", "/bookings", { token: customerToken });

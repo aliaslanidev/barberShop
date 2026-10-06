@@ -39,7 +39,7 @@ const WEEKDAY_BY_JS_DAY: Record<number, Weekday> = {
 
 const SLOT_DURATION_MINUTES = 60;
 
-// مدت زمانی که یه اسلات بعد از انتخاب‌شدن (قبل از ثبت نهایی) برای همون
+// مدت زمانی که یه بازه زمانی بعد از انتخاب‌شدن (قبل از ثبت نهایی) برای همون
 // مشتری نگه داشته می‌شه؛ تا این مدت بقیه نمی‌تونن همون ساعت رو انتخاب کنن.
 const HOLD_DURATION_MINUTES = 5;
 
@@ -161,7 +161,7 @@ export async function getAvailableSlots(
   );
 }
 
-// نسخه‌ی «همه‌ی اسلات‌ها + وضعیت» — برای UI مشتری، تا اسلات‌های پر هم
+// نسخه‌ی «همه‌ی بازه‌های زمانی + وضعیت» — برای UI مشتری، تا بازه‌های زمانی پر هم
 // دیده بشن (قرمز/غیرفعال) نه اینکه از لیست کلاً حذف بشن
 export interface SlotStatus {
   time: string;
@@ -182,7 +182,7 @@ export async function getSlotsWithStatus(
   const dateOnly = parseDateOnly(dateStr);
   const weekday = WEEKDAY_BY_JS_DAY[dateOnly.getUTCDay()];
 
-  // اگه روزکاری آرایشگر نیست، اصلاً هیچ اسلاتی (حتی قرمز) نمایش نمی‌دیم
+  // اگه روزکاری آرایشگر نیست، اصلاً هیچ بازه‌ای (حتی قرمز) نمایش نمی‌دیم
   if (!barberWorksOnWeekday(barber.workingDays, weekday)) return [];
 
   const workingHours = await prisma.workingHours.findUnique({
@@ -332,7 +332,7 @@ export async function getAvailableDatesInRange(
   return result;
 }
 
-// ==================== Slot Hold (نگه‌داری موقت اسلات حین پروسه‌ی رزرو) ====================
+// ==================== Slot Hold (نگه‌داری موقت بازه زمانی حین پروسه‌ی رزرو) ====================
 //
 // وقتی مشتری یه ساعت رو انتخاب می‌کنه (قبل از تکمیل فرم/لاگین/تایید نهایی)،
 // یه رکورد SlotHold با انقضای ۵ دقیقه‌ای ساخته می‌شه تا مشتری‌های دیگه
@@ -355,7 +355,7 @@ export async function createOrExtendHold(
   const availableSlots = await getAvailableSlots(barberId, dateStr);
   if (!availableSlots.includes(time)) {
     throw new AppError(
-      "این اسلات زمانی در دسترس نیست، لطفاً زمان دیگری انتخاب کنید",
+      "این بازه زمانی در دسترس نیست، لطفاً زمان دیگری انتخاب کنید",
       409,
     );
   }
@@ -449,7 +449,7 @@ export async function createBooking(
   if (serviceIds.length === 0 || serviceIds.length > 2) {
     throw new AppError("برای هر نوبت باید یک یا دو سرویس انتخاب کنید", 400);
   }
-  // اگه مشتری هولدهمین اسلات رو داره، تو چک زیر خودش مانع خودش نشه
+  // اگه مشتری هولدهمین بازه زمانی رو داره، تو چک زیر خودش مانع خودش نشه
   let ownHoldId: string | undefined;
   if (input.holdId) {
     const hold = await prisma.slotHold.findUnique({
@@ -475,7 +475,7 @@ export async function createBooking(
   );
   if (!availableSlots.includes(input.time)) {
     throw new AppError(
-      "این اسلات زمانی دیگر در دسترس نیست، لطفاً زمان دیگری انتخاب کنید",
+      "این بازه زمانی دیگر در دسترس نیست، لطفاً زمان دیگری انتخاب کنید",
       409,
     );
   }
@@ -508,7 +508,7 @@ export async function createBooking(
     ]);
     if (existingBooking) {
       throw new AppError(
-        "این اسلات زمانی دیگر در دسترس نیست، لطفاً زمان دیگری انتخاب کنید",
+        "این بازه زمانی دیگر در دسترس نیست، لطفاً زمان دیگری انتخاب کنید",
         409,
       );
     }
@@ -518,7 +518,7 @@ export async function createBooking(
       activeHold.id !== ownHoldId
     ) {
       throw new AppError(
-        "این اسلات زمانی در حال رزرو است؛ لطفاً دوباره انتخاب کنید",
+        "این بازه زمانی در حال رزرو است؛ لطفاً دوباره انتخاب کنید",
         409,
       );
     }

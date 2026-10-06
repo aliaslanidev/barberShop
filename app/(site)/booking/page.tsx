@@ -287,7 +287,7 @@ export default function BookingPage() {
   const [availableSlots, setAvailableSlots] = useState<ApiSlotStatus[]>([]);
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
 
-  // ---------- Slot Hold: نگه‌داری موقت اسلات از لحظه‌ی انتخاب تا تایید نهایی ----------
+  // ---------- Slot Hold: نگه‌داری موقت بازه زمانی از لحظه‌ی انتخاب تا تایید نهایی ----------
   const [holdId, setHoldId] = useState<string | null>(null);
   const [holdExpiresAt, setHoldExpiresAt] = useState<number | null>(null); // timestamp (ms)
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
@@ -352,7 +352,7 @@ export default function BookingPage() {
     return () => clearInterval(interval);
   }, [holdExpiresAt]);
 
-  // روزهایی که تو ۳۰ روز آینده حداقل یه اسلات خالی دارن — برای رنگ‌کردن تقویم
+  // روزهایی که تو ۳۰ روز آینده حداقل یه بازه زمانی خالی دارن — برای رنگ‌کردن تقویم
   const [availableDates, setAvailableDates] = useState<Set<string>>(new Set());
   const [isLoadingDates, setIsLoadingDates] = useState(false);
   const CALENDAR_WINDOW_DAYS = 30;
@@ -750,7 +750,7 @@ export default function BookingPage() {
       setHoldExpiresAt(null);
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "خطا در ثبت نوبت، دوباره تلاش کنید");
-      // اسلات از دست رفته (هولد منقضی شده یا کس دیگه‌ای زودتر گرفتتش) —
+      // بازه زمانی از دست رفته (هولد منقضی شده یا کس دیگه‌ای زودتر گرفتتش) —
       // برش‌گردون به مرحله‌ی انتخاب ساعت با لیست به‌روز
       if (err instanceof ApiError && err.status === 409) {
         setHoldId(null);

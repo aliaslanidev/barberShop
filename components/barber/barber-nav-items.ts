@@ -1,5 +1,4 @@
 import {
-  Ban,
   CalendarClock,
   CalendarX,
   Clock,
@@ -39,18 +38,11 @@ export function getBarberNavItems(
       icon: Scissors,
     });
   }
-  if (barber.manageSchedule) {
+  if (barber.manageSchedule || barber.blockSlots) {
     managedItems.push({
       href: "/barber/schedule",
       label: "زمان‌بندی",
       icon: Clock,
-    });
-  }
-  if (barber.blockSlots) {
-    managedItems.push({
-      href: "/barber/block-slots",
-      label: "بلاک کردن اسلات",
-      icon: Ban,
     });
   }
   if (barber.managePricing) {
