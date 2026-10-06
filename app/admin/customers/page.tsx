@@ -30,6 +30,7 @@ import { StatusCard, StatusChip } from "@/components/ui/status-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { StandardTable } from "@/components/ui/standard-table";
 import {
   Dialog,
   DialogContent,
@@ -132,8 +133,7 @@ function SortHeader({ label, sortKey, activeKey, dir, onSort }: SortHeaderProps)
       type="button"
       onClick={() => onSort(sortKey)}
       className={cn(
-        "inline-flex items-center gap-1 font-medium transition-colors hover:text-foreground",
-        isActive && "text-foreground",
+        "inline-flex items-center gap-1 font-medium text-primary/80 transition-colors hover:text-primary/80",
       )}
     >
       {label}
@@ -379,11 +379,15 @@ export default function AdminCustomersPage() {
           )}
         >
           {/* جدول (دسکتاپ) */}
-          <div className="relative hidden overflow-hidden rounded-lg border border-border border-r-2 border-r-primary bg-[#0e110f] md:block">
-            <table className="w-full text-sm">
-              <thead className="bg-[#151a17] text-muted-foreground">
-                <tr className="text-right">
-                  <th className="p-3">
+          <div className="hidden md:block">
+            <StandardTable
+              rows={customers}
+              minWidth={isAdmin ? "900px" : "760px"}
+              rowNumberOffset={startIndex}
+              columns={[
+                {
+                  id: "customer",
+                  header: (
                     <SortHeader
                       label="مشتری"
                       sortKey="name"
@@ -391,9 +395,33 @@ export default function AdminCustomersPage() {
                       dir={sortDir}
                       onSort={handleSort}
                     />
-                  </th>
-                  <th className="p-3 font-medium">شماره موبایل</th>
-                  <th className="p-3">
+                  ),
+                  className: "min-w-[180px]",
+                  cell: (customer) => (
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-bold">
+                        {customer.name.slice(0, 1)}
+                      </div>
+                      <span className="font-medium">{customer.name}</span>
+                    </div>
+                  ),
+                },
+                {
+                  id: "mobile",
+                  header: "شماره موبایل",
+                  className: "whitespace-nowrap",
+                  cell: (customer) => (
+                    <span
+                      dir="ltr"
+                      className="inline-block text-muted-foreground"
+                    >
+                      {toPersianDigits(customer.mobile)}
+                    </span>
+                  ),
+                },
+                {
+                  id: "joined",
+                  header: (
                     <SortHeader
                       label="تاریخ عضویت"
                       sortKey="createdAt"
@@ -401,8 +429,13 @@ export default function AdminCustomersPage() {
                       dir={sortDir}
                       onSort={handleSort}
                     />
-                  </th>
-                  <th className="p-3">
+                  ),
+                  className: "whitespace-nowrap text-muted-foreground",
+                  cell: (customer) => formatDate(customer.createdAt),
+                },
+                {
+                  id: "cancellations",
+                  header: (
                     <SortHeader
                       label="تعداد لغو"
                       sortKey="cancelCount"
@@ -410,57 +443,47 @@ export default function AdminCustomersPage() {
                       dir={sortDir}
                       onSort={handleSort}
                     />
-                  </th>
-                  <th className="p-3 font-medium">وضعیت</th>
-                  {isAdmin && <th className="p-3 font-medium">عملیات</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {customers.map((customer) => (
-                  <tr
-                    key={customer.id}
-                    className="border-t border-border align-top transition-colors hover:bg-secondary/20"
-                  >
-                    <td className="p-3">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-bold">
-                          {customer.name.slice(0, 1)}
-                        </div>
-                        <span className="font-medium">{customer.name}</span>
-                      </div>
-                    </td>
-                    <td className="p-3">
-                      <span dir="ltr" className="inline-block text-muted-foreground">
-                        {toPersianDigits(customer.mobile)}
-                      </span>
-                    </td>
-                    <td className="p-3 text-muted-foreground">
-                      {formatDate(customer.createdAt)}
-                    </td>
-                    <td className="p-3">{toPersianDigits(customer.cancelCount)}</td>
-                    <td className="p-3">
+                  ),
+                  className: "whitespace-nowrap",
+                  cell: (customer) => toPersianDigits(customer.cancelCount),
+                },
+                {
+                  id: "status",
+                  header: "وضعیت",
+                  cell: (customer) => (
+                    <>
                       <StatusBadge isActive={customer.isActive} />
                       <BlockedInfo customer={customer} />
-                    </td>
-                    {isAdmin && (
-                      <td className="p-3">
-                        <Button
-                          size="sm"
-                          variant={customer.isActive ? "outline" : "default"}
-                          className={cn(
-                            customer.isActive &&
-                              "border-red-500/50 bg-red-500/10 text-red-400 hover:bg-red-500/15",
-                          )}
-                          onClick={() => openDialog(customer)}
-                        >
-                          {customer.isActive ? "مسدود کردن" : "فعال کردن"}
-                        </Button>
-                      </td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </>
+                  ),
+                },
+                ...(isAdmin
+                  ? [
+                      {
+                        id: "actions",
+                        header: "عملیات",
+                        className: "whitespace-nowrap",
+                        cell: (customer: ApiCustomer) => (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className={cn(
+                              "h-8 px-2.5 text-xs",
+                              customer.isActive &&
+                                "border-red-500/40 bg-red-500/[0.06] text-red-400 hover:border-red-500/60 hover:bg-red-500/10",
+                              !customer.isActive &&
+                                "border-primary/40 bg-primary/[0.06] text-primary hover:border-primary/60 hover:bg-primary/10",
+                            )}
+                            onClick={() => openDialog(customer)}
+                          >
+                            {customer.isActive ? "مسدود کردن" : "فعال کردن"}
+                          </Button>
+                        ),
+                      },
+                    ]
+                  : []),
+              ]}
+            />
           </div>
 
           {/* کارت (موبایل) */}
