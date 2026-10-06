@@ -30,6 +30,13 @@ import { StatusCard, StatusChip } from "@/components/ui/status-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const PAGE_SIZE_OPTIONS = [5, 10, 15] as const;
 const DEFAULT_PAGE_SIZE = 5;
@@ -207,16 +214,6 @@ export default function AdminCustomersPage() {
         setIsFetching(false);
       });
   }, [search, statusFilter, sortKey, sortDir, page, pageSize, refreshKey]);
-
-  // بستن دیالوگ با Escape
-  useEffect(() => {
-    if (!target) return;
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") closeDialog();
-    }
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [target, isSubmitting]);
 
   function handleSort(key: CustomerSortKey) {
     if (key === sortKey) {
@@ -611,59 +608,65 @@ export default function AdminCustomersPage() {
         </div>
       )}
 
-      {/* دیالوگ تایید */}
-      {target && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-          onClick={closeDialog}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            className="w-full max-w-md rounded-xl border border-border bg-card p-5 shadow-lg"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className="text-base font-bold">
-              {target.action === "block" ? "مسدود کردن مشتری" : "فعال کردن مشتری"}
-            </h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              {target.action === "block"
-                ? `«${target.customer.name}» دیگر نمی‌تواند نوبت جدید رزرو کند.`
-                : `«${target.customer.name}» دوباره می‌تواند نوبت رزرو کند و شمارنده‌ی لغوهایش صفر می‌شود.`}
-            </p>
+      <Dialog
+        open={target !== null}
+        onOpenChange={(open) => {
+          if (!open) closeDialog();
+        }}
+      >
+        <DialogContent>
+          {target && (
+            <>
+              <DialogHeader>
+                <DialogTitle>
+                  {target.action === "block"
+                    ? "مسدود کردن مشتری"
+                    : "فعال کردن مشتری"}
+                </DialogTitle>
+                <DialogDescription>
+                  {target.action === "block"
+                    ? `«${target.customer.name}» دیگر نمی‌تواند نوبت جدید رزرو کند.`
+                    : `«${target.customer.name}» دوباره می‌تواند نوبت رزرو کند و شمارنده‌ی لغوهایش صفر می‌شود.`}
+                </DialogDescription>
+              </DialogHeader>
 
-            {target.action === "block" && (
-              <div className="mt-4 flex flex-col gap-2">
-                <Label htmlFor="block-reason">دلیل (اختیاری)</Label>
-                <Input
-                  id="block-reason"
-                  value={reason}
-                  maxLength={200}
-                  placeholder="مثلاً: لغو مکرر نوبت"
-                  onChange={(e) => setReason(e.target.value)}
-                />
+              {target.action === "block" && (
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="block-reason">دلیل (اختیاری)</Label>
+                  <Input
+                    id="block-reason"
+                    value={reason}
+                    maxLength={200}
+                    placeholder="مثلاً: لغو مکرر نوبت"
+                    onChange={(e) => setReason(e.target.value)}
+                  />
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="ghost"
+                  onClick={closeDialog}
+                  disabled={isSubmitting}
+                >
+                  انصراف
+                </Button>
+                <Button
+                  variant={target.action === "block" ? "destructive" : "default"}
+                  onClick={handleConfirm}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting
+                    ? "..."
+                    : target.action === "block"
+                      ? "مسدود کن"
+                      : "فعال کن"}
+                </Button>
               </div>
-            )}
-
-            <div className="mt-5 flex justify-end gap-2">
-              <Button variant="ghost" onClick={closeDialog} disabled={isSubmitting}>
-                انصراف
-              </Button>
-              <Button
-                variant={target.action === "block" ? "destructive" : "default"}
-                onClick={handleConfirm}
-                disabled={isSubmitting}
-              >
-                {isSubmitting
-                  ? "..."
-                  : target.action === "block"
-                    ? "مسدود کن"
-                    : "فعال کن"}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

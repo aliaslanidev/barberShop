@@ -134,7 +134,7 @@ export function BarberProfileModal({
         }
       }}
     >
-      <DialogContent className="flex h-[85dvh] max-h-[680px] w-[calc(100%-2rem)] max-w-md flex-col gap-0 overflow-hidden p-0 [&>button]:left-4 [&>button]:right-auto">
+      <DialogContent className="flex h-[85dvh] max-h-[680px] w-[calc(100%-2rem)] max-w-md flex-col gap-0 overflow-hidden p-0">
         {barber && (
           <>
             <DialogHeader className="shrink-0 px-5 pb-4 pt-6">

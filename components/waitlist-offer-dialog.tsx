@@ -42,6 +42,7 @@ export function WaitlistOfferDialog() {
   const [selectedReplacement, setSelectedReplacement] = useState("none");
   const [now, setNow] = useState(() => Date.now());
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [dismissedOfferId, setDismissedOfferId] = useState<string | null>(null);
 
   useEffect(() => {
     if (isLoading || user?.role !== "customer") {
@@ -147,9 +148,13 @@ export function WaitlistOfferDialog() {
   if (!offer) return null;
 
   return (
-    <Dialog open onOpenChange={() => undefined}>
+    <Dialog
+      open={offer.id !== dismissedOfferId}
+      onOpenChange={(open) => {
+        if (!open) setDismissedOfferId(offer.id);
+      }}
+    >
       <DialogContent
-        className="[&>button:first-of-type]:hidden"
         onEscapeKeyDown={(event) => event.preventDefault()}
         onPointerDownOutside={(event) => event.preventDefault()}
       >
