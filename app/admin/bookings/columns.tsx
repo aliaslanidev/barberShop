@@ -100,10 +100,24 @@ export function getBookingColumns({ onCancel }: BookingColumnsOptions): ColumnDe
       id: "serviceTitle",
       accessorFn: getBookingServiceTitles,
       header: ({ column }) => <SortableHeader label="خدمت" column={column} />,
+      size: 170,
+      minSize: 130,
+      maxSize: 190,
+      cell: ({ row }) => {
+        const serviceTitle = getBookingServiceTitles(row.original);
+        return (
+          <span className="block truncate whitespace-nowrap" title={serviceTitle}>
+            {serviceTitle}
+          </span>
+        );
+      },
     },
     {
       accessorKey: "status",
       header: ({ column }) => <SortableHeader label="وضعیت" column={column} />,
+      size: 110,
+      minSize: 100,
+      maxSize: 130,
       cell: ({ row }) => (
         <TableStatusBadge tone={bookingStatusTone(row.original.status)}>
           {STATUS_LABELS[row.original.status]}
@@ -114,11 +128,19 @@ export function getBookingColumns({ onCancel }: BookingColumnsOptions): ColumnDe
       id: "actions",
       accessorFn: (row) => row.status,
       header: ({ column }) => <SortableHeader label="عملیات" column={column} />,
+      size: 240,
+      minSize: 220,
+      maxSize: 260,
       cell: ({ row }) => {
         const booking = row.original;
         if (booking.status === "CANCELLED" || booking.status === "COMPLETED") return null;
         return (
-          <Button size="sm" variant="destructive" onClick={() => onCancel(booking.id)}>
+          <Button
+            size="sm"
+            variant="destructive"
+            className="whitespace-nowrap"
+            onClick={() => onCancel(booking.id)}
+          >
             لغو نوبت
           </Button>
         );

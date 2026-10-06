@@ -2,12 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Search } from "lucide-react";
 import type { DateObject } from "react-multi-date-picker";
 
-import { Card, CardContent } from "@/components/ui/card";
 import { BookingPagination } from "@/components/booking-pagination";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -17,7 +14,12 @@ import {
 } from "@/components/ui/select";
 import { JalaliDatePicker } from "@/components/ui/jalali-date-picker";
 import { DataTable } from "@/components/ui/data-table";
-import { cn } from "@/lib/utils";
+import {
+  StandardTableFilterTabs,
+  StandardTablePanel,
+  StandardTablePageHeading,
+  StandardTableSearch,
+} from "@/components/ui/standard-table-layout";
 
 import {
   listBookingsApi,
@@ -163,31 +165,19 @@ export default function AdminBookingsPage() {
 
   return (
     <main className="space-y-6">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-xl font-bold">مدیریت نوبت‌ها</h1>
-        <p className="text-sm text-muted-foreground">لیست همه‌ی نوبت‌های ثبت‌شده، فارغ از آرایشگر</p>
-      </div>
+      <StandardTablePageHeading
+        title="مدیریت نوبت‌ها"
+        description="لیست همه‌ی نوبت‌های ثبت‌شده، فارغ از آرایشگر"
+      />
 
-      <Card>
-        <CardContent className="flex flex-col gap-3 p-4">
+      <StandardTablePanel>
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-2">
-              {DAY_TABS.map((tab) => (
-                <button
-                  key={tab.value}
-                  type="button"
-                  onClick={() => handleSelectTab(tab.value)}
-                  className={cn(
-                    "rounded-full border px-4 py-1.5 text-sm font-medium transition-colors",
-                    dayFilter === tab.value
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-border bg-background text-muted-foreground hover:bg-muted",
-                  )}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
+            <StandardTableFilterTabs
+              items={DAY_TABS}
+              value={dayFilter}
+              onChange={handleSelectTab}
+              ariaLabel="فیلتر تاریخ نوبت‌ها"
+            />
 
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground shrink-0">تاریخ دلخواه:</span>
@@ -208,21 +198,19 @@ export default function AdminBookingsPage() {
                       ? "نمایش تاریخچه‌ی نوبت‌های گذشته"
                       : "نمایش همه‌ی نوبت‌ها"}
           </p>
-        </CardContent>
-      </Card>
+      </StandardTablePanel>
 
-      <Card>
-        <CardContent className="flex flex-col gap-4 p-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="relative flex-1">
-              <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="جستجو با نام یا شماره مشتری..."
-                className="pr-9"
-                value={search}
-                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-              />
-            </div>
+      <StandardTablePanel
+        toolbar={
+          <>
+            <StandardTableSearch
+              placeholder="جستجو با نام یا شماره مشتری..."
+              value={search}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setPage(1);
+              }}
+            />
 
             <Select value={barberFilter} onValueChange={(value) => { setBarberFilter(value); setPage(1); }}>
               <SelectTrigger className="sm:w-48">
@@ -251,7 +239,9 @@ export default function AdminBookingsPage() {
                 ))}
               </SelectContent>
             </Select>
-          </div>
+          </>
+        }
+      >
 
           <DataTable
             columns={columns}
@@ -276,8 +266,7 @@ export default function AdminBookingsPage() {
             }}
             onPageChange={setPage}
           />
-        </CardContent>
-      </Card>
+      </StandardTablePanel>
     </main>
   );
 }

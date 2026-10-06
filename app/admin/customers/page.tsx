@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
-  Search,
   ShieldAlert,
   Users,
   X,
@@ -37,6 +36,12 @@ import {
   StandardTableSortHeader,
 } from "@/components/ui/standard-table";
 import { StandardTablePagination } from "@/components/ui/standard-table-pagination";
+import {
+  StandardTableFilterTabs,
+  StandardTablePanel,
+  StandardTablePageHeading,
+  StandardTableSearch,
+} from "@/components/ui/standard-table-layout";
 import {
   Dialog,
   DialogContent,
@@ -275,59 +280,51 @@ export default function AdminCustomersPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* هدر و جستجو */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-xl font-bold">مدیریت مشتریان</h1>
-          <p className="text-sm text-muted-foreground">
-            {isAdmin
-              ? "مشتری‌های مسدودشده (خودکار یا دستی) را می‌توانید از همین‌جا فعال کنید"
-              : "لیست مشتریان (فقط مشاهده)"}
-          </p>
-        </div>
+      <StandardTablePageHeading
+        title="مدیریت مشتریان"
+        description={
+          isAdmin
+            ? "مشتری‌های مسدودشده (خودکار یا دستی) را می‌توانید از همین‌جا فعال کنید"
+            : "لیست مشتریان (فقط مشاهده)"
+        }
+      />
 
-        <div className="relative w-full sm:w-72">
-          <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
+      <StandardTablePanel className="p-3">
+        <StandardTableFilterTabs
+          items={(Object.keys(FILTER_LABELS) as CustomerStatusFilter[]).map(
+            (key) => ({
+              value: key,
+              label: FILTER_LABELS[key],
+              count: tabCounts[key],
+            }),
+          )}
+          value={statusFilter}
+          onChange={handleFilterChange}
+          ariaLabel="فیلتر وضعیت مشتری"
+        />
+      </StandardTablePanel>
+
+      <StandardTablePanel
+        toolbar={
+          <StandardTableSearch
             value={searchInput}
             placeholder="جستجوی نام یا شماره موبایل"
-            className="pl-9 pr-9"
-            onChange={(e) => setSearchInput(e.target.value)}
+            onChange={(event) => setSearchInput(event.target.value)}
+            clearAction={
+              searchInput.length > 0 ? (
+                <button
+                  type="button"
+                  onClick={clearSearch}
+                  aria-label="پاک کردن جستجو"
+                  className="rounded-sm p-0.5 text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              ) : undefined
+            }
           />
-          {searchInput.length > 0 && (
-            <button
-              type="button"
-              onClick={clearSearch}
-              aria-label="پاک کردن جستجو"
-              className="absolute left-3 top-1/2 -translate-y-1/2 rounded-sm p-0.5 text-muted-foreground transition-colors hover:text-foreground"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* تب‌های فیلتر وضعیت */}
-      <div className="flex flex-wrap gap-2">
-        {(Object.keys(FILTER_LABELS) as CustomerStatusFilter[]).map((key) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => handleFilterChange(key)}
-            className={cn(
-              "rounded-full border px-4 py-1.5 text-sm font-medium transition-colors",
-              statusFilter === key
-                ? "border-primary bg-primary text-primary-foreground"
-                : "border-border text-muted-foreground hover:bg-secondary",
-            )}
-          >
-            {FILTER_LABELS[key]}
-            <span className="mr-1.5 text-xs opacity-80">
-              {toPersianDigits(tabCounts[key])}
-            </span>
-          </button>
-        ))}
-      </div>
+        }
+      >
 
       {customers.length === 0 ? (
         <Card>
@@ -341,12 +338,7 @@ export default function AdminCustomersPage() {
           </CardContent>
         </Card>
       ) : (
-        <div
-          className={cn(
-            "flex flex-col gap-6 transition-opacity",
-            isFetching && "opacity-60",
-          )}
-        >
+        <div className={cn("flex flex-col gap-4", isFetching && "opacity-60")}>
           {/* جدول (دسکتاپ) */}
           <div className="hidden md:block">
             <StandardTable
@@ -559,6 +551,7 @@ export default function AdminCustomersPage() {
           />
         </div>
       )}
+      </StandardTablePanel>
 
       <Dialog
         open={target !== null}

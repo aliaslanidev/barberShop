@@ -12,6 +12,11 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { JalaliDatePicker } from "@/components/ui/jalali-date-picker";
 import { StandardTable } from "@/components/ui/standard-table";
+import {
+  StandardTablePanel,
+  StandardTablePageHeading,
+  StandardTableSearch,
+} from "@/components/ui/standard-table-layout";
 import { getAuthToken } from "@/lib/data/mock-session";
 import {
   listSalonHolidaysApi,
@@ -43,6 +48,7 @@ export default function AdminHolidaysPage() {
   const [reason, setReason] = useState("");
   const [holidays, setHolidays] = useState<ApiSalonHoliday[]>([]);
   const [timeOffEntries, setTimeOffEntries] = useState<ApiTimeOffWithBarber[]>([]);
+  const [timeOffSearch, setTimeOffSearch] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -69,6 +75,12 @@ export default function AdminHolidaysPage() {
   useEffect(() => {
     refresh();
   }, []);
+
+  const filteredTimeOffEntries = timeOffEntries.filter((entry) =>
+    entry.barber.user.name
+      .toLocaleLowerCase()
+      .includes(timeOffSearch.trim().toLocaleLowerCase()),
+  );
 
   async function handleAdd() {
     const token = getAuthToken();
@@ -112,12 +124,10 @@ export default function AdminHolidaysPage() {
 
   return (
     <main className="space-y-6">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-xl font-bold">تعطیلات</h1>
-        <p className="text-sm text-muted-foreground">
-          تعطیلی کل سالن و مرخصی آرایشگرها
-        </p>
-      </div>
+      <StandardTablePageHeading
+        title="تعطیلات"
+        description="تعطیلی کل سالن و مرخصی آرایشگرها"
+      />
 
       <Card className="bg-[#0e110f]">
         <CardContent className="flex flex-col gap-4 p-4">
@@ -180,14 +190,25 @@ export default function AdminHolidaysPage() {
         </CardContent>
       </Card>
 
-      <Card className="bg-[#0e110f]">
-        <CardContent className="flex flex-col gap-4 p-4">
+      <StandardTablePanel
+        toolbar={
+          <StandardTableSearch
+            value={timeOffSearch}
+            onChange={(event) => setTimeOffSearch(event.target.value)}
+            placeholder="جستجوی نام آرایشگر"
+          />
+        }
+      >
         <h2 className="font-semibold">مرخصی آرایشگرها</h2>
 
         <StandardTable
-          rows={timeOffEntries}
+          rows={filteredTimeOffEntries}
           minWidth="420px"
-          emptyMessage="هیچ مرخصی‌ای ثبت نشده"
+          emptyMessage={
+            timeOffSearch.trim()
+              ? "مرخصی‌ای با این نام پیدا نشد"
+              : "هیچ مرخصی‌ای ثبت نشده"
+          }
           columns={[
             {
               id: "barber",
@@ -208,8 +229,7 @@ export default function AdminHolidaysPage() {
             },
           ]}
         />
-        </CardContent>
-      </Card>
+      </StandardTablePanel>
     </main>
   );
 }

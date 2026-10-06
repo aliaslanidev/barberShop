@@ -2,23 +2,23 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import {
-  Search,
-  Users,
-  X,
-} from "lucide-react";
+import { Users, X } from "lucide-react";
 
 import { getMyCustomersApi, ApiError } from "@/lib/api";
 import { getAuthToken } from "@/lib/data/mock-session";
 
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
   StandardTable,
   StandardTableSortHeader,
 } from "@/components/ui/standard-table";
 import { StandardTablePagination } from "@/components/ui/standard-table-pagination";
+import {
+  StandardTablePanel,
+  StandardTablePageHeading,
+  StandardTableSearch,
+} from "@/components/ui/standard-table-layout";
 
 const DEFAULT_PAGE_SIZE = 5;
 const SEARCH_DEBOUNCE_MS = 350;
@@ -149,37 +149,32 @@ export default function BarberCustomersPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* هدر و جستجو */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-xl font-bold">مشتریان من</h1>
-          <p className="text-sm text-muted-foreground">
-            طبق قانون اسکوپ، آرایشگر فقط به مشتریانی دسترسی داره که باهاشون نوبت
-            داشته — نه کل مشتریان سالن.
-          </p>
-        </div>
+      <StandardTablePageHeading
+        title="مشتریان من"
+        description="طبق قانون اسکوپ، آرایشگر فقط به مشتریانی دسترسی داره که باهاشون نوبت داشته — نه کل مشتریان سالن."
+      />
 
-        <div className="relative w-full sm:w-72">
-          <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
+      <StandardTablePanel
+        toolbar={
+          <StandardTableSearch
             value={searchInput}
             placeholder="جستجوی نام یا شماره موبایل"
-            className="pl-9 pr-9"
-            onChange={(e) => setSearchInput(e.target.value)}
+            onChange={(event) => setSearchInput(event.target.value)}
+            clearAction={
+              searchInput.length > 0 ? (
+                <button
+                  type="button"
+                  onClick={clearSearch}
+                  aria-label="پاک کردن جستجو"
+                  className="rounded-sm p-0.5 text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              ) : undefined
+            }
           />
-          {searchInput.length > 0 && (
-            <button
-              type="button"
-              onClick={clearSearch}
-              aria-label="پاک کردن جستجو"
-              className="absolute left-3 top-1/2 -translate-y-1/2 rounded-sm p-0.5 text-muted-foreground transition-colors hover:text-foreground"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          )}
-        </div>
-      </div>
-
+        }
+      >
       {total === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center gap-3 p-10 text-center text-muted-foreground">
@@ -192,7 +187,7 @@ export default function BarberCustomersPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-4">
           {/* جدول (دسکتاپ) */}
           <div className="hidden md:block">
             <StandardTable
@@ -282,6 +277,7 @@ export default function BarberCustomersPage() {
           />
         </div>
       )}
+      </StandardTablePanel>
     </div>
   );
 }

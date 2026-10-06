@@ -23,6 +23,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  StandardTableFilterTabs,
+  StandardTablePanel,
+  StandardTablePageHeading,
+  StandardTableSearch,
+  StandardTableToolbar,
+} from "@/components/ui/standard-table-layout";
+import {
   ApiError,
   listBarbers,
   listRatingsApi,
@@ -100,6 +107,7 @@ export default function AdminRatingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("PENDING");
   const [barberFilter, setBarberFilter] = useState<string>("");
+  const [searchInput, setSearchInput] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
   const [selectedRating, setSelectedRating] = useState<ApiAdminRating | null>(
     null,
@@ -166,6 +174,19 @@ export default function AdminRatingsPage() {
         : byBarber.filter((r) => r.status === statusFilter),
     [byBarber, statusFilter],
   );
+  const searchedRatings = useMemo(() => {
+    const query = searchInput.trim().toLocaleLowerCase();
+    if (!query) return visible;
+    return visible.filter((rating) =>
+      [
+        rating.barberName,
+        rating.customerName,
+        rating.serviceTitle,
+        rating.comment ?? "",
+        STATUS_LABELS[rating.status],
+      ].some((value) => value.toLocaleLowerCase().includes(query)),
+    );
+  }, [searchInput, visible]);
 
   async function handleStatus(id: string, status: "APPROVED" | "REJECTED") {
     const token = getAuthToken();
@@ -192,53 +213,64 @@ export default function AdminRatingsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-extrabold">نظرها و امتیازها</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          متن نظر فقط بعد از تایید شما در صفحهٔ عمومی آرایشگر نمایش داده می‌شود.
-        </p>
-      </div>
+      <StandardTablePageHeading
+        title="نظرها و امتیازها"
+        description="متن نظر فقط بعد از تایید شما در صفحهٔ عمومی آرایشگر نمایش داده می‌شود."
+      />
 
-      {/* تب‌های وضعیت + فیلتر آرایشگر */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex gap-1.5 overflow-x-auto rounded-xl border border-border bg-card p-1.5">
-          {FILTERS.map((f) => (
-            <button
-              key={f.value}
-              type="button"
-              onClick={() => setStatusFilter(f.value)}
-              className={cn(
-                "whitespace-nowrap rounded-lg px-4 py-2 text-sm font-semibold transition-colors",
-                statusFilter === f.value
-                  ? "bg-primary/15 text-primary ring-1 ring-primary/40"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
+      <StandardTablePanel className="p-3">
+        <StandardTableToolbar className="w-full justify-between">
+            <StandardTableFilterTabs
+              items={FILTERS.map((filter) => ({
+                ...filter,
+                count: counts[filter.value],
+              }))}
+              value={statusFilter}
+              onChange={setStatusFilter}
+              ariaLabel="فیلتر وضعیت نظرها"
+            />
+            <Select
+              value={barberFilter || "ALL"}
+              onValueChange={(value) =>
+                setBarberFilter(value === "ALL" ? "" : value)
+              }
             >
-              {f.label} ({toPersianDigits(counts[f.value])})
-            </button>
-          ))}
-        </div>
+              <SelectTrigger className="w-full sm:ms-2 sm:w-52">
+                <SelectValue placeholder="همهٔ آرایشگرها" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">همهٔ آرایشگرها</SelectItem>
+                {barbers.map((barber) => (
+                  <SelectItem key={barber.id} value={barber.id}>
+                    {barber.user.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+        </StandardTableToolbar>
+      </StandardTablePanel>
 
-        <Select
-          value={barberFilter || "ALL"}
-          onValueChange={(value) =>
-            setBarberFilter(value === "ALL" ? "" : value)
-          }
-        >
-          <SelectTrigger className="w-full sm:w-52">
-            <SelectValue placeholder="همهٔ آرایشگرها" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ALL">همهٔ آرایشگرها</SelectItem>
-            {barbers.map((barber) => (
-              <SelectItem key={barber.id} value={barber.id}>
-                {barber.user.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
+      <StandardTablePanel
+        toolbar={
+          <StandardTableSearch
+            value={searchInput}
+            placeholder="جستجوی مشتری، آرایشگر، خدمت یا متن نظر"
+            onChange={(event) => setSearchInput(event.target.value)}
+            clearAction={
+              searchInput.length > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => setSearchInput("")}
+                  aria-label="پاک کردن جستجو"
+                  className="rounded-sm p-0.5 text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              ) : undefined
+            }
+          />
+        }
+      >
       {error && (
         <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400">
           {error}
@@ -249,16 +281,20 @@ export default function AdminRatingsPage() {
         <p className="py-10 text-center text-sm text-muted-foreground">
           در حال بارگذاری...
         </p>
-      ) : visible.length === 0 ? (
+      ) : searchedRatings.length === 0 ? (
         <div className="flex flex-col items-center gap-2 rounded-xl border border-border bg-[#0e110f] py-12 text-muted-foreground">
           <MessageSquareOff className="h-7 w-7" />
-          <p className="text-sm">نظری در این بخش وجود ندارد</p>
+          <p className="text-sm">
+            {searchInput.trim()
+              ? "نظری با این عبارت پیدا نشد"
+              : "نظری در این بخش وجود ندارد"}
+          </p>
         </div>
       ) : (
         <>
           <div className="hidden md:block">
             <StandardTable
-              rows={visible}
+              rows={searchedRatings}
               minWidth="1136px"
               getRowProps={(rating) => ({
                 "aria-label": `مشاهده جزئیات نظر ${rating.customerName}`,
@@ -405,7 +441,7 @@ export default function AdminRatingsPage() {
           </div>
 
           <div className="flex flex-col gap-3 md:hidden">
-            {visible.map((r) => (
+            {searchedRatings.map((r) => (
               <StatusCard
                 key={r.id}
                 tone={
@@ -500,6 +536,7 @@ export default function AdminRatingsPage() {
           </div>
         </>
       )}
+      </StandardTablePanel>
 
       <Dialog
         open={selectedRating !== null}

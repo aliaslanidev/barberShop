@@ -1,9 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { MessageSquareOff, Star } from "lucide-react";
+import { MessageSquareOff, Star, X } from "lucide-react";
 import { StatusCard, TableStatusBadge } from "@/components/ui/status-card";
 import { StandardTable } from "@/components/ui/standard-table";
+import {
+  StandardTablePanel,
+  StandardTablePageHeading,
+  StandardTableSearch,
+} from "@/components/ui/standard-table-layout";
 import {
   Dialog,
   DialogContent,
@@ -65,6 +70,7 @@ export default function BarberReviewsPage() {
   const [error, setError] = useState<string | null>(null);
   const [selectedRating, setSelectedRating] =
     useState<ApiBarberReviewsResponse["ratings"][number] | null>(null);
+  const [searchInput, setSearchInput] = useState("");
 
   useEffect(() => {
     const token = getAuthToken();
@@ -84,6 +90,18 @@ export default function BarberReviewsPage() {
 
   const summary = data?.summary;
   const ratings = data?.ratings ?? [];
+  const filteredRatings = useMemo(() => {
+    const query = searchInput.trim().toLocaleLowerCase();
+    if (!query) return ratings;
+    return ratings.filter((rating) =>
+      [
+        rating.customerName,
+        rating.serviceTitle,
+        rating.comment ?? "",
+        STATUS_LABELS[rating.status],
+      ].some((value) => value.toLocaleLowerCase().includes(query)),
+    );
+  }, [ratings, searchInput]);
 
   // تعداد هر امتیاز (۵ تا ۱) برای نمودار میله‌ای
   const distribution = useMemo(() => {
@@ -98,13 +116,15 @@ export default function BarberReviewsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-extrabold">نظرات من</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
+      <StandardTablePageHeading
+        title="نظرات من"
+        description={
+          <>
           همهٔ امتیازها و نظرهایی که مشتریان برای شما ثبت کرده‌اند. این صفحه فقط
           برای خودتان قابل مشاهده است.
-        </p>
-      </div>
+          </>
+        }
+      />
 
       {summary && (
         <div className="flex flex-wrap items-center gap-6 rounded-2xl border border-border bg-card p-5">
@@ -156,6 +176,27 @@ export default function BarberReviewsPage() {
         </div>
       )}
 
+      <StandardTablePanel
+        toolbar={
+          <StandardTableSearch
+            value={searchInput}
+            onChange={(event) => setSearchInput(event.target.value)}
+            placeholder="جستجوی مشتری، خدمت یا متن نظر"
+            clearAction={
+              searchInput ? (
+                <button
+                  type="button"
+                  onClick={() => setSearchInput("")}
+                  aria-label="پاک کردن جستجو"
+                  className="rounded-sm p-0.5 text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              ) : undefined
+            }
+          />
+        }
+      >
       {error && (
         <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-400">
           {error}
@@ -166,16 +207,20 @@ export default function BarberReviewsPage() {
         <p className="py-10 text-center text-sm text-muted-foreground">
           در حال بارگذاری...
         </p>
-      ) : ratings.length === 0 ? (
+      ) : filteredRatings.length === 0 ? (
         <div className="flex flex-col items-center gap-2 rounded-xl border border-border bg-[#0e110f] py-12 text-muted-foreground">
           <MessageSquareOff className="h-7 w-7" />
-          <p className="text-sm">هنوز نظری برای شما ثبت نشده</p>
+          <p className="text-sm">
+            {searchInput.trim()
+              ? "نظری با این عبارت پیدا نشد"
+              : "هنوز نظری برای شما ثبت نشده"}
+          </p>
         </div>
       ) : (
         <>
           <div className="hidden md:block">
             <StandardTable
-              rows={ratings}
+              rows={filteredRatings}
               minWidth="990px"
               getRowProps={(rating) => ({
                 "aria-label": `مشاهده جزئیات نظر ${rating.customerName}`,
@@ -267,7 +312,7 @@ export default function BarberReviewsPage() {
           </div>
 
           <div className="flex flex-col gap-3 md:hidden">
-            {ratings.map((r) => (
+            {filteredRatings.map((r) => (
               <StatusCard
                 key={r.id}
                 tone={ratingStatusTone(r.status)}
@@ -329,6 +374,7 @@ export default function BarberReviewsPage() {
           </div>
         </>
       )}
+      </StandardTablePanel>
 
       <Dialog
         open={selectedRating !== null}
