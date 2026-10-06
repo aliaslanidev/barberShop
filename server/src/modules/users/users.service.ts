@@ -24,7 +24,11 @@ function buildOrderBy(
       ? { name: sortDir }
       : sortBy === "cancelCount"
         ? { cancelCount: sortDir }
-        : { createdAt: sortDir };
+        : sortBy === "mobile"
+          ? { mobile: sortDir }
+          : sortBy === "isActive"
+            ? { isActive: sortDir }
+            : { createdAt: sortDir };
   // id برای ثابت‌بودن ترتیب بین صفحه‌ها
   return [primary, { id: "asc" }];
 }

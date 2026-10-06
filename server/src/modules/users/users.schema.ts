@@ -13,7 +13,9 @@ export type UpdateCustomerStatusInput = z.infer<typeof updateCustomerStatusSchem
 export const listCustomersQuerySchema = z.object({
   search: z.string().trim().max(50).optional(),
   status: z.enum(["ALL", "ACTIVE", "BLOCKED"]).default("ALL"),
-  sortBy: z.enum(["createdAt", "name", "cancelCount"]).default("createdAt"),
+  sortBy: z
+    .enum(["createdAt", "name", "cancelCount", "mobile", "isActive"])
+    .default("createdAt"),
   sortDir: z.enum(["asc", "desc"]).default("desc"),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),

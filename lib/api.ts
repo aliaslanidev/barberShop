@@ -1112,7 +1112,12 @@ export interface ApiCustomer {
 }
 
 export type CustomerStatusFilter = "ALL" | "ACTIVE" | "BLOCKED";
-export type CustomerSortKey = "createdAt" | "name" | "cancelCount";
+export type CustomerSortKey =
+  | "createdAt"
+  | "name"
+  | "cancelCount"
+  | "mobile"
+  | "isActive";
 
 export interface ListCustomersParams {
   search?: string;

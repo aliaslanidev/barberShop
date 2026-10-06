@@ -132,12 +132,10 @@ function SortHeader({ label, sortKey, activeKey, dir, onSort }: SortHeaderProps)
     <button
       type="button"
       onClick={() => onSort(sortKey)}
-      className={cn(
-        "inline-flex items-center gap-1 font-medium text-primary/80 transition-colors hover:text-primary/80",
-      )}
+      className="group inline-flex items-center gap-1 font-medium text-primary/80 transition-colors hover:text-primary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
     >
       {label}
-      <ArrowUpDown className="h-3.5 w-3.5" />
+      <ArrowUpDown className="h-3.5 w-3.5 opacity-0 transition-[opacity,transform] duration-200 group-hover:translate-y-[-1px] group-hover:opacity-100 group-focus-visible:opacity-100" />
       {isActive && <span className="text-xs">{dir === "asc" ? "↑" : "↓"}</span>}
     </button>
   );
@@ -382,11 +380,12 @@ export default function AdminCustomersPage() {
           <div className="hidden md:block">
             <StandardTable
               rows={customers}
-              minWidth={isAdmin ? "900px" : "760px"}
               rowNumberOffset={startIndex}
               columns={[
                 {
                   id: "customer",
+                  width: 210,
+                  minWidth: 160,
                   header: (
                     <SortHeader
                       label="مشتری"
@@ -408,7 +407,17 @@ export default function AdminCustomersPage() {
                 },
                 {
                   id: "mobile",
-                  header: "شماره موبایل",
+                  width: 165,
+                  minWidth: 135,
+                  header: (
+                    <SortHeader
+                      label="شماره موبایل"
+                      sortKey="mobile"
+                      activeKey={sortKey}
+                      dir={sortDir}
+                      onSort={handleSort}
+                    />
+                  ),
                   className: "whitespace-nowrap",
                   cell: (customer) => (
                     <span
@@ -421,6 +430,8 @@ export default function AdminCustomersPage() {
                 },
                 {
                   id: "joined",
+                  width: 180,
+                  minWidth: 145,
                   header: (
                     <SortHeader
                       label="تاریخ عضویت"
@@ -435,6 +446,8 @@ export default function AdminCustomersPage() {
                 },
                 {
                   id: "cancellations",
+                  width: 140,
+                  minWidth: 110,
                   header: (
                     <SortHeader
                       label="تعداد لغو"
@@ -449,7 +462,17 @@ export default function AdminCustomersPage() {
                 },
                 {
                   id: "status",
-                  header: "وضعیت",
+                  width: 150,
+                  minWidth: 115,
+                  header: (
+                    <SortHeader
+                      label="وضعیت"
+                      sortKey="isActive"
+                      activeKey={sortKey}
+                      dir={sortDir}
+                      onSort={handleSort}
+                    />
+                  ),
                   cell: (customer) => (
                     <>
                       <StatusBadge isActive={customer.isActive} />
@@ -461,6 +484,8 @@ export default function AdminCustomersPage() {
                   ? [
                       {
                         id: "actions",
+                        width: 155,
+                        minWidth: 125,
                         header: "عملیات",
                         className: "whitespace-nowrap",
                         cell: (customer: ApiCustomer) => (
@@ -543,7 +568,7 @@ export default function AdminCustomersPage() {
           </div>
 
           {/* صفحه‌بندی */}
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-wrap items-center justify-end gap-x-4 gap-y-3">
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
               <p className="text-xs text-muted-foreground">
                 نمایش {toPersianDigits(startIndex + 1)} تا{" "}
