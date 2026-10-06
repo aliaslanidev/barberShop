@@ -556,6 +556,7 @@ export async function createBooking(
         barberId: input.barberId,
         serviceId: { in: serviceIds },
         isActive: true,
+        service: { isActive: true },
       },
       include: { service: true },
     });

@@ -6,6 +6,13 @@ export function getAllServices() {
   return prisma.service.findMany({ orderBy: { createdAt: "asc" } });
 }
 
+export function getActiveServices() {
+  return prisma.service.findMany({
+    where: { isActive: true },
+    orderBy: { createdAt: "asc" },
+  });
+}
+
 export async function getServiceById(id: string) {
   const service = await prisma.service.findUnique({ where: { id } });
   if (!service) throw new AppError("سرویس پیدا نشد", 404);

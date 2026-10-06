@@ -156,7 +156,12 @@ async function advanceSlot(
 
     const requestedServiceIds = request.serviceIds.length > 0 ? request.serviceIds : [request.serviceId];
     const barberServices = await tx.barberService.findMany({
-      where: { barberId, serviceId: { in: requestedServiceIds }, isActive: true },
+      where: {
+        barberId,
+        serviceId: { in: requestedServiceIds },
+        isActive: true,
+        service: { isActive: true },
+      },
       select: { serviceId: true },
     });
     if (barberServices.length !== requestedServiceIds.length) {
@@ -252,7 +257,12 @@ export async function joinWaitlist(
   const [customer, barberServices] = await Promise.all([
     prisma.user.findUnique({ where: { id: customerId }, select: { isActive: true } }),
     prisma.barberService.findMany({
-      where: { barberId: input.barberId, serviceId: { in: serviceIds }, isActive: true },
+      where: {
+        barberId: input.barberId,
+        serviceId: { in: serviceIds },
+        isActive: true,
+        service: { isActive: true },
+      },
       select: { serviceId: true },
     }),
   ]);
@@ -481,6 +491,7 @@ export async function acceptWaitlistOffer(
         barberId: request.barberId,
         serviceId: { in: requestedServiceIds },
         isActive: true,
+        service: { isActive: true },
       },
       include: { service: true },
     });

@@ -80,11 +80,16 @@ export interface ApiService {
   priceValue: number;
   icon: string;
   featured: boolean;
+  isActive: boolean;
   createdAt: string;
 }
 
 export function listServices() {
   return apiFetch<ApiService[]>("/services");
+}
+
+export function listAdminServicesApi(token: string) {
+  return apiFetch<ApiService[]>("/services/admin", { token });
 }
 
 export interface ApiPublicStats {
@@ -122,6 +127,7 @@ export function updateServiceApi(
     priceValue: number;
     icon: string;
     featured: boolean;
+    isActive: boolean;
   }>,
   token: string,
 ) {

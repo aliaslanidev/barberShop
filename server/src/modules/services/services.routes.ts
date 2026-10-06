@@ -5,6 +5,7 @@ import {
   createServiceHandler,
   deleteServiceHandler,
   getServiceHandler,
+  listAllServicesHandler,
   listServicesHandler,
   updateServiceHandler,
 } from "@/modules/services/services.controller";
@@ -13,6 +14,12 @@ export const servicesRouter = Router();
 
 // لیست خدمات باید برای همه (حتی مهمان‌ها تو صفحه‌ی بوکینگ) در دسترس باشه
 servicesRouter.get("/", asyncHandler(listServicesHandler));
+servicesRouter.get(
+  "/admin",
+  requireAuth,
+  requireRole("ADMIN", "MANAGER"),
+  asyncHandler(listAllServicesHandler),
+);
 servicesRouter.get("/:id", asyncHandler(getServiceHandler));
 
 // مدیریت خدمات فقط برای ادمین — چون permission «manage_services» آرایشگر

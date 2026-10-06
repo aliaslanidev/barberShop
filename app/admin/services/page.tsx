@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Pencil, Plus, Search, Trash2, X, type LucideIcon } from "lucide-react";
+import { Pencil, Plus, Trash2, X, type LucideIcon } from "lucide-react";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { StatusCard } from "@/components/ui/status-card";
@@ -13,6 +13,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import {
+  StandardTablePageHeading,
+  StandardTablePanel,
+  StandardTableSearch,
+} from "@/components/ui/standard-table-layout";
 import {
   Dialog,
   DialogContent,
@@ -30,7 +36,7 @@ import {
 } from "@/components/ui/select";
 
 import {
-  listServices,
+  listAdminServicesApi,
   createServiceApi,
   updateServiceApi,
   deleteServiceApi,
@@ -84,10 +90,17 @@ export default function AdminServicesPage() {
   const [editDraft, setEditDraft] = useState<ServiceEditDraft | null>(null);
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [updatingServiceId, setUpdatingServiceId] = useState<string | null>(null);
 
   async function refresh() {
+    const token = getAuthToken();
+    if (!token) {
+      toast.error("ابتدا دوباره وارد حساب کاربری شوید");
+      setIsLoading(false);
+      return;
+    }
     try {
-      const data = await listServices();
+      const data = await listAdminServicesApi(token);
       setServices(data);
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "خطا در دریافت خدمات");
@@ -106,6 +119,10 @@ export default function AdminServicesPage() {
       s.title.includes(searchQuery.trim()) ||
       s.desc.includes(searchQuery.trim()),
   );
+
+  function handleSearchChange(value: string) {
+    setSearchQuery(value);
+  }
 
   const {
     register,
@@ -199,6 +216,27 @@ export default function AdminServicesPage() {
     }
   }
 
+  async function handleServiceStatusChange(
+    service: ApiService,
+    isActive: boolean,
+  ) {
+    const token = getAuthToken();
+    if (!token) {
+      toast.error("ابتدا دوباره وارد حساب کاربری شوید");
+      return;
+    }
+    setUpdatingServiceId(service.id);
+    try {
+      await updateServiceApi(service.id, { isActive }, token);
+      await refresh();
+      toast.success(isActive ? "سرویس فعال شد" : "سرویس غیرفعال شد");
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "خطا در تغییر وضعیت سرویس");
+    } finally {
+      setUpdatingServiceId(null);
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-10 text-sm text-muted-foreground">
@@ -209,42 +247,35 @@ export default function AdminServicesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="w-full min-w-0 sm:flex-1">
-          <h1 className="whitespace-nowrap text-xl font-bold">خدمات و قیمت‌گذاری</h1>
-          <p className="text-sm text-muted-foreground">
-            افزودن و مدیریت خدمات سالن
-          </p>
-        </div>
+      <StandardTablePageHeading
+        title="خدمات و قیمت‌گذاری"
+        description="مدیریت خدمات و قیمت‌های سالن"
+      />
 
-        <div className="flex w-full min-w-0 flex-col-reverse gap-2 sm:w-auto sm:flex-row sm:items-center">
-          <div className="relative w-full min-w-0 sm:w-72">
-            <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
+      <StandardTablePanel
+        toolbar={
+          <>
+            <StandardTableSearch
               value={searchQuery}
               placeholder="جستجوی سرویس"
-              className="pl-9 pr-9"
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(event) => handleSearchChange(event.target.value)}
+              clearAction={
+                searchQuery ? (
+                  <button
+                    type="button"
+                    onClick={() => handleSearchChange("")}
+                    aria-label="پاک کردن جستجو"
+                    className="rounded-sm p-0.5 text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                ) : undefined
+              }
             />
-            {searchQuery.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery("")}
-                aria-label="پاک کردن جستجو"
-                className="absolute left-3 top-1/2 -translate-y-1/2 rounded-sm p-0.5 text-muted-foreground transition-colors hover:text-foreground"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
-              <Button
-                size="sm"
-                className="w-full shrink-0 gap-2 sm:w-auto"
-              >
-                <Plus className="h-4 w-4" />
+              <Button size="sm" className="h-9 shrink-0 gap-1.5 px-3">
+                <Plus className="h-3.5 w-3.5" />
                 سرویس جدید
               </Button>
             </DialogTrigger>
@@ -310,67 +341,82 @@ export default function AdminServicesPage() {
               </form>
             </DialogContent>
           </Dialog>
-        </div>
-      </div>
+          </>
+        }
+      >
 
       {visibleServices.length === 0 ? (
         <Card>
-          <CardContent className="p-10 text-center text-sm text-muted-foreground">
-            سرویسی با این عنوان یافت نشد
+          <CardContent className="p-8 text-center text-sm text-muted-foreground">
+            {searchQuery ? "سرویسی با این عنوان یافت نشد" : "هنوز سرویسی ثبت نشده است"}
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-2">
           {visibleServices.map((service) => {
             const Icon = getServiceIcon(service.icon);
             return (
               <StatusCard
                 key={service.id}
-                tone="success"
+                tone={service.isActive ? "success" : "neutral"}
                 showTint={false}
-                accentClassName="bg-primary"
-                className="bg-[#0e110f]"
-                contentClassName="space-y-4 p-5"
+                accentClassName={
+                  service.isActive ? "bg-primary" : "bg-muted-foreground/40"
+                }
+                className="bg-background/30"
+                contentClassName="flex flex-col gap-3 py-3"
               >
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="flex min-w-0 items-start gap-3">
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                      <Icon className="h-5 w-5" />
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                      <Icon className="h-4 w-4" />
                     </span>
-                    <div className="min-w-0 flex-1 space-y-2">
-                      <div className="font-bold">{service.title}</div>
-                      <div className="text-xs text-muted-foreground">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">{service.title}</p>
+                      <p className="line-clamp-2 text-xs text-muted-foreground">
                         {service.desc}
-                      </div>
+                      </p>
                     </div>
                   </div>
-                  <div className="flex items-center justify-end gap-2 sm:shrink-0">
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => handleDelete(service)}
-                      aria-label={`حذف سرویس ${service.title}`}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                  <div className="flex shrink-0 items-center gap-1">
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
+                      className="h-7 w-7 px-0"
                       onClick={() => handleStartEditing(service)}
+                      aria-label={`ویرایش سرویس ${service.title}`}
                     >
-                      <Pencil className="h-4 w-4" />
-                      ویرایش
+                      <Pencil className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      className="h-7 w-7 px-0"
+                      onClick={() => void handleDelete(service)}
+                      aria-label={`حذف سرویس ${service.title}`}
+                    >
+                      <Trash2 className="h-3 w-3" />
                     </Button>
                   </div>
                 </div>
-
-                <div className="space-y-1 border-t border-border pt-3">
-                  <Label htmlFor={`price-${service.id}`} className="text-xs">
-                    قیمت (تومان) — {formatPriceLabel(service.priceValue)}
-                  </Label>
-                  <div className="font-bold">
-                    {service.priceValue.toLocaleString("fa-IR")}
+                <div className="flex items-center justify-between gap-3 border-t border-border pt-2">
+                  <span className="text-xs font-medium text-muted-foreground">
+                    {formatPriceLabel(service.priceValue)}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">
+                      {service.isActive ? "فعال" : "غیرفعال"}
+                    </span>
+                    <Switch
+                      checked={service.isActive}
+                      disabled={updatingServiceId === service.id}
+                      onCheckedChange={(isActive) =>
+                        void handleServiceStatusChange(service, isActive)
+                      }
+                      aria-label={`وضعیت ${service.title}`}
+                    />
                   </div>
                 </div>
               </StatusCard>
@@ -378,6 +424,7 @@ export default function AdminServicesPage() {
           })}
         </div>
       )}
+      </StandardTablePanel>
 
       <Dialog
         open={editingService !== null}

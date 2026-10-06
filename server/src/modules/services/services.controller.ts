@@ -3,6 +3,11 @@ import * as servicesService from "@/modules/services/services.service";
 import { createServiceSchema, updateServiceSchema } from "@/modules/services/services.schema";
 
 export async function listServicesHandler(_req: Request, res: Response) {
+  const services = await servicesService.getActiveServices();
+  res.json(services);
+}
+
+export async function listAllServicesHandler(_req: Request, res: Response) {
   const services = await servicesService.getAllServices();
   res.json(services);
 }

@@ -22,7 +22,7 @@ import {
   createBarberApi,
   updateBarberApi,
   updateBarberPermissionsApi,
-  listServices,
+  listAdminServicesApi,
   getBarberFutureBookingsApi,
   updateBarberAccountStatusApi,
   ApiError,
@@ -243,9 +243,14 @@ export default function AdminBarbersPage() {
 
   async function refresh() {
     try {
+      const token = getAuthToken();
+      if (!token) {
+        toast.error("ابتدا دوباره وارد حساب کاربری شوید");
+        return;
+      }
       const [barbersData, servicesData] = await Promise.all([
         listBarbers(),
-        listServices(),
+        listAdminServicesApi(token),
       ]);
       setBarbers(barbersData);
       setServices(servicesData);

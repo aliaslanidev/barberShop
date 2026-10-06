@@ -7,6 +7,7 @@ export const createServiceSchema = z.object({
   priceValue: z.coerce.number().min(1000, "قیمت باید حداقل ۱٬۰۰۰ تومان باشد"),
   icon: z.enum(["scissors", "sparkles", "droplet", "palette"]),
   featured: z.boolean().optional(),
+  isActive: z.boolean().optional(),
 });
 
 export const updateServiceSchema = createServiceSchema.partial();

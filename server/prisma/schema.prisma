@@ -123,6 +123,7 @@ model Service {
   priceValue Int
   icon       String
   featured   Boolean  @default(false)
+  isActive   Boolean  @default(true)
   createdAt  DateTime @default(now())
 
   barbers          BarberService[]
