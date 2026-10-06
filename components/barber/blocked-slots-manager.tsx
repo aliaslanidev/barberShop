@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Trash2 } from "lucide-react";
+import { Trash2, X } from "lucide-react";
 import DateObject from "react-date-object";
 import persian from "react-date-object/calendars/persian";
 import persian_fa from "react-date-object/locales/persian_fa";
@@ -29,6 +29,8 @@ const SESSION_SLOTS: string[] = Array.from(
   (_, i) => `${String(SALON_OPEN_HOUR + i).padStart(2, "0")}:00`
 );
 
+type PendingBlockedTime = { date: string; time: string };
+
 function toISODate(d: Date): string {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -41,14 +43,14 @@ function formatJalali(isoDate: string): string {
     date: new Date(`${isoDate}T00:00:00`),
     calendar: persian,
     locale: persian_fa,
-  }).format("YYYY/MM/DD");
+  }).format("dddd D/M/YYYY");
 }
 
 export function BlockedSlotsManager() {
   const [slots, setSlots] = useState<ApiBlockedSlot[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [date, setDate] = useState<DateObject | null>(null);
-  const [selectedTimes, setSelectedTimes] = useState<Set<string>>(new Set());
+  const [pendingTimes, setPendingTimes] = useState<Map<string, PendingBlockedTime>>(new Map());
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   async function refresh() {
@@ -72,6 +74,13 @@ export function BlockedSlotsManager() {
   }, []);
 
   const selectedDateStr = date ? toISODate(date.toDate()) : null;
+  const sortedPendingTimes = useMemo(
+    () =>
+      Array.from(pendingTimes.entries())
+        .map(([key, value]) => ({ key, ...value }))
+        .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time)),
+    [pendingTimes]
+  );
   const blockedTimesForSelectedDate = useMemo(() => {
     if (!selectedDateStr) return new Set<string>();
     return new Set(
@@ -81,33 +90,67 @@ export function BlockedSlotsManager() {
 
   function handleDateChange(value: DateObject | null) {
     setDate(value);
-    setSelectedTimes(new Set());
   }
 
   function toggleSelect(time: string) {
     if (blockedTimesForSelectedDate.has(time)) return;
-    setSelectedTimes((prev) => {
-      const next = new Set(prev);
-      if (next.has(time)) next.delete(time);
-      else next.add(time);
+    if (!selectedDateStr) return;
+    const key = `${selectedDateStr}|${time}`;
+    setPendingTimes((prev) => {
+      const next = new Map(prev);
+      if (next.has(key)) next.delete(key);
+      else next.set(key, { date: selectedDateStr, time });
       return next;
     });
   }
 
+  function removePendingTime(key: string) {
+    setPendingTimes((prev) => {
+      const next = new Map(prev);
+      next.delete(key);
+      return next;
+    });
+  }
+
+  function cancelChanges() {
+    setPendingTimes(new Map());
+  }
+
   async function handleConfirm() {
     const token = getAuthToken();
-    if (!token || !selectedDateStr || selectedTimes.size === 0) return;
+    if (!token || pendingTimes.size === 0) return;
 
     setIsSubmitting(true);
     try {
-      await Promise.all(
-        Array.from(selectedTimes).map((time) =>
-          createMyBlockedSlotApi({ date: selectedDateStr, time }, token)
+      const entries = Array.from(pendingTimes.entries());
+      const results = await Promise.allSettled(
+        entries.map(([, { date: selectedDate, time }]) =>
+          createMyBlockedSlotApi({ date: selectedDate, time }, token)
         )
       );
-      toast.success(`${toPersianDigits(selectedTimes.size)} ساعت بسته شد`);
-      setSelectedTimes(new Set());
-      await refresh();
+      const successfulKeys = new Set(
+        results.flatMap((result, index) =>
+          result.status === "fulfilled" ? [entries[index][0]] : []
+        )
+      );
+      const failedResult = results.find((result) => result.status === "rejected");
+      setPendingTimes((prev) => {
+        const next = new Map(prev);
+        successfulKeys.forEach((key) => next.delete(key));
+        return next;
+      });
+
+      if (successfulKeys.size > 0) {
+        toast.success(`${toPersianDigits(successfulKeys.size)} ساعت بسته شد`);
+      }
+      if (failedResult?.status === "rejected") {
+        toast.error(
+          failedResult.reason instanceof ApiError
+            ? failedResult.reason.message
+            : `${toPersianDigits(results.length - successfulKeys.size)} ساعت ذخیره نشد؛ موارد ناموفق در فهرست باقی ماندند.`
+        );
+      }
+      if (successfulKeys.size > 0) await refresh();
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "خطا در بستن ساعت‌ها");
     } finally {
@@ -144,13 +187,14 @@ export function BlockedSlotsManager() {
           </div>
 
           {selectedDateStr ? (
-            <>
               <div className="flex flex-col gap-2">
                 <Label>ساعت‌های موردنظر</Label>
                 <div className="grid grid-cols-4 gap-2 sm:grid-cols-6">
                   {SESSION_SLOTS.map((time) => {
                     const isBlocked = blockedTimesForSelectedDate.has(time);
-                    const isSelected = selectedTimes.has(time);
+                    const isSelected = selectedDateStr
+                      ? pendingTimes.has(`${selectedDateStr}|${time}`)
+                      : false;
                     return (
                       <button
                         key={time}
@@ -176,31 +220,74 @@ export function BlockedSlotsManager() {
                   قرمز = بسته‌شده؛ رنگی = انتخاب فعلی شما.
                 </p>
               </div>
-
-              {selectedTimes.size > 0 && (
-                <div className="flex items-center justify-between gap-2 border-t border-border pt-3">
-                  <span className="text-sm text-muted-foreground">
-                    {toPersianDigits(selectedTimes.size)} ساعت انتخاب شده
-                  </span>
-                  <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setSelectedTimes(new Set())}
-                    >
-                      لغو
-                    </Button>
-                    <Button type="button" size="sm" onClick={handleConfirm} disabled={isSubmitting}>
-                      {isSubmitting ? "در حال ثبت..." : "بستن ساعت‌های انتخاب‌شده"}
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </>
           ) : (
             <p className="text-sm text-muted-foreground">ابتدا یک تاریخ انتخاب کنید.</p>
           )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="space-y-4 p-4 sm:p-5">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-medium">ساعت‌های انتخابی</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                انتخاب‌ها تا زمان ذخیره موقت می‌مانند.
+              </p>
+            </div>
+            <span className="shrink-0 rounded-full bg-secondary px-2.5 py-1 text-xs text-muted-foreground">
+              {toPersianDigits(pendingTimes.size)}
+            </span>
+          </div>
+
+          {sortedPendingTimes.length === 0 ? (
+            <p className="rounded-lg border border-dashed border-border px-3 py-4 text-center text-sm text-muted-foreground">
+              هنوز ساعتی انتخاب نشده است.
+            </p>
+          ) : (
+            <ul
+              className="max-h-64 space-y-2 overflow-y-auto overscroll-contain pr-1"
+              aria-label="ساعت‌های انتخابی برای بستن"
+            >
+              {sortedPendingTimes.map(({ key, date: pendingDate, time }) => (
+                <li
+                  key={key}
+                  className="flex items-center justify-between gap-2 rounded-lg bg-secondary/40 px-3 py-2"
+                >
+                  <span className="text-sm">
+                    {formatJalali(pendingDate)} — ساعت {toPersianDigits(time)}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => removePendingTime(key)}
+                    disabled={isSubmitting}
+                    aria-label={`حذف ساعت ${time} در تاریخ ${formatJalali(pendingDate)} از انتخاب‌ها`}
+                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <div className="flex flex-wrap justify-end gap-2 border-t border-border pt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={cancelChanges}
+              disabled={pendingTimes.size === 0 || isSubmitting}
+            >
+              لغو تغییرات
+            </Button>
+            <Button
+              type="button"
+              onClick={handleConfirm}
+              disabled={pendingTimes.size === 0 || isSubmitting}
+            >
+              {isSubmitting ? "در حال ذخیره..." : "ذخیره تغییرات"}
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
