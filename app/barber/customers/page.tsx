@@ -8,7 +8,7 @@ import { getMyCustomersApi, ApiError } from "@/lib/api";
 import { getAuthToken } from "@/lib/data/mock-session";
 
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { StatusCard } from "@/components/ui/status-card";
 import {
   StandardTable,
   StandardTableSortHeader,
@@ -151,7 +151,7 @@ export default function BarberCustomersPage() {
     <div className="flex flex-col gap-6">
       <StandardTablePageHeading
         title="مشتریان من"
-        description="طبق قانون اسکوپ، آرایشگر فقط به مشتریانی دسترسی داره که باهاشون نوبت داشته — نه کل مشتریان سالن."
+        description="فقط مشتریانی نمایش داده می‌شوند که با شما نوبت داشته‌اند."
       />
 
       <StandardTablePanel
@@ -248,8 +248,14 @@ export default function BarberCustomersPage() {
           {/* کارت (موبایل) */}
           <div className="flex flex-col gap-3 md:hidden">
             {pageCustomers.map((customer) => (
-              <Card key={customer.phone}>
-                <CardContent className="flex flex-col gap-3 p-4">
+              <StatusCard
+                key={customer.phone}
+                tone="neutral"
+                showTint={false}
+                accentClassName="bg-primary"
+                className="bg-[#0e110f]"
+                contentClassName="flex items-center gap-3 py-3"
+              >
                   <div className="flex items-center gap-3">
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-secondary text-sm font-bold">
                       {customer.name.slice(0, 1)}
@@ -261,8 +267,7 @@ export default function BarberCustomersPage() {
                       </p>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+              </StatusCard>
             ))}
           </div>
 
