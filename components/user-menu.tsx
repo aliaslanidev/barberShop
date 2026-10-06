@@ -95,7 +95,7 @@ export function UserMenu({
 
         <DropdownMenuItem
           onClick={onLogout}
-          className="cursor-pointer gap-2 text-red-400 focus:text-red-400"
+          className="cursor-pointer gap-2 text-red-400 focus:bg-red-500/10 focus:text-red-400"
         >
           <LogOut className="h-4 w-4" />
           <span>خروج از حساب</span>
